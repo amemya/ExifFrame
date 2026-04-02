@@ -1,0 +1,13 @@
+build/bin
+node_modules
+frontend/dist
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode
+
+# build package
+*.exe
+*.dmg
