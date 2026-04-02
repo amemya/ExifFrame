@@ -52,11 +52,18 @@ function App() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const margin = Math.floor(img.height * 0.20); // 15% margin at the bottom
-        const framePadding = Math.floor(img.width * 0.02); // 2% padding around
+        // 好みの左右・上の枠の太さ（例：幅の3.5%）
+        const framePadding = Math.floor(img.width * 0.025);
 
+        // 全体の仕上がりを 4300 : 3618 の比率に強制する
+        const targetRatio = 4300 / 3618;
+
+        // 完成品の幅を先に決め、ターゲット比率から高さを逆算する
         canvas.width = img.width + (framePadding * 2);
-        canvas.height = img.height + margin + (framePadding * 2);
+        canvas.height = Math.floor(canvas.width / targetRatio);
+
+        // 完成品の高さから「下の余白（margin）」を逆算
+        const margin = canvas.height - img.height - (framePadding * 2);
 
         // Fill background
         ctx.fillStyle = '#ffffff';
@@ -65,8 +72,11 @@ function App() {
         // Draw image
         ctx.drawImage(img, framePadding, framePadding);
 
-        // Draw Exif Text Background
-        const textY = img.height + framePadding + (margin / 2);
+        // 写真の下端からキャンバスの下端までの「目に見える下の白枠すべて」の高さ
+        const bottomSpaceHeight = margin + framePadding;
+
+        // 本当の視覚的な中央座標を計算
+        const textY = img.height + framePadding + (bottomSpaceHeight / 2);
 
         // テキストのサイズを（marginではなく）画像自体のサイズを基準にする
         const baseScale = Math.min(img.width, img.height);
@@ -78,13 +88,13 @@ function App() {
 
         // Camera and Lens
         const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
-        ctx.font = `bold ${titleFontSize}px "Inter", sans-serif`;
+        ctx.font = `normal ${titleFontSize}px "Gill Sans", sans-serif`;
         const topText = `${exif.camera} | ${exif.lens}`;
         ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
 
         // Settings (Aperture, SS, ISO etc)
         const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
-        ctx.font = `normal ${descFontSize}px "Inter", sans-serif`;
+        ctx.font = `Light ${descFontSize}px "Gill Sans", sans-serif`;
         const bottomText = `${exif.focalLength} | ${exif.aperture} | ${exif.shutterSpeed} | ${exif.iso}`;
         ctx.fillStyle = '#555555';
         ctx.fillText(bottomText, canvas.width / 2, textY + (titleFontSize * 0.8));
