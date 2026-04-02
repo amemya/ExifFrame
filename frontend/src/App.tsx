@@ -1,28 +1,169 @@
-import {useState} from 'react';
-import logo from './assets/images/logo-universal.png';
+import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import './App.css';
-import {Greet} from "../wailsjs/go/main/App";
 
-function App() {
-    const [resultText, setResultText] = useState("Please enter your name below 👇");
-    const [name, setName] = useState('');
-    const updateName = (e: any) => setName(e.target.value);
-    const updateResultText = (result: string) => setResultText(result);
-
-    function greet() {
-        Greet(name).then(updateResultText);
-    }
-
-    return (
-        <div id="App">
-            <img src={logo} id="logo" alt="logo"/>
-            <div id="result" className="result">{resultText}</div>
-            <div id="input" className="input-box">
-                <input id="name" className="input" onChange={updateName} autoComplete="off" name="input" type="text"/>
-                <button className="btn" onClick={greet}>Greet</button>
-            </div>
-        </div>
-    )
+interface ExifData {
+    camera: string;
+    lens: string;
+    focalLength: string;
+    aperture: string;
+    shutterSpeed: string;
+    iso: string;
 }
 
-export default App
+function App() {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [exif, setExif] = useState<ExifData>({
+        camera: "",
+        lens: "",
+        focalLength: "",
+        aperture: "",
+        shutterSpeed: "",
+        iso: ""
+    });
+
+    const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
+
+    const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                setImageObj(img);
+                setImageLoaded(true);
+            };
+            img.src = event.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    useEffect(() => {
+        if (!imageObj || !canvasRef.current) return;
+
+        drawCanvas(imageObj);
+    }, [imageObj, exif]);
+
+    const drawCanvas = (img: HTMLImageElement) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const margin = Math.floor(img.height * 0.20); // 15% margin at the bottom
+        const framePadding = Math.floor(img.width * 0.02); // 2% padding around
+
+        canvas.width = img.width + (framePadding * 2);
+        canvas.height = img.height + margin + (framePadding * 2);
+
+        // Fill background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw image
+        ctx.drawImage(img, framePadding, framePadding);
+
+        // Draw Exif Text Background
+        const textY = img.height + framePadding + (margin / 2);
+
+        // テキストのサイズを（marginではなく）画像自体のサイズを基準にする
+        const baseScale = Math.min(img.width, img.height);
+
+        // Settings for text
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Camera and Lens
+        const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
+        ctx.font = `bold ${titleFontSize}px "Inter", sans-serif`;
+        const topText = `${exif.camera} | ${exif.lens}`;
+        ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
+
+        // Settings (Aperture, SS, ISO etc)
+        const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
+        ctx.font = `normal ${descFontSize}px "Inter", sans-serif`;
+        const bottomText = `${exif.focalLength} | ${exif.aperture} | ${exif.shutterSpeed} | ${exif.iso}`;
+        ctx.fillStyle = '#555555';
+        ctx.fillText(bottomText, canvas.width / 2, textY + (titleFontSize * 0.8));
+
+        // Draw a subtle line separator (just above the text)
+        ctx.beginPath();
+        ctx.moveTo(canvas.width * 0.2, img.height + framePadding);
+        ctx.lineTo(canvas.width * 0.8, img.height + framePadding);
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = Math.max(1, Math.floor(baseScale * 0.0015));
+        ctx.stroke();
+    };
+
+    const downloadImage = () => {
+        if (!canvasRef.current) return;
+        const link = document.createElement('a');
+        link.download = 'exif-frame.jpg';
+        link.href = canvasRef.current.toDataURL('image/jpeg', 0.95);
+        link.click();
+    };
+
+    return (
+        <div className="app-container">
+            <header className="header">
+                <h1>ExifFrame</h1>
+                <p>Add beautiful elegant metadata frames to your photos.</p>
+            </header>
+
+            <main className="main-content">
+                <div className="upload-section">
+                    <label className="upload-btn">
+                        <span>Select Photo</span>
+                        <input type="file" accept="image/*" onChange={handleImageUpload} hidden />
+                    </label>
+                </div>
+
+                <div className={`canvas-container ${imageLoaded ? 'visible' : ''}`}>
+                    <canvas ref={canvasRef} className="preview-canvas" />
+                </div>
+
+                {imageLoaded && (
+                    <div className="settings-panel">
+                        <div className="input-group">
+                            <label>Camera</label>
+                            <input type="text" value={exif.camera} onChange={e => setExif({ ...exif, camera: e.target.value })} />
+                        </div>
+                        <div className="input-group">
+                            <label>Lens</label>
+                            <input type="text" value={exif.lens} onChange={e => setExif({ ...exif, lens: e.target.value })} />
+                        </div>
+                        <div className="input-row">
+                            <div className="input-group">
+                                <label>Focal Length</label>
+                                <input type="text" value={exif.focalLength} onChange={e => setExif({ ...exif, focalLength: e.target.value })} />
+                            </div>
+                            <div className="input-group">
+                                <label>Aperture</label>
+                                <input type="text" value={exif.aperture} onChange={e => setExif({ ...exif, aperture: e.target.value })} />
+                            </div>
+                        </div>
+                        <div className="input-row">
+                            <div className="input-group">
+                                <label>Shutter Speed</label>
+                                <input type="text" value={exif.shutterSpeed} onChange={e => setExif({ ...exif, shutterSpeed: e.target.value })} />
+                            </div>
+                            <div className="input-group">
+                                <label>ISO</label>
+                                <input type="text" value={exif.iso} onChange={e => setExif({ ...exif, iso: e.target.value })} />
+                            </div>
+                        </div>
+
+                        <button className="download-btn" onClick={downloadImage}>
+                            Save Framed Image
+                        </button>
+                    </div>
+                )}
+            </main>
+        </div>
+    );
+}
+
+export default App;
