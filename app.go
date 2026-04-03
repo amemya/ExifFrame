@@ -204,6 +204,54 @@ func parseFraction(s string) (int64, int64) {
 	return 0, 0
 }
 
+// SaveImage triggers a native save dialog and saves the requested base64 data to disk.
+func (a *App) SaveImage(base64Data string) string {
+	parts := strings.Split(base64Data, ",")
+	if len(parts) != 2 {
+		return "Invalid image data format"
+	}
+
+	isPng := strings.HasPrefix(parts[0], "data:image/png")
+
+	imageData, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "Failed to decode base64 image data"
+	}
+
+	filterName := "JPEG Image"
+	filterPattern := "*.jpg;*.jpeg"
+	defaultFilename := "exif-frame.jpg"
+	if isPng {
+		filterName = "PNG Image"
+		filterPattern = "*.png"
+		defaultFilename = "exif-frame.png"
+	}
+
+	savePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Save ExifFrame Image",
+		DefaultFilename: defaultFilename,
+		Filters: []runtime.FileFilter{
+			{DisplayName: filterName, Pattern: filterPattern},
+		},
+	})
+
+	if err != nil {
+		return "Failed to open save dialog: " + err.Error()
+	}
+
+	// User cancelled the dialog
+	if savePath == "" {
+		return ""
+	}
+
+	err = os.WriteFile(savePath, imageData, 0644)
+	if err != nil {
+		return "Failed to save file: " + err.Error()
+	}
+
+	return ""
+}
+
 func formatFocalLength(num, den int64) string {
 	if den == 0 {
 		return ""

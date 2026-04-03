@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import './App.css';
-import { OpenImage } from '../wailsjs/go/main/App';
+import { OpenImage, SaveImage } from '../wailsjs/go/main/App';
 
 interface ExifData {
     camera: string;
@@ -75,7 +75,8 @@ function App() {
     const drawCanvas = (img: HTMLImageElement) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+        // Enable P3 wide-gamut mode to prevent high-saturation color loss
+        const ctx = canvas.getContext('2d', { colorSpace: 'display-p3' } as CanvasRenderingContext2DSettings);
         if (!ctx) return;
 
         // 好みの左右・上の枠の太さ（例：幅の3.5%）
@@ -142,12 +143,27 @@ function App() {
         ctx.stroke();
     };
 
-    const downloadImage = () => {
-        if (!canvasRef.current) return;
-        const link = document.createElement('a');
-        link.download = 'exif-frame.jpg';
-        link.href = canvasRef.current.toDataURL('image/jpeg', 0.95);
-        link.click();
+    const downloadImage = async () => {
+        if (!canvasRef.current || !imageObj) return;
+        
+        try {
+            // Check original type to maintain lossless PNG if possible
+            const isPng = imageObj.src.startsWith('data:image/png');
+            const targetMime = isPng ? 'image/png' : 'image/jpeg';
+            
+            // For JPEG, 1.0 enforces absolutely maximum quality to prevent any degradation.
+            // PNG ignores the quality parameter.
+            const dataUrl = canvasRef.current.toDataURL(targetMime, 1.0);
+            
+            const errStr = await SaveImage(dataUrl);
+            
+            if (errStr) {
+                console.error("Export failed:", errStr);
+                alert("Failed to save image: " + errStr);
+            }
+        } catch (err) {
+            console.error("Failed to execute SaveImage:", err);
+        }
     };
 
     return (
