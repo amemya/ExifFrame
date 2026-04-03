@@ -75,7 +75,7 @@ func (a *App) OpenImage() ExifResult {
 		return ExifResult{Error: "Failed to stat file: " + err.Error()}
 	}
 	if fileInfo.Size() > maxFileSize {
-		return ExifResult{Error: fmt.Sprintf("File is too large (max 50MB): %d bytes", fileInfo.Size())}
+		return ExifResult{Error: fmt.Sprintf("File is too large (max 100MB): %d bytes", fileInfo.Size())}
 	}
 
 	fileBytes, err := os.ReadFile(filePath)
@@ -117,42 +117,49 @@ func (a *App) OpenImage() ExifResult {
 	}
 
 	// Adobe PNG/XMP Fallback (Extract metadata directly from raw XMP block)
+	xmpData := fileBytes
+	if start := bytes.Index(fileBytes, []byte("<x:xmpmeta")); start != -1 {
+		if end := bytes.Index(fileBytes[start:], []byte("</x:xmpmeta>")); end != -1 {
+			xmpData = fileBytes[start : start+end+12]
+		}
+	}
+
 	if result.Camera == "" {
-		result.Camera = extractXMPString(fileBytes, reXmpModel)
+		result.Camera = extractXMPString(xmpData, reXmpModel)
 		if result.Camera == "" {
 			// Fallback to crs:CameraProfile
-			result.Camera = extractXMPString(fileBytes, reXmpProfile)
+			result.Camera = extractXMPString(xmpData, reXmpProfile)
 		}
 	}
 	if result.Lens == "" {
-		result.Lens = extractXMPString(fileBytes, reXmpLens)
+		result.Lens = extractXMPString(xmpData, reXmpLens)
 		if result.Lens == "" {
-			result.Lens = extractXMPString(fileBytes, reXmpExifLens)
+			result.Lens = extractXMPString(xmpData, reXmpExifLens)
 		}
 	}
 	if result.FocalLength == "" {
-		flstr := extractXMPString(fileBytes, reXmpFocal)
+		flstr := extractXMPString(xmpData, reXmpFocal)
 		if flstr != "" {
 			num, den := parseFraction(flstr)
 			result.FocalLength = formatFocalLength(num, den)
 		}
 	}
 	if result.Aperture == "" {
-		fnstr := extractXMPString(fileBytes, reXmpFNumber)
+		fnstr := extractXMPString(xmpData, reXmpFNumber)
 		if fnstr != "" {
 			num, den := parseFraction(fnstr)
 			result.Aperture = formatAperture(num, den)
 		}
 	}
 	if result.ShutterSpeed == "" {
-		ssstr := extractXMPString(fileBytes, reXmpExposure)
+		ssstr := extractXMPString(xmpData, reXmpExposure)
 		if ssstr != "" {
 			num, den := parseFraction(ssstr)
 			result.ShutterSpeed = formatShutterSpeed(num, den)
 		}
 	}
 	if result.ISO == "" {
-		isostr := extractXMPString(fileBytes, reXmpISO)
+		isostr := extractXMPString(xmpData, reXmpISO)
 		if isostr != "" {
 			result.ISO = "ISO" + isostr
 		}
