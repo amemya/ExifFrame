@@ -84,6 +84,10 @@ func (a *App) OpenImage() ExifResult {
 	}
 
 	mimeType := http.DetectContentType(fileBytes)
+	if !strings.HasPrefix(mimeType, "image/") {
+		return ExifResult{Error: "Invalid file: selected file is not a valid image format."}
+	}
+
 	result := ExifResult{
 		ImageBase64: fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(fileBytes)),
 	}
@@ -176,6 +180,10 @@ func extractXMPString(data []byte, re *regexp.Regexp) string {
 	return ""
 }
 
+// floatPrecisionMultiplier represents the precision factor used when converting 
+// floating point XMP values (e.g. 35.0) into a fractional num/den representation.
+const floatPrecisionMultiplier = 10000
+
 func parseFraction(s string) (int64, int64) {
 	parts := strings.Split(s, "/")
 	if len(parts) == 2 {
@@ -187,7 +195,7 @@ func parseFraction(s string) (int64, int64) {
 	}
 	f, err := strconv.ParseFloat(s, 64)
 	if err == nil {
-		return int64(f * 10000), 10000
+		return int64(f * floatPrecisionMultiplier), floatPrecisionMultiplier
 	}
 	return 0, 0
 }
