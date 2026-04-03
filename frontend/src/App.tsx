@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import './App.css';
-import { OpenImage } from "../wailsjs/go/main/App";
+import { OpenImage } from '../wailsjs/go/main/App';
 
 interface ExifData {
     camera: string;
