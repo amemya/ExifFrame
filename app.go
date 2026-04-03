@@ -110,7 +110,7 @@ func (a *App) OpenImage() ExifResult {
 	if result.Camera == "" {
 		result.Camera = extractXMPString(fileBytes, reXmpModel)
 		if result.Camera == "" {
-			// Fallback to cc:Model
+			// Fallback to crs:CameraProfile
 			result.Camera = extractXMPString(fileBytes, reXmpProfile)
 		}
 	}
