@@ -9,6 +9,7 @@ export namespace main {
 	    shutterSpeed: string;
 	    iso: string;
 	    error: string;
+	    cancelled: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ExifResult(source);
@@ -24,6 +25,7 @@ export namespace main {
 	        this.shutterSpeed = source["shutterSpeed"];
 	        this.iso = source["iso"];
 	        this.error = source["error"];
+	        this.cancelled = source["cancelled"];
 	    }
 	}
 

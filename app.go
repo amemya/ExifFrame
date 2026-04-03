@@ -51,6 +51,7 @@ type ExifResult struct {
 	ShutterSpeed string `json:"shutterSpeed"`
 	ISO          string `json:"iso"`
 	Error        string `json:"error"`
+	Cancelled    bool   `json:"cancelled"`
 }
 
 // OpenImage opens a native file dialog, reads the image, and returns Base64 + EXIF
@@ -65,7 +66,16 @@ func (a *App) OpenImage() ExifResult {
 		return ExifResult{Error: err.Error()}
 	}
 	if filePath == "" {
-		return ExifResult{Error: "CANCELLED"} // user cancelled
+		return ExifResult{Cancelled: true} // user cancelled
+	}
+
+	const maxFileSize = 100 * 1024 * 1024 // 100 MB
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return ExifResult{Error: "Failed to stat file: " + err.Error()}
+	}
+	if fileInfo.Size() > maxFileSize {
+		return ExifResult{Error: fmt.Sprintf("File is too large (max 50MB): %d bytes", fileInfo.Size())}
 	}
 
 	fileBytes, err := os.ReadFile(filePath)

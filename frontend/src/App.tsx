@@ -29,10 +29,12 @@ function App() {
         try {
             const result = await OpenImage();
             
+            if (result.cancelled) {
+                return;
+            }
+
             if (result.error) {
-                if (result.error !== "CANCELLED") {
-                    console.error(result.error);
-                }
+                console.error(result.error);
                 return;
             }
 
