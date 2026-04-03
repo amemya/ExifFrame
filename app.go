@@ -121,7 +121,7 @@ func (a *App) OpenImage() ExifResult {
 	}
 
 	// Adobe PNG/XMP Fallback (Extract metadata directly from raw XMP block)
-	xmpData := fileBytes
+	var xmpData []byte
 	const xmpStartTag = "<x:xmpmeta"
 	const xmpEndTag = "</x:xmpmeta>"
 	
