@@ -84,8 +84,8 @@ func (a *App) OpenImage() ExifResult {
 	}
 
 	mimeType := http.DetectContentType(fileBytes)
-	if !strings.HasPrefix(mimeType, "image/") {
-		return ExifResult{Error: "Invalid file: selected file is not a valid image format."}
+	if mimeType != "image/jpeg" && mimeType != "image/png" {
+		return ExifResult{Error: "Invalid file: selected file must be a JPG or PNG image."}
 	}
 
 	result := ExifResult{
@@ -122,9 +122,12 @@ func (a *App) OpenImage() ExifResult {
 
 	// Adobe PNG/XMP Fallback (Extract metadata directly from raw XMP block)
 	xmpData := fileBytes
-	if start := bytes.Index(fileBytes, []byte("<x:xmpmeta")); start != -1 {
-		if end := bytes.Index(fileBytes[start:], []byte("</x:xmpmeta>")); end != -1 {
-			xmpData = fileBytes[start : start+end+12]
+	const xmpStartTag = "<x:xmpmeta"
+	const xmpEndTag = "</x:xmpmeta>"
+	
+	if start := bytes.Index(fileBytes, []byte(xmpStartTag)); start != -1 {
+		if end := bytes.Index(fileBytes[start:], []byte(xmpEndTag)); end != -1 {
+			xmpData = fileBytes[start : start+end+len(xmpEndTag)]
 		}
 	}
 
