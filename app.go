@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"regexp"
@@ -198,7 +199,7 @@ func parseFraction(s string) (int64, int64) {
 	}
 	f, err := strconv.ParseFloat(s, 64)
 	if err == nil {
-		return int64(f * floatPrecisionMultiplier), floatPrecisionMultiplier
+		return int64(math.Round(f * floatPrecisionMultiplier)), floatPrecisionMultiplier
 	}
 	return 0, 0
 }
