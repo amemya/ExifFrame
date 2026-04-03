@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -11,6 +13,17 @@ import (
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+var (
+	reXmpModel    = regexp.MustCompile(`tiff:Model="([^"]+)"`)
+	reXmpProfile  = regexp.MustCompile(`crs:CameraProfile="([^"]+)"`)
+	reXmpLens     = regexp.MustCompile(`aux:Lens="([^"]+)"`)
+	reXmpExifLens = regexp.MustCompile(`exifEX:LensModel="([^"]+)"`)
+	reXmpFocal    = regexp.MustCompile(`exif:FocalLength="([^"]+)"`)
+	reXmpFNumber  = regexp.MustCompile(`exif:FNumber="([^"]+)"`)
+	reXmpExposure = regexp.MustCompile(`exif:ExposureTime="([^"]+)"`)
+	reXmpISO      = regexp.MustCompile(`(?s)<exif:ISOSpeedRatings>.*?<rdf:li>(\d+)</rdf:li>`)
 )
 
 // App struct
@@ -55,109 +68,81 @@ func (a *App) OpenImage() ExifResult {
 		return ExifResult{Error: "CANCELLED"} // user cancelled
 	}
 
-	bytes, err := os.ReadFile(filePath)
+	fileBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return ExifResult{Error: "Failed to read file: " + err.Error()}
 	}
 
+	mimeType := http.DetectContentType(fileBytes)
 	result := ExifResult{
-		ImageBase64: "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(bytes),
+		ImageBase64: fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(fileBytes)),
 	}
 
 	// Parse EXIF
-	f, err := os.Open(filePath)
+	reader := bytes.NewReader(fileBytes)
+	x, err := exif.Decode(reader)
 	if err == nil {
-		defer f.Close()
-		x, err := exif.Decode(f)
-		if err == nil {
-			if cam, err := x.Get(exif.Model); err == nil {
-				result.Camera, _ = cam.StringVal()
-			}
-			if lens, err := x.Get(exif.LensModel); err == nil {
-				result.Lens, _ = lens.StringVal()
-			}
+		if cam, err := x.Get(exif.Model); err == nil {
+			result.Camera, _ = cam.StringVal()
+		}
+		if lens, err := x.Get(exif.LensModel); err == nil {
+			result.Lens, _ = lens.StringVal()
+		}
 
-			if foc, err := x.Get(exif.FocalLength); err == nil {
-				num, den, _ := foc.Rat2(0)
-				if den != 0 {
-					result.FocalLength = fmt.Sprintf("%dmm", num/den)
-				}
-			}
-			if fno, err := x.Get(exif.FNumber); err == nil {
-				num, den, _ := fno.Rat2(0)
-				if den != 0 {
-					result.Aperture = fmt.Sprintf("f/%.1f", float64(num)/float64(den))
-				}
-			}
-			if ss, err := x.Get(exif.ExposureTime); err == nil {
-				num, den, _ := ss.Rat2(0)
-				if num != 0 && den != 0 {
-					val := float64(den) / float64(num)
-					if val >= 1.0 {
-						result.ShutterSpeed = fmt.Sprintf("1/%ds", int(val))
-					} else {
-						result.ShutterSpeed = fmt.Sprintf("%gs", float64(num)/float64(den))
-					}
-				}
-			}
-			if iso, err := x.Get(exif.ISOSpeedRatings); err == nil {
-				result.ISO = "ISO" + iso.String()
-			}
+		if foc, err := x.Get(exif.FocalLength); err == nil {
+			num, den, _ := foc.Rat2(0)
+			result.FocalLength = formatFocalLength(num, den)
+		}
+		if fno, err := x.Get(exif.FNumber); err == nil {
+			num, den, _ := fno.Rat2(0)
+			result.Aperture = formatAperture(num, den)
+		}
+		if ss, err := x.Get(exif.ExposureTime); err == nil {
+			num, den, _ := ss.Rat2(0)
+			result.ShutterSpeed = formatShutterSpeed(num, den)
+		}
+		if iso, err := x.Get(exif.ISOSpeedRatings); err == nil {
+			result.ISO = "ISO" + iso.String()
 		}
 	}
 
 	// Adobe PNG/XMP Fallback (Extract metadata directly from raw XMP block)
 	if result.Camera == "" {
-		result.Camera = extractXMPString(bytes, `tiff:Model="([^"]+)"`)
+		result.Camera = extractXMPString(fileBytes, reXmpModel)
 		if result.Camera == "" {
 			// Fallback to cc:Model
-			result.Camera = extractXMPString(bytes, `crs:CameraProfile="([^"]+)"`)
+			result.Camera = extractXMPString(fileBytes, reXmpProfile)
 		}
 	}
 	if result.Lens == "" {
-		result.Lens = extractXMPString(bytes, `aux:Lens="([^"]+)"`)
+		result.Lens = extractXMPString(fileBytes, reXmpLens)
 		if result.Lens == "" {
-			result.Lens = extractXMPString(bytes, `exifEX:LensModel="([^"]+)"`)
+			result.Lens = extractXMPString(fileBytes, reXmpExifLens)
 		}
 	}
 	if result.FocalLength == "" {
-		flstr := extractXMPString(bytes, `exif:FocalLength="([^"]+)"`)
+		flstr := extractXMPString(fileBytes, reXmpFocal)
 		if flstr != "" {
 			num, den := parseFraction(flstr)
-			if den != 0 {
-				result.FocalLength = fmt.Sprintf("%dmm", num/den)
-			}
+			result.FocalLength = formatFocalLength(num, den)
 		}
 	}
 	if result.Aperture == "" {
-		fnstr := extractXMPString(bytes, `exif:FNumber="([^"]+)"`)
+		fnstr := extractXMPString(fileBytes, reXmpFNumber)
 		if fnstr != "" {
 			num, den := parseFraction(fnstr)
-			if den != 0 {
-				result.Aperture = fmt.Sprintf("f/%.1f", float64(num)/float64(den))
-			}
+			result.Aperture = formatAperture(num, den)
 		}
 	}
 	if result.ShutterSpeed == "" {
-		ssstr := extractXMPString(bytes, `exif:ExposureTime="([^"]+)"`)
+		ssstr := extractXMPString(fileBytes, reXmpExposure)
 		if ssstr != "" {
-			// usually already resembles "1/160" but we can ensure formatting
 			num, den := parseFraction(ssstr)
-			if num != 0 && den != 0 {
-				val := float64(den) / float64(num)
-				if val >= 1.0 {
-					result.ShutterSpeed = fmt.Sprintf("1/%ds", int(val))
-				} else {
-					result.ShutterSpeed = fmt.Sprintf("%gs", float64(num)/float64(den))
-				}
-			} else if num != 0 {
-				result.ShutterSpeed = fmt.Sprintf("%ds", num)
-			}
+			result.ShutterSpeed = formatShutterSpeed(num, den)
 		}
 	}
 	if result.ISO == "" {
-		// XMP ISO is often in an rdf:Seq list
-		isostr := extractXMPString(bytes, `(?s)<exif:ISOSpeedRatings>.*?<rdf:li>(\d+)</rdf:li>`)
+		isostr := extractXMPString(fileBytes, reXmpISO)
 		if isostr != "" {
 			result.ISO = "ISO" + isostr
 		}
@@ -166,8 +151,7 @@ func (a *App) OpenImage() ExifResult {
 	return result
 }
 
-func extractXMPString(data []byte, pattern string) string {
-	re := regexp.MustCompile(pattern)
+func extractXMPString(data []byte, re *regexp.Regexp) string {
 	matches := re.FindSubmatch(data)
 	if len(matches) > 1 {
 		return string(matches[1])
@@ -178,10 +162,65 @@ func extractXMPString(data []byte, pattern string) string {
 func parseFraction(s string) (int64, int64) {
 	parts := strings.Split(s, "/")
 	if len(parts) == 2 {
-		num, _ := strconv.ParseInt(parts[0], 10, 64)
-		den, _ := strconv.ParseInt(parts[1], 10, 64)
-		return num, den
+		num, err1 := strconv.ParseInt(parts[0], 10, 64)
+		den, err2 := strconv.ParseInt(parts[1], 10, 64)
+		if err1 == nil && err2 == nil {
+			return num, den
+		}
 	}
-	num, _ := strconv.ParseInt(s, 10, 64)
-	return num, 1
+	f, err := strconv.ParseFloat(s, 64)
+	if err == nil {
+		return int64(f * 10000), 10000
+	}
+	return 0, 0
+}
+
+func formatFocalLength(num, den int64) string {
+	if den == 0 {
+		return ""
+	}
+	val := float64(num) / float64(den)
+	return strconv.FormatFloat(val, 'f', -1, 64) + "mm"
+}
+
+func formatAperture(num, den int64) string {
+	if den == 0 {
+		return ""
+	}
+	val := float64(num) / float64(den)
+	return fmt.Sprintf("f/%.1f", val)
+}
+
+func gcd(a, b int64) int64 {
+	if a < 0 {
+		a = -a
+	}
+	if b < 0 {
+		b = -b
+	}
+	for b != 0 {
+		a, b = b, a%b
+	}
+	if a == 0 {
+		return 1
+	}
+	return a
+}
+
+func formatShutterSpeed(num, den int64) string {
+	if num == 0 || den == 0 {
+		return ""
+	}
+	divisor := gcd(num, den)
+	reducedNum := num / divisor
+	reducedDen := den / divisor
+
+	switch {
+	case reducedDen == 1:
+		return fmt.Sprintf("%ds", reducedNum)
+	case reducedNum == 1:
+		return fmt.Sprintf("1/%ds", reducedDen)
+	default:
+		return fmt.Sprintf("%d/%ds", reducedNum, reducedDen)
+	}
 }
