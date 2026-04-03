@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, ChangeEvent } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './App.css';
+import { OpenImage } from '../wailsjs/go/main/App';
 
 interface ExifData {
     camera: string;
@@ -24,20 +25,45 @@ function App() {
 
     const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
 
-    const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    const handleSelectImage = async () => {
+        try {
+            const result = await OpenImage();
+            
+            if (result.cancelled) {
+                return;
+            }
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
+            if (result.error) {
+                console.error(result.error);
+                return;
+            }
+
+            // Update EXIF state (leave empty if not found)
+            setExif({
+                camera: result.camera || "",
+                lens: result.lens || "",
+                focalLength: result.focalLength || "",
+                aperture: result.aperture || "",
+                shutterSpeed: result.shutterSpeed || "",
+                iso: result.iso || ""
+            });
+
+            // Load the Base64 image
             const img = new Image();
             img.onload = () => {
                 setImageObj(img);
                 setImageLoaded(true);
             };
-            img.src = event.target?.result as string;
-        };
-        reader.readAsDataURL(file);
+            img.onerror = () => {
+                console.error("Failed to decode or render the selected image");
+                setImageObj(null);
+                setImageLoaded(false);
+            };
+            img.src = result.imageBase64;
+
+        } catch (err) {
+            console.error("Failed to open image:", err);
+        }
     };
 
     useEffect(() => {
@@ -87,17 +113,25 @@ function App() {
         ctx.textBaseline = 'middle';
 
         // Camera and Lens
-        const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
-        ctx.font = `normal ${titleFontSize}px "Gill Sans", sans-serif`;
-        const topText = `${exif.camera} | ${exif.lens}`;
-        ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
+        const topElements = [exif.camera, exif.lens].filter(Boolean);
+        const topText = topElements.join(" | ");
+        
+        if (topText) {
+            const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
+            ctx.font = `normal ${titleFontSize}px "Gill Sans", sans-serif`;
+            ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
+        }
 
         // Settings (Aperture, SS, ISO etc)
-        const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
-        ctx.font = `Light ${descFontSize}px "Gill Sans", sans-serif`;
-        const bottomText = `${exif.focalLength} | ${exif.aperture} | ${exif.shutterSpeed} | ${exif.iso}`;
-        ctx.fillStyle = '#555555';
-        ctx.fillText(bottomText, canvas.width / 2, textY + (titleFontSize * 0.8));
+        const bottomElements = [exif.focalLength, exif.aperture, exif.shutterSpeed, exif.iso].filter(Boolean);
+        const bottomText = bottomElements.join(" | ");
+
+        if (bottomText) {
+            const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
+            ctx.font = `normal ${descFontSize}px "Gill Sans", sans-serif`;
+            ctx.fillStyle = '#555555';
+            ctx.fillText(bottomText, canvas.width / 2, textY + (descFontSize * 0.8));
+        }
 
         // Draw a subtle line separator (just above the text)
         ctx.beginPath();
@@ -125,10 +159,9 @@ function App() {
 
             <main className="main-content">
                 <div className="upload-section">
-                    <label className="upload-btn">
-                        <span>Select Photo</span>
-                        <input type="file" accept="image/*" onChange={handleImageUpload} hidden />
-                    </label>
+                    <button className="upload-btn" onClick={handleSelectImage}>
+                        Select Photo
+                    </button>
                 </div>
 
                 <div className={`canvas-container ${imageLoaded ? 'visible' : ''}`}>
