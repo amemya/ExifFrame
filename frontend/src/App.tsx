@@ -151,7 +151,7 @@ function App() {
             const isPng = imageObj.src.startsWith('data:image/png');
             const targetMime = isPng ? 'image/png' : 'image/jpeg';
             
-            // For JPEG, 1.0 enforces absolutely maximum quality to prevent any degradation.
+            // For JPEG, 1.0 requests the highest quality setting, though JPEG remains lossy.
             // PNG ignores the quality parameter.
             const dataUrl = canvasRef.current.toDataURL(targetMime, 1.0);
             
