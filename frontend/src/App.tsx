@@ -28,7 +28,7 @@ function App() {
     const handleSelectImage = async () => {
         try {
             const result = await OpenImage();
-            
+
             if (result.cancelled) {
                 return;
             }
@@ -116,7 +116,7 @@ function App() {
         // Camera and Lens
         const topElements = [exif.camera, exif.lens].filter(Boolean);
         const topText = topElements.join(" | ");
-        
+
         if (topText) {
             const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
             ctx.font = `normal ${titleFontSize}px "Gill Sans", sans-serif`;
@@ -145,18 +145,18 @@ function App() {
 
     const downloadImage = async () => {
         if (!canvasRef.current || !imageObj) return;
-        
+
         try {
             // Check original type to maintain lossless PNG if possible
             const isPng = imageObj.src.startsWith('data:image/png');
             const targetMime = isPng ? 'image/png' : 'image/jpeg';
-            
+
             // For JPEG, 1.0 requests the highest quality setting, though JPEG remains lossy.
             // PNG ignores the quality parameter.
             const dataUrl = canvasRef.current.toDataURL(targetMime, 1.0);
-            
+
             const errStr = await SaveImage(dataUrl);
-            
+
             if (errStr) {
                 console.error("Export failed:", errStr);
                 alert("Failed to save image: " + errStr);

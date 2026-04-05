@@ -125,7 +125,7 @@ func (a *App) OpenImage() ExifResult {
 	var xmpData []byte
 	const xmpStartTag = "<x:xmpmeta"
 	const xmpEndTag = "</x:xmpmeta>"
-	
+
 	if start := bytes.Index(fileBytes, []byte(xmpStartTag)); start != -1 {
 		if end := bytes.Index(fileBytes[start:], []byte(xmpEndTag)); end != -1 {
 			xmpData = fileBytes[start : start+end+len(xmpEndTag)]
@@ -184,7 +184,7 @@ func extractXMPString(data []byte, re *regexp.Regexp) string {
 	return ""
 }
 
-// floatPrecisionMultiplier represents the precision factor used when converting 
+// floatPrecisionMultiplier represents the precision factor used when converting
 // floating point XMP values (e.g. 35.0) into a fractional num/den representation.
 const floatPrecisionMultiplier = 10000
 
@@ -211,11 +211,22 @@ func (a *App) SaveImage(base64Data string) string {
 		return "Invalid image data format"
 	}
 
-	isPng := strings.HasPrefix(parts[0], "data:image/png")
+	header := parts[0]
+	if header != "data:image/png;base64" && header != "data:image/jpeg;base64" {
+		return "Invalid payload: only JPEG and PNG formats are allowed"
+	}
+
+	// Cap incoming base64 payload to ~100MB to prevent memory exhaustion
+	const maxBase64Length = 100 * 1024 * 1024
+	if len(parts[1]) > maxBase64Length {
+		return "Export failed: generated data URL is too large"
+	}
+
+	isPng := header == "data:image/png;base64"
 
 	imageData, err := base64.StdEncoding.DecodeString(parts[1])
 	if err != nil {
-		return "Failed to decode base64 image data"
+		return "Failed to decode base64 image data: " + err.Error()
 	}
 
 	filterName := "JPEG Image"
