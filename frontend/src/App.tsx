@@ -75,6 +75,17 @@ function App() {
     const drawCanvas = (img: HTMLImageElement) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
+        // 好みの左右・上の枠の太さ（例：幅の3.5%）
+        const framePadding = Math.floor(img.width * 0.025);
+
+        // 全体の仕上がりを 4300 : 3618 の比率に強制する
+        const targetRatio = 4300 / 3618;
+
+        // 完成品の幅を先に決め、ターゲット比率から高さを逆算する
+        // ⚠️ CRITICAL: Must be set BEFORE getContext, otherwise context properties (colorSpace) are reset!
+        canvas.width = img.width + (framePadding * 2);
+        canvas.height = Math.floor(canvas.width / targetRatio);
+
         // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
         let ctx: CanvasRenderingContext2D | null = null;
         try {
@@ -86,16 +97,6 @@ function App() {
             ctx = canvas.getContext('2d');
         }
         if (!ctx) return;
-
-        // 好みの左右・上の枠の太さ（例：幅の3.5%）
-        const framePadding = Math.floor(img.width * 0.025);
-
-        // 全体の仕上がりを 4300 : 3618 の比率に強制する
-        const targetRatio = 4300 / 3618;
-
-        // 完成品の幅を先に決め、ターゲット比率から高さを逆算する
-        canvas.width = img.width + (framePadding * 2);
-        canvas.height = Math.floor(canvas.width / targetRatio);
 
         // 完成品の高さから「下の余白（margin）」を逆算
         const margin = canvas.height - img.height - (framePadding * 2);
