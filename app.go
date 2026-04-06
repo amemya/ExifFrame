@@ -204,29 +204,33 @@ func parseFraction(s string) (int64, int64) {
 	return 0, 0
 }
 
+type SaveResult struct {
+	Error     string `json:"error"`
+	Cancelled bool   `json:"cancelled"`
+}
+
 // SaveImage triggers a native save dialog and saves the requested base64 data to disk.
-func (a *App) SaveImage(base64Data string) string {
-	parts := strings.Split(base64Data, ",")
-	if len(parts) != 2 {
-		return "Invalid image data format"
+func (a *App) SaveImage(base64Data string) SaveResult {
+	header, payload, found := strings.Cut(base64Data, ",")
+	if !found {
+		return SaveResult{Error: "Invalid image data format"}
 	}
 
-	header := parts[0]
 	if header != "data:image/png;base64" && header != "data:image/jpeg;base64" {
-		return "Invalid payload: only JPEG and PNG formats are allowed"
+		return SaveResult{Error: "Invalid payload: only JPEG and PNG formats are allowed"}
 	}
 
 	// Cap incoming base64 payload to ~100MB to prevent memory exhaustion
 	const maxBase64Length = 100 * 1024 * 1024
-	if len(parts[1]) > maxBase64Length {
-		return "Export failed: generated data URL is too large"
+	if len(payload) > maxBase64Length {
+		return SaveResult{Error: "Export failed: generated data URL is too large"}
 	}
 
 	isPng := header == "data:image/png;base64"
 
-	imageData, err := base64.StdEncoding.DecodeString(parts[1])
+	imageData, err := base64.StdEncoding.DecodeString(payload)
 	if err != nil {
-		return "Failed to decode base64 image data: " + err.Error()
+		return SaveResult{Error: "Failed to decode base64 image data: " + err.Error()}
 	}
 
 	filterName := "JPEG Image"
@@ -247,20 +251,20 @@ func (a *App) SaveImage(base64Data string) string {
 	})
 
 	if err != nil {
-		return "Failed to open save dialog: " + err.Error()
+		return SaveResult{Error: "Failed to open save dialog: " + err.Error()}
 	}
 
 	// User cancelled the dialog
 	if savePath == "" {
-		return ""
+		return SaveResult{Cancelled: true}
 	}
 
 	err = os.WriteFile(savePath, imageData, 0644)
 	if err != nil {
-		return "Failed to save file: " + err.Error()
+		return SaveResult{Error: "Failed to save file: " + err.Error()}
 	}
 
-	return ""
+	return SaveResult{}
 }
 
 func formatFocalLength(num, den int64) string {

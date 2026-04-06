@@ -28,6 +28,20 @@ export namespace main {
 	        this.cancelled = source["cancelled"];
 	    }
 	}
+	export class SaveResult {
+	    error: string;
+	    cancelled: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.error = source["error"];
+	        this.cancelled = source["cancelled"];
+	    }
+	}
 
 }
 

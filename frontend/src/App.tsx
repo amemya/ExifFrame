@@ -75,8 +75,16 @@ function App() {
     const drawCanvas = (img: HTMLImageElement) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        // Enable P3 wide-gamut mode to prevent high-saturation color loss
-        const ctx = canvas.getContext('2d', { colorSpace: 'display-p3' } as CanvasRenderingContext2DSettings);
+        // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
+        let ctx: CanvasRenderingContext2D | null = null;
+        try {
+            ctx = canvas.getContext('2d', { colorSpace: 'display-p3' } as CanvasRenderingContext2DSettings);
+        } catch (e) {
+            // Context with colorSpace might throw in unsupported environments
+        }
+        if (!ctx) {
+            ctx = canvas.getContext('2d');
+        }
         if (!ctx) return;
 
         // 好みの左右・上の枠の太さ（例：幅の3.5%）
@@ -155,11 +163,14 @@ function App() {
             // PNG ignores the quality parameter.
             const dataUrl = canvasRef.current.toDataURL(targetMime, 1.0);
 
-            const errStr = await SaveImage(dataUrl);
+            const result = await SaveImage(dataUrl);
 
-            if (errStr) {
-                console.error("Export failed:", errStr);
-                alert("Failed to save image: " + errStr);
+            if (result.cancelled) {
+                return;
+            }
+            if (result.error) {
+                console.error("Export failed:", result.error);
+                alert("Failed to save image: " + result.error);
             }
         } catch (err) {
             console.error("Failed to execute SaveImage:", err);
