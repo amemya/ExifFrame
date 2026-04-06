@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import './App.css';
-import { OpenImage } from '../wailsjs/go/main/App';
+import { OpenImage, SaveImage } from '../wailsjs/go/main/App';
 
 interface ExifData {
     camera: string;
@@ -28,7 +28,7 @@ function App() {
     const handleSelectImage = async () => {
         try {
             const result = await OpenImage();
-            
+
             if (result.cancelled) {
                 return;
             }
@@ -75,9 +75,6 @@ function App() {
     const drawCanvas = (img: HTMLImageElement) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
         // 好みの左右・上の枠の太さ（例：幅の3.5%）
         const framePadding = Math.floor(img.width * 0.025);
 
@@ -85,8 +82,21 @@ function App() {
         const targetRatio = 4300 / 3618;
 
         // 完成品の幅を先に決め、ターゲット比率から高さを逆算する
+        // ⚠️ CRITICAL: Must be set BEFORE getContext, otherwise context properties (colorSpace) are reset!
         canvas.width = img.width + (framePadding * 2);
         canvas.height = Math.floor(canvas.width / targetRatio);
+
+        // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
+        let ctx: CanvasRenderingContext2D | null = null;
+        try {
+            ctx = canvas.getContext('2d', { colorSpace: 'display-p3' } as CanvasRenderingContext2DSettings);
+        } catch (e) {
+            // Context with colorSpace might throw in unsupported environments
+        }
+        if (!ctx) {
+            ctx = canvas.getContext('2d');
+        }
+        if (!ctx) return;
 
         // 完成品の高さから「下の余白（margin）」を逆算
         const margin = canvas.height - img.height - (framePadding * 2);
@@ -115,7 +125,7 @@ function App() {
         // Camera and Lens
         const topElements = [exif.camera, exif.lens].filter(Boolean);
         const topText = topElements.join(" | ");
-        
+
         if (topText) {
             const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
             ctx.font = `normal ${titleFontSize}px "Gill Sans", sans-serif`;
@@ -142,12 +152,30 @@ function App() {
         ctx.stroke();
     };
 
-    const downloadImage = () => {
-        if (!canvasRef.current) return;
-        const link = document.createElement('a');
-        link.download = 'exif-frame.jpg';
-        link.href = canvasRef.current.toDataURL('image/jpeg', 0.95);
-        link.click();
+    const downloadImage = async () => {
+        if (!canvasRef.current || !imageObj) return;
+
+        try {
+            // Check original type to maintain lossless PNG if possible
+            const isPng = imageObj.src.startsWith('data:image/png');
+            const targetMime = isPng ? 'image/png' : 'image/jpeg';
+
+            // For JPEG, 1.0 requests the highest quality setting, though JPEG remains lossy.
+            // PNG ignores the quality parameter.
+            const dataUrl = canvasRef.current.toDataURL(targetMime, 1.0);
+
+            const result = await SaveImage(dataUrl);
+
+            if (result.cancelled) {
+                return;
+            }
+            if (result.error) {
+                console.error("Export failed:", result.error);
+                alert("Failed to save image: " + result.error);
+            }
+        } catch (err) {
+            console.error("Failed to execute SaveImage:", err);
+        }
     };
 
     return (

@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -125,7 +126,7 @@ func (a *App) OpenImage() ExifResult {
 	var xmpData []byte
 	const xmpStartTag = "<x:xmpmeta"
 	const xmpEndTag = "</x:xmpmeta>"
-	
+
 	if start := bytes.Index(fileBytes, []byte(xmpStartTag)); start != -1 {
 		if end := bytes.Index(fileBytes[start:], []byte(xmpEndTag)); end != -1 {
 			xmpData = fileBytes[start : start+end+len(xmpEndTag)]
@@ -184,7 +185,7 @@ func extractXMPString(data []byte, re *regexp.Regexp) string {
 	return ""
 }
 
-// floatPrecisionMultiplier represents the precision factor used when converting 
+// floatPrecisionMultiplier represents the precision factor used when converting
 // floating point XMP values (e.g. 35.0) into a fractional num/den representation.
 const floatPrecisionMultiplier = 10000
 
@@ -202,6 +203,94 @@ func parseFraction(s string) (int64, int64) {
 		return int64(math.Round(f * floatPrecisionMultiplier)), floatPrecisionMultiplier
 	}
 	return 0, 0
+}
+
+type SaveResult struct {
+	Error     string `json:"error"`
+	Cancelled bool   `json:"cancelled"`
+}
+
+// SaveImage triggers a native save dialog and saves the requested base64 data to disk.
+func (a *App) SaveImage(base64Data string) SaveResult {
+	header, payload, found := strings.Cut(base64Data, ",")
+	if !found {
+		return SaveResult{Error: "Invalid image data format"}
+	}
+
+	if header != "data:image/png;base64" && header != "data:image/jpeg;base64" {
+		return SaveResult{Error: "Invalid image data URL header: only PNG and JPEG base64 data URLs are allowed"}
+	}
+
+	// Cap incoming base64 payload to ~100MB to prevent memory exhaustion
+	const maxBase64Length = 100 * 1024 * 1024
+	if len(payload) > maxBase64Length {
+		return SaveResult{Error: "Export failed: generated data URL is too large"}
+	}
+
+	isPng := header == "data:image/png;base64"
+
+	imageData, err := base64.StdEncoding.DecodeString(payload)
+	if err != nil {
+		return SaveResult{Error: "Failed to decode base64 image data: " + err.Error()}
+	}
+
+	// Security: Verify the actual bytes match the claimed image type
+	actualMime := http.DetectContentType(imageData)
+	if isPng && actualMime != "image/png" {
+		return SaveResult{Error: "Security Error: Payload MIME type is not PNG"}
+	} else if !isPng && actualMime != "image/jpeg" {
+		return SaveResult{Error: "Security Error: Payload MIME type is not JPEG"}
+	}
+
+	filterName := "JPEG Image"
+	filterPattern := "*.jpg;*.jpeg"
+	defaultFilename := "exif-frame.jpg"
+	if isPng {
+		filterName = "PNG Image"
+		filterPattern = "*.png"
+		defaultFilename = "exif-frame.png"
+	}
+
+	savePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Save ExifFrame Image",
+		DefaultFilename: defaultFilename,
+		Filters: []runtime.FileFilter{
+			{DisplayName: filterName, Pattern: filterPattern},
+		},
+	})
+
+	if err != nil {
+		return SaveResult{Error: "Failed to open save dialog: " + err.Error()}
+	}
+
+	// User cancelled the dialog
+	if savePath == "" {
+		return SaveResult{Cancelled: true}
+	}
+
+	ext := strings.ToLower(filepath.Ext(savePath))
+	if ext == "" {
+		// User omitted extension, append the correct one
+		if isPng {
+			savePath += ".png"
+		} else {
+			savePath += ".jpg"
+		}
+	} else {
+		// User provided an extension, make sure it matches the output format
+		if isPng && ext != ".png" {
+			return SaveResult{Error: "Invalid extension. Please save as .png"}
+		} else if !isPng && ext != ".jpg" && ext != ".jpeg" {
+			return SaveResult{Error: "Invalid extension. Please save as .jpg or .jpeg"}
+		}
+	}
+
+	err = os.WriteFile(savePath, imageData, 0644)
+	if err != nil {
+		return SaveResult{Error: "Failed to save file: " + err.Error()}
+	}
+
+	return SaveResult{}
 }
 
 func formatFocalLength(num, den int64) string {
