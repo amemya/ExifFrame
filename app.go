@@ -259,6 +259,16 @@ func (a *App) SaveImage(base64Data string) SaveResult {
 		return SaveResult{Cancelled: true}
 	}
 
+	expectedExt := ".jpg"
+	if isPng {
+		expectedExt = ".png"
+	}
+
+	// Append missing extension if user deleted it or typed a different one
+	if !strings.HasSuffix(strings.ToLower(savePath), expectedExt) {
+		savePath += expectedExt
+	}
+
 	err = os.WriteFile(savePath, imageData, 0644)
 	if err != nil {
 		return SaveResult{Error: "Failed to save file: " + err.Error()}
