@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -233,6 +234,14 @@ func (a *App) SaveImage(base64Data string) SaveResult {
 		return SaveResult{Error: "Failed to decode base64 image data: " + err.Error()}
 	}
 
+	// Security: Verify the actual bytes match the claimed image type
+	actualMime := http.DetectContentType(imageData)
+	if isPng && actualMime != "image/png" {
+		return SaveResult{Error: "Security Error: Payload MIME type is not PNG"}
+	} else if !isPng && actualMime != "image/jpeg" {
+		return SaveResult{Error: "Security Error: Payload MIME type is not JPEG"}
+	}
+
 	filterName := "JPEG Image"
 	filterPattern := "*.jpg;*.jpeg"
 	defaultFilename := "exif-frame.jpg"
@@ -259,15 +268,20 @@ func (a *App) SaveImage(base64Data string) SaveResult {
 		return SaveResult{Cancelled: true}
 	}
 
-	lowerPath := strings.ToLower(savePath)
-	if isPng {
-		if !strings.HasSuffix(lowerPath, ".png") {
+	ext := strings.ToLower(filepath.Ext(savePath))
+	if ext == "" {
+		// User omitted extension, append the correct one
+		if isPng {
 			savePath += ".png"
+		} else {
+			savePath += ".jpg"
 		}
 	} else {
-		// Tolerate both .jpg and .jpeg
-		if !strings.HasSuffix(lowerPath, ".jpg") && !strings.HasSuffix(lowerPath, ".jpeg") {
-			savePath += ".jpg"
+		// User provided an extension, make sure it matches the output format
+		if isPng && ext != ".png" {
+			return SaveResult{Error: "Invalid extension. Please save as .png"}
+		} else if !isPng && ext != ".jpg" && ext != ".jpeg" {
+			return SaveResult{Error: "Invalid extension. Please save as .jpg or .jpeg"}
 		}
 	}
 
