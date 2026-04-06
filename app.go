@@ -217,7 +217,7 @@ func (a *App) SaveImage(base64Data string) SaveResult {
 	}
 
 	if header != "data:image/png;base64" && header != "data:image/jpeg;base64" {
-		return SaveResult{Error: "Invalid payload: only JPEG and PNG formats are allowed"}
+		return SaveResult{Error: "Invalid image data URL header: only PNG and JPEG base64 data URLs are allowed"}
 	}
 
 	// Cap incoming base64 payload to ~100MB to prevent memory exhaustion
