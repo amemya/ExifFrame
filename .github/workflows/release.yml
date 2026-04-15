@@ -12,8 +12,8 @@ jobs:
         include:
           - os: ubuntu-22.04
             artifact: ExifFrame-linux-amd64.tar.gz
-          - os: windows-latest
-            artifact: ExifFrame.exe
+          - os: windows-2022
+            artifact: ExifFrame-windows-amd64.exe
           - os: macos-14
             artifact: ExifFrame-macos-arm64.zip
     runs-on: ${{ matrix.os }}
@@ -58,7 +58,14 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           cd build/bin
-          zip -r ExifFrame-macos-arm64.zip *.app
+          zip -r ExifFrame-macos-arm64.zip ExifFrame.app
+
+      - name: Package Windows App
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cd build/bin
+          mv ExifFrame.exe ExifFrame-windows-amd64.exe
 
       - name: Package Linux App
         if: runner.os == 'Linux'
@@ -92,3 +99,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*
+          generate_release_notes: true
