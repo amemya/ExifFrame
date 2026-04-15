@@ -1,0 +1,103 @@
+name: Wails Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            artifact: ExifFrame-linux-amd64.tar.gz
+          - os: windows-2022
+            artifact: ExifFrame-windows-amd64.exe
+          - os: macos-14
+            artifact: ExifFrame-macos-arm64.zip
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Install Wails CLI
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Build Wails App
+        shell: bash
+        run: wails build
+
+      - name: Package macOS App
+        if: runner.os == 'macOS'
+        run: |
+          cd build/bin
+          zip -r ExifFrame-macos-arm64.zip ExifFrame.app
+
+      - name: Package Windows App
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cd build/bin
+          mv ExifFrame.exe ExifFrame-windows-amd64.exe
+
+      - name: Package Linux App
+        if: runner.os == 'Linux'
+        run: |
+          cd build/bin
+          tar czf ExifFrame-linux-amd64.tar.gz ExifFrame
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: build/bin/${{ matrix.artifact }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
