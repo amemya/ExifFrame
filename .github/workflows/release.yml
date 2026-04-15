@@ -45,11 +45,13 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
 
       - name: Install Wails CLI
+        shell: bash
         run: |
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Build Wails App
+        shell: bash
         run: wails build
 
       - name: Package macOS App
