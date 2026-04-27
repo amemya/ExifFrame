@@ -53,18 +53,22 @@ function App() {
                 iso: result.iso || ""
             });
 
-            // Load the Base64 image
-            const img = new Image();
-            img.onload = () => {
-                setImageObj(img);
-                setImageLoaded(true);
-            };
-            img.onerror = () => {
-                console.error("Failed to decode or render the selected image");
-                setImageObj(null);
-                setImageLoaded(false);
-            };
-            img.src = result.imageBase64;
+            // Load the Base64 image and await its decoding
+            await new Promise<void>((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    setImageObj(img);
+                    setImageLoaded(true);
+                    resolve();
+                };
+                img.onerror = () => {
+                    console.error("Failed to decode or render the selected image");
+                    setImageObj(null);
+                    setImageLoaded(false);
+                    reject(new Error("Failed to decode image"));
+                };
+                img.src = result.imageBase64;
+            });
 
         } catch (err) {
             console.error("Failed to open image:", err);
