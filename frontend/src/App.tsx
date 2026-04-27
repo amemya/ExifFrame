@@ -35,6 +35,8 @@ function App() {
             if (env.platform === 'darwin') {
                 setIsMac(true);
             }
+        }).catch(err => {
+            console.debug("Failed to get Environment:", err);
         });
     }, []);
 
