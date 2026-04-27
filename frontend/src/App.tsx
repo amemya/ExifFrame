@@ -63,8 +63,6 @@ function App() {
                 };
                 img.onerror = () => {
                     console.error("Failed to decode or render the selected image");
-                    setImageObj(null);
-                    setImageLoaded(false);
                     reject(new Error("Failed to decode image"));
                 };
                 img.src = result.imageBase64;
