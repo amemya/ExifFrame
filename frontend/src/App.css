@@ -66,8 +66,8 @@ body {
     transition: all 0.2s ease;
     border: 1px solid transparent;
 }
-
-.btn:focus-visible {
+.btn:focus-visible,
+.empty-state:focus-visible {
     outline: 2px solid var(--accent-color);
     outline-offset: 2px;
 }
