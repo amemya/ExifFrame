@@ -26,6 +26,7 @@ function App() {
     const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
     const [isSelecting, setIsSelecting] = useState(false);
     const isSelectingRef = useRef(false);
+    const [filePath, setFilePath] = useState("");
 
     const handleSelectImage = async () => {
         if (isSelectingRef.current) return;
@@ -52,6 +53,7 @@ function App() {
                 shutterSpeed: result.shutterSpeed || "",
                 iso: result.iso || ""
             });
+            setFilePath(result.filePath || "");
 
             // Load the Base64 image and await its decoding
             await new Promise<void>((resolve, reject) => {
@@ -191,7 +193,10 @@ function App() {
     return (
         <div className="app-container">
             <header className="top-bar">
-                <h1>ExifFrame</h1>
+                <div className="top-bar-left">
+                    <h1>ExifFrame</h1>
+                    {filePath && <span className="file-path">{filePath.split('/').filter(Boolean).join(' > ')}</span>}
+                </div>
                 <div className="top-bar-actions">
                     <button className="btn btn-secondary" onClick={handleSelectImage} disabled={isSelecting}>
                         {imageLoaded ? 'Change Photo' : 'Open Photo'}

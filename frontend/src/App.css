@@ -52,6 +52,21 @@ body {
     letter-spacing: 0.5px;
 }
 
+.top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.file-path {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 50vw;
+}
+
 .top-bar-actions {
     display: flex;
     gap: 0.8rem;
@@ -185,6 +200,7 @@ body {
     letter-spacing: 0.5px;
     color: var(--text-secondary);
     font-weight: 600;
+    text-align: left;
 }
 
 .input-group {
@@ -212,6 +228,7 @@ body {
     font-size: 0.75rem;
     color: var(--text-secondary);
     margin-bottom: 0.4rem;
+    text-align: left;
 }
 
 .input-group input {
