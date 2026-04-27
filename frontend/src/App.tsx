@@ -24,8 +24,13 @@ function App() {
     });
 
     const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
+    const [isSelecting, setIsSelecting] = useState(false);
+    const isSelectingRef = useRef(false);
 
     const handleSelectImage = async () => {
+        if (isSelectingRef.current) return;
+        isSelectingRef.current = true;
+        setIsSelecting(true);
         try {
             const result = await OpenImage();
 
@@ -48,21 +53,26 @@ function App() {
                 iso: result.iso || ""
             });
 
-            // Load the Base64 image
-            const img = new Image();
-            img.onload = () => {
-                setImageObj(img);
-                setImageLoaded(true);
-            };
-            img.onerror = () => {
-                console.error("Failed to decode or render the selected image");
-                setImageObj(null);
-                setImageLoaded(false);
-            };
-            img.src = result.imageBase64;
+            // Load the Base64 image and await its decoding
+            await new Promise<void>((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    setImageObj(img);
+                    setImageLoaded(true);
+                    resolve();
+                };
+                img.onerror = () => {
+                    console.error("Failed to decode or render the selected image");
+                    reject(new Error("Failed to decode image"));
+                };
+                img.src = result.imageBase64;
+            });
 
         } catch (err) {
             console.error("Failed to open image:", err);
+        } finally {
+            isSelectingRef.current = false;
+            setIsSelecting(false);
         }
     };
 
@@ -180,57 +190,105 @@ function App() {
 
     return (
         <div className="app-container">
-            <header className="header">
+            <header className="top-bar">
                 <h1>ExifFrame</h1>
-                <p>Add beautiful elegant metadata frames to your photos.</p>
+                <div className="top-bar-actions">
+                    <button className="btn btn-secondary" onClick={handleSelectImage} disabled={isSelecting}>
+                        {imageLoaded ? 'Change Photo' : 'Open Photo'}
+                    </button>
+                    {imageLoaded && (
+                        <button className="btn btn-primary" onClick={downloadImage} disabled={isSelecting}>
+                            Export
+                        </button>
+                    )}
+                </div>
             </header>
 
-            <main className="main-content">
-                <div className="upload-section">
-                    <button className="upload-btn" onClick={handleSelectImage}>
-                        Select Photo
-                    </button>
-                </div>
-
-                <div className={`canvas-container ${imageLoaded ? 'visible' : ''}`}>
-                    <canvas ref={canvasRef} className="preview-canvas" />
+            <main className="workspace">
+                <div className="preview-area">
+                    {!imageLoaded ? (
+                        <div
+                            className={`empty-state ${isSelecting ? 'selecting' : ''}`}
+                            onClick={isSelecting ? undefined : handleSelectImage}
+                            role="button"
+                            tabIndex={isSelecting ? -1 : 0}
+                            aria-label={isSelecting ? "Opening photo..." : "Click or press Enter to open a photo"}
+                            aria-busy={isSelecting}
+                            aria-disabled={isSelecting}
+                            onKeyDown={(e) => {
+                                if (isSelecting) return;
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault(); // Prevent page scroll for Space
+                                    handleSelectImage();
+                                }
+                            }}
+                        >
+                            {isSelecting ? (
+                                <>
+                                    <svg className="spinner" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom: '1rem'}} aria-hidden="true">
+                                        <line x1="12" y1="2" x2="12" y2="6"></line>
+                                        <line x1="12" y1="18" x2="12" y2="22"></line>
+                                        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+                                        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+                                        <line x1="2" y1="12" x2="6" y2="12"></line>
+                                        <line x1="18" y1="12" x2="22" y2="12"></line>
+                                        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+                                        <line x1="16.24" y1="4.93" x2="19.07" y2="7.76"></line>
+                                    </svg>
+                                    <p>Opening photo...</p>
+                                </>
+                            ) : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom: '1rem'}} aria-hidden="true">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                    <p>Click to open a photo</p>
+                                </>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="canvas-wrapper">
+                            <canvas ref={canvasRef} className="preview-canvas" />
+                        </div>
+                    )}
                 </div>
 
                 {imageLoaded && (
-                    <div className="settings-panel">
-                        <div className="input-group">
-                            <label>Camera</label>
-                            <input type="text" value={exif.camera} onChange={e => setExif({ ...exif, camera: e.target.value })} />
-                        </div>
-                        <div className="input-group">
-                            <label>Lens</label>
-                            <input type="text" value={exif.lens} onChange={e => setExif({ ...exif, lens: e.target.value })} />
-                        </div>
-                        <div className="input-row">
+                    <aside className="sidebar">
+                        <div className="sidebar-section">
+                            <h3>Metadata Settings</h3>
                             <div className="input-group">
-                                <label>Focal Length</label>
-                                <input type="text" value={exif.focalLength} onChange={e => setExif({ ...exif, focalLength: e.target.value })} />
+                                <label htmlFor="camera-input">Camera</label>
+                                <input id="camera-input" type="text" value={exif.camera} onChange={e => setExif({ ...exif, camera: e.target.value })} />
                             </div>
                             <div className="input-group">
-                                <label>Aperture</label>
-                                <input type="text" value={exif.aperture} onChange={e => setExif({ ...exif, aperture: e.target.value })} />
+                                <label htmlFor="lens-input">Lens</label>
+                                <input id="lens-input" type="text" value={exif.lens} onChange={e => setExif({ ...exif, lens: e.target.value })} />
+                            </div>
+                            <div className="input-row">
+                                <div className="input-group">
+                                    <label htmlFor="focalLength-input">Focal Length</label>
+                                    <input id="focalLength-input" type="text" value={exif.focalLength} onChange={e => setExif({ ...exif, focalLength: e.target.value })} />
+                                </div>
+                                <div className="input-group">
+                                    <label htmlFor="aperture-input">Aperture</label>
+                                    <input id="aperture-input" type="text" value={exif.aperture} onChange={e => setExif({ ...exif, aperture: e.target.value })} />
+                                </div>
+                            </div>
+                            <div className="input-row">
+                                <div className="input-group">
+                                    <label htmlFor="shutterSpeed-input">Shutter Speed</label>
+                                    <input id="shutterSpeed-input" type="text" value={exif.shutterSpeed} onChange={e => setExif({ ...exif, shutterSpeed: e.target.value })} />
+                                </div>
+                                <div className="input-group">
+                                    <label htmlFor="iso-input">ISO</label>
+                                    <input id="iso-input" type="text" value={exif.iso} onChange={e => setExif({ ...exif, iso: e.target.value })} />
+                                </div>
                             </div>
                         </div>
-                        <div className="input-row">
-                            <div className="input-group">
-                                <label>Shutter Speed</label>
-                                <input type="text" value={exif.shutterSpeed} onChange={e => setExif({ ...exif, shutterSpeed: e.target.value })} />
-                            </div>
-                            <div className="input-group">
-                                <label>ISO</label>
-                                <input type="text" value={exif.iso} onChange={e => setExif({ ...exif, iso: e.target.value })} />
-                            </div>
-                        </div>
-
-                        <button className="download-btn" onClick={downloadImage}>
-                            Save Framed Image
-                        </button>
-                    </div>
+                    </aside>
                 )}
             </main>
         </div>
