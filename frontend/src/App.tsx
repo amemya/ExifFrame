@@ -25,9 +25,11 @@ function App() {
 
     const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
     const [isSelecting, setIsSelecting] = useState(false);
+    const isSelectingRef = useRef(false);
 
     const handleSelectImage = async () => {
-        if (isSelecting) return;
+        if (isSelectingRef.current) return;
+        isSelectingRef.current = true;
         setIsSelecting(true);
         try {
             const result = await OpenImage();
@@ -67,6 +69,7 @@ function App() {
         } catch (err) {
             console.error("Failed to open image:", err);
         } finally {
+            isSelectingRef.current = false;
             setIsSelecting(false);
         }
     };
@@ -203,11 +206,13 @@ function App() {
                 <div className="preview-area">
                     {!imageLoaded ? (
                         <div
-                            className="empty-state"
+                            className={`empty-state ${isSelecting ? 'selecting' : ''}`}
                             onClick={isSelecting ? undefined : handleSelectImage}
                             role="button"
                             tabIndex={isSelecting ? -1 : 0}
-                            aria-label="Click or press Enter to open a photo"
+                            aria-label={isSelecting ? "Opening photo..." : "Click or press Enter to open a photo"}
+                            aria-busy={isSelecting}
+                            aria-disabled={isSelecting}
                             onKeyDown={(e) => {
                                 if (isSelecting) return;
                                 if (e.key === 'Enter' || e.key === ' ') {
@@ -216,12 +221,30 @@ function App() {
                                 }
                             }}
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom: '1rem'}} aria-hidden="true">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                <polyline points="21 15 16 10 5 21"></polyline>
-                            </svg>
-                            <p>Click to open a photo</p>
+                            {isSelecting ? (
+                                <>
+                                    <svg className="spinner" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom: '1rem'}} aria-hidden="true">
+                                        <line x1="12" y1="2" x2="12" y2="6"></line>
+                                        <line x1="12" y1="18" x2="12" y2="22"></line>
+                                        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+                                        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+                                        <line x1="2" y1="12" x2="6" y2="12"></line>
+                                        <line x1="18" y1="12" x2="22" y2="12"></line>
+                                        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+                                        <line x1="16.24" y1="4.93" x2="19.07" y2="7.76"></line>
+                                    </svg>
+                                    <p>Opening photo...</p>
+                                </>
+                            ) : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom: '1rem'}} aria-hidden="true">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                    <p>Click to open a photo</p>
+                                </>
+                            )}
                         </div>
                     ) : (
                         <div className="canvas-wrapper">
