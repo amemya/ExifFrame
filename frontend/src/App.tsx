@@ -24,8 +24,11 @@ function App() {
     });
 
     const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
+    const [isSelecting, setIsSelecting] = useState(false);
 
     const handleSelectImage = async () => {
+        if (isSelecting) return;
+        setIsSelecting(true);
         try {
             const result = await OpenImage();
 
@@ -63,6 +66,8 @@ function App() {
 
         } catch (err) {
             console.error("Failed to open image:", err);
+        } finally {
+            setIsSelecting(false);
         }
     };
 
@@ -183,11 +188,11 @@ function App() {
             <header className="top-bar">
                 <h1>ExifFrame</h1>
                 <div className="top-bar-actions">
-                    <button className="btn btn-secondary" onClick={handleSelectImage}>
+                    <button className="btn btn-secondary" onClick={handleSelectImage} disabled={isSelecting}>
                         {imageLoaded ? 'Change Photo' : 'Open Photo'}
                     </button>
                     {imageLoaded && (
-                        <button className="btn btn-primary" onClick={downloadImage}>
+                        <button className="btn btn-primary" onClick={downloadImage} disabled={isSelecting}>
                             Export
                         </button>
                     )}
@@ -199,11 +204,12 @@ function App() {
                     {!imageLoaded ? (
                         <div
                             className="empty-state"
-                            onClick={handleSelectImage}
+                            onClick={isSelecting ? undefined : handleSelectImage}
                             role="button"
-                            tabIndex={0}
+                            tabIndex={isSelecting ? -1 : 0}
                             aria-label="Click or press Enter to open a photo"
                             onKeyDown={(e) => {
+                                if (isSelecting) return;
                                 if (e.key === 'Enter' || e.key === ' ') {
                                     e.preventDefault(); // Prevent page scroll for Space
                                     handleSelectImage();
