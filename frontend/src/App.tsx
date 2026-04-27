@@ -197,7 +197,19 @@ function App() {
             <main className="workspace">
                 <div className="preview-area">
                     {!imageLoaded ? (
-                        <div className="empty-state" onClick={handleSelectImage}>
+                        <div
+                            className="empty-state"
+                            onClick={handleSelectImage}
+                            role="button"
+                            tabIndex={0}
+                            aria-label="Click or press Enter to open a photo"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault(); // Prevent page scroll for Space
+                                    handleSelectImage();
+                                }
+                            }}
+                        >
                             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom: '1rem'}}>
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -217,31 +229,31 @@ function App() {
                         <div className="sidebar-section">
                             <h3>Metadata Settings</h3>
                             <div className="input-group">
-                                <label>Camera</label>
-                                <input type="text" value={exif.camera} onChange={e => setExif({ ...exif, camera: e.target.value })} />
+                                <label htmlFor="camera-input">Camera</label>
+                                <input id="camera-input" type="text" value={exif.camera} onChange={e => setExif({ ...exif, camera: e.target.value })} />
                             </div>
                             <div className="input-group">
-                                <label>Lens</label>
-                                <input type="text" value={exif.lens} onChange={e => setExif({ ...exif, lens: e.target.value })} />
+                                <label htmlFor="lens-input">Lens</label>
+                                <input id="lens-input" type="text" value={exif.lens} onChange={e => setExif({ ...exif, lens: e.target.value })} />
                             </div>
                             <div className="input-row">
                                 <div className="input-group">
-                                    <label>Focal Length</label>
-                                    <input type="text" value={exif.focalLength} onChange={e => setExif({ ...exif, focalLength: e.target.value })} />
+                                    <label htmlFor="focalLength-input">Focal Length</label>
+                                    <input id="focalLength-input" type="text" value={exif.focalLength} onChange={e => setExif({ ...exif, focalLength: e.target.value })} />
                                 </div>
                                 <div className="input-group">
-                                    <label>Aperture</label>
-                                    <input type="text" value={exif.aperture} onChange={e => setExif({ ...exif, aperture: e.target.value })} />
+                                    <label htmlFor="aperture-input">Aperture</label>
+                                    <input id="aperture-input" type="text" value={exif.aperture} onChange={e => setExif({ ...exif, aperture: e.target.value })} />
                                 </div>
                             </div>
                             <div className="input-row">
                                 <div className="input-group">
-                                    <label>Shutter Speed</label>
-                                    <input type="text" value={exif.shutterSpeed} onChange={e => setExif({ ...exif, shutterSpeed: e.target.value })} />
+                                    <label htmlFor="shutterSpeed-input">Shutter Speed</label>
+                                    <input id="shutterSpeed-input" type="text" value={exif.shutterSpeed} onChange={e => setExif({ ...exif, shutterSpeed: e.target.value })} />
                                 </div>
                                 <div className="input-group">
-                                    <label>ISO</label>
-                                    <input type="text" value={exif.iso} onChange={e => setExif({ ...exif, iso: e.target.value })} />
+                                    <label htmlFor="iso-input">ISO</label>
+                                    <input id="iso-input" type="text" value={exif.iso} onChange={e => setExif({ ...exif, iso: e.target.value })} />
                                 </div>
                             </div>
                         </div>
