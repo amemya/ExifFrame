@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import './App.css';
 import { OpenImage, SaveImage } from '../wailsjs/go/main/App';
+import { WindowToggleMaximise, Environment } from '../wailsjs/runtime/runtime';
 
 interface ExifData {
     camera: string;
@@ -26,6 +27,18 @@ function App() {
     const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
     const [isSelecting, setIsSelecting] = useState(false);
     const isSelectingRef = useRef(false);
+    const [filePath, setFilePath] = useState("");
+    const [isMac, setIsMac] = useState(false);
+
+    useEffect(() => {
+        Environment().then(env => {
+            if (env.platform === 'darwin') {
+                setIsMac(true);
+            }
+        }).catch(err => {
+            console.debug("Failed to get Environment:", err);
+        });
+    }, []);
 
     const handleSelectImage = async () => {
         if (isSelectingRef.current) return;
@@ -43,20 +56,21 @@ function App() {
                 return;
             }
 
-            // Update EXIF state (leave empty if not found)
-            setExif({
-                camera: result.camera || "",
-                lens: result.lens || "",
-                focalLength: result.focalLength || "",
-                aperture: result.aperture || "",
-                shutterSpeed: result.shutterSpeed || "",
-                iso: result.iso || ""
-            });
-
             // Load the Base64 image and await its decoding
             await new Promise<void>((resolve, reject) => {
                 const img = new Image();
                 img.onload = () => {
+                    // Update EXIF state (leave empty if not found)
+                    setExif({
+                        camera: result.camera || "",
+                        lens: result.lens || "",
+                        focalLength: result.focalLength || "",
+                        aperture: result.aperture || "",
+                        shutterSpeed: result.shutterSpeed || "",
+                        iso: result.iso || ""
+                    });
+                    setFilePath(result.filePath || "");
+
                     setImageObj(img);
                     setImageLoaded(true);
                     resolve();
@@ -189,9 +203,15 @@ function App() {
     };
 
     return (
-        <div className="app-container">
-            <header className="top-bar">
-                <h1>ExifFrame</h1>
+        <div className={`app-container ${isMac ? 'mac-os' : ''}`}>
+            <header className="top-bar" onDoubleClick={(e) => {
+                if ((e.target as HTMLElement).closest('button')) return;
+                WindowToggleMaximise();
+            }}>
+                <div className="top-bar-left">
+                    <h1>ExifFrame</h1>
+                    {filePath && <span className="file-path">{filePath.split(/[/\\]/).filter(Boolean).join(' > ')}</span>}
+                </div>
                 <div className="top-bar-actions">
                     <button className="btn btn-secondary" onClick={handleSelectImage} disabled={isSelecting}>
                         {imageLoaded ? 'Change Photo' : 'Open Photo'}
@@ -225,7 +245,7 @@ function App() {
                         >
                             {isSelecting ? (
                                 <>
-                                    <svg className="spinner" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom: '1rem'}} aria-hidden="true">
+                                    <svg className="spinner" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }} aria-hidden="true">
                                         <line x1="12" y1="2" x2="12" y2="6"></line>
                                         <line x1="12" y1="18" x2="12" y2="22"></line>
                                         <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
@@ -239,7 +259,7 @@ function App() {
                                 </>
                             ) : (
                                 <>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom: '1rem'}} aria-hidden="true">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }} aria-hidden="true">
                                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                                         <circle cx="8.5" cy="8.5" r="1.5"></circle>
                                         <polyline points="21 15 16 10 5 21"></polyline>

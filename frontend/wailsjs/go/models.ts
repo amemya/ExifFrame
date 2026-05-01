@@ -10,6 +10,7 @@ export namespace main {
 	    iso: string;
 	    error: string;
 	    cancelled: boolean;
+	    filePath: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ExifResult(source);
@@ -26,6 +27,7 @@ export namespace main {
 	        this.iso = source["iso"];
 	        this.error = source["error"];
 	        this.cancelled = source["cancelled"];
+	        this.filePath = source["filePath"];
 	    }
 	}
 	export class SaveResult {

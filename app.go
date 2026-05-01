@@ -54,6 +54,7 @@ type ExifResult struct {
 	ISO          string `json:"iso"`
 	Error        string `json:"error"`
 	Cancelled    bool   `json:"cancelled"`
+	FilePath     string `json:"filePath"`
 }
 
 // OpenImage opens a native file dialog, reads the image, and returns Base64 + EXIF
@@ -92,6 +93,7 @@ func (a *App) OpenImage() ExifResult {
 
 	result := ExifResult{
 		ImageBase64: fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(fileBytes)),
+		FilePath:    filePath,
 	}
 
 	// Parse EXIF

@@ -22,6 +22,8 @@ body {
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
     /* Prevent body scroll */
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .app-container {
@@ -41,7 +43,14 @@ body {
     background-color: var(--bg-topbar);
     border-bottom: 1px solid var(--border-color);
     padding: 0 1.5rem;
+    /* Default padding */
     flex-shrink: 0;
+    --wails-draggable: drag;
+}
+
+/* Mac-specific padding for traffic lights */
+.mac-os .top-bar {
+    padding-left: 100px;
 }
 
 .top-bar h1 {
@@ -50,6 +59,23 @@ body {
     margin: 0;
     color: #fff;
     letter-spacing: 0.5px;
+}
+
+.top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.file-path {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 50vw;
 }
 
 .top-bar-actions {
@@ -65,7 +91,9 @@ body {
     cursor: pointer;
     transition: all 0.2s ease;
     border: 1px solid transparent;
+    --wails-draggable: no-drag;
 }
+
 .btn:focus-visible,
 .empty-state:focus-visible {
     outline: 2px solid var(--accent-color);
@@ -139,7 +167,9 @@ body {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .spinner {
@@ -185,6 +215,7 @@ body {
     letter-spacing: 0.5px;
     color: var(--text-secondary);
     font-weight: 600;
+    text-align: left;
 }
 
 .input-group {
@@ -212,6 +243,7 @@ body {
     font-size: 0.75rem;
     color: var(--text-secondary);
     margin-bottom: 0.4rem;
+    text-align: left;
 }
 
 .input-group input {
@@ -226,6 +258,8 @@ body {
     outline: none;
     width: 100%;
     box-sizing: border-box;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 .input-group input:focus {
