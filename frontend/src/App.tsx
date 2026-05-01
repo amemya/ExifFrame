@@ -56,21 +56,21 @@ function App() {
                 return;
             }
 
-            // Update EXIF state (leave empty if not found)
-            setExif({
-                camera: result.camera || "",
-                lens: result.lens || "",
-                focalLength: result.focalLength || "",
-                aperture: result.aperture || "",
-                shutterSpeed: result.shutterSpeed || "",
-                iso: result.iso || ""
-            });
-            setFilePath(result.filePath || "");
-
             // Load the Base64 image and await its decoding
             await new Promise<void>((resolve, reject) => {
                 const img = new Image();
                 img.onload = () => {
+                    // Update EXIF state (leave empty if not found)
+                    setExif({
+                        camera: result.camera || "",
+                        lens: result.lens || "",
+                        focalLength: result.focalLength || "",
+                        aperture: result.aperture || "",
+                        shutterSpeed: result.shutterSpeed || "",
+                        iso: result.iso || ""
+                    });
+                    setFilePath(result.filePath || "");
+
                     setImageObj(img);
                     setImageLoaded(true);
                     resolve();
@@ -204,7 +204,10 @@ function App() {
 
     return (
         <div className={`app-container ${isMac ? 'mac-os' : ''}`}>
-            <header className="top-bar" onDoubleClick={WindowToggleMaximise}>
+            <header className="top-bar" onDoubleClick={(e) => {
+                if ((e.target as HTMLElement).closest('button')) return;
+                WindowToggleMaximise();
+            }}>
                 <div className="top-bar-left">
                     <h1>ExifFrame</h1>
                     {filePath && <span className="file-path">{filePath.split(/[/\\]/).filter(Boolean).join(' > ')}</span>}
