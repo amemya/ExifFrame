@@ -6,6 +6,6 @@ export function OpenImage() {
   return window['go']['main']['App']['OpenImage']();
 }
 
-export function SaveImage(arg1) {
-  return window['go']['main']['App']['SaveImage'](arg1);
+export function SaveImage(arg1, arg2) {
+  return window['go']['main']['App']['SaveImage'](arg1, arg2);
 }

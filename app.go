@@ -242,15 +242,20 @@ type SaveResult struct {
 // The actual binary data is received separately via HTTP POST to /api/save,
 // avoiding the memory-intensive Base64 IPC transfer.
 // The isPng parameter indicates whether the export format is PNG (true) or JPEG (false).
-func (a *App) SaveImage(isPng bool) SaveResult {
+// defaultName is the pre-filled base filename for the export.
+func (a *App) SaveImage(isPng bool, defaultName string) SaveResult {
 	filterName := "JPEG Image"
 	filterPattern := "*.jpg;*.jpeg"
-	defaultFilename := "exif-frame.jpg"
+	if defaultName == "" {
+		defaultName = "exif-frame"
+	}
+	defaultFilename := defaultName + ".jpg"
 	expectedMime := "image/jpeg"
+
 	if isPng {
 		filterName = "PNG Image"
 		filterPattern = "*.png"
-		defaultFilename = "exif-frame.png"
+		defaultFilename = defaultName + ".png"
 		expectedMime = "image/png"
 	}
 
