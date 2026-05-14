@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -147,10 +148,17 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	const maxBodySize = 100 * 1024 * 1024
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
-	// Validate Content-Type matches what was expected from the save dialog
+	// Validate Content-Type matches what was expected from the save dialog.
+	// Use mime.ParseMediaType to ignore parameters like charset.
 	contentType := r.Header.Get("Content-Type")
-	if expectedMime != "" && contentType != expectedMime {
-		http.Error(w, "Content-Type mismatch", http.StatusBadRequest)
+	if expectedMime != "" && contentType != "" {
+		mediaType, _, err := mime.ParseMediaType(contentType)
+		if err != nil || mediaType != expectedMime {
+			http.Error(w, "Content-Type mismatch", http.StatusBadRequest)
+			return
+		}
+	} else if expectedMime != "" && contentType == "" {
+		http.Error(w, "Missing Content-Type", http.StatusBadRequest)
 		return
 	}
 
