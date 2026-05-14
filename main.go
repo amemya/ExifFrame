@@ -15,6 +15,8 @@ var assets embed.FS
 func main() {
 	// Create an instance of the app structure
 	app := NewApp()
+	handler := NewImageHandler(app)
+	app.handler = handler
 
 	// Create application with options
 	err := wails.Run(&options.App{
@@ -23,7 +25,8 @@ func main() {
 		Height:           768,
 		WindowStartState: options.Maximised,
 		AssetServer: &assetserver.Options{
-			Assets: assets,
+			Assets:     assets,
+			Middleware: handler.Middleware,
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		Mac: &mac.Options{

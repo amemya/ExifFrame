@@ -1,7 +1,8 @@
 export namespace main {
 	
 	export class ExifResult {
-	    imageBase64: string;
+	    imageURL: string;
+	    mimeType: string;
 	    camera: string;
 	    lens: string;
 	    focalLength: string;
@@ -18,7 +19,8 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.imageBase64 = source["imageBase64"];
+	        this.imageURL = source["imageURL"];
+	        this.mimeType = source["mimeType"];
 	        this.camera = source["camera"];
 	        this.lens = source["lens"];
 	        this.focalLength = source["focalLength"];

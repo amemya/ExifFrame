@@ -4,4 +4,4 @@ import {main} from '../models';
 
 export function OpenImage():Promise<main.ExifResult>;
 
-export function SaveImage(arg1:string):Promise<main.SaveResult>;
+export function SaveImage(arg1:boolean):Promise<main.SaveResult>;
