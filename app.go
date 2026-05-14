@@ -52,6 +52,13 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
+// getCurrentImagePath returns the path of the currently loaded image in a thread-safe manner.
+func (a *App) getCurrentImagePath() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.currentImagePath
+}
+
 type ExifResult struct {
 	ImageURL     string `json:"imageURL"`
 	MimeType     string `json:"mimeType"`
@@ -282,6 +289,9 @@ func (a *App) SaveImage(isPng bool) SaveResult {
 
 	// Signal the HTTP handler that a save path is ready.
 	// The frontend will then POST the binary data to /api/save.
+	if a.handler == nil {
+		return SaveResult{Error: "Internal error: image handler not initialized"}
+	}
 	a.handler.prepareSave(savePath, expectedMime)
 
 	return SaveResult{}

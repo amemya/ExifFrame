@@ -57,7 +57,12 @@ function App() {
                 return;
             }
 
-            // Load the image via HTTP URL (served by AssetServer Handler)
+            if (!result.imageURL) {
+                console.error("Server returned an empty image URL");
+                return;
+            }
+
+            // Load the image via HTTP URL (served by AssetServer Middleware)
             await new Promise<void>((resolve, reject) => {
                 const img = new Image();
                 img.onload = () => {

@@ -18,7 +18,6 @@ type ImageHandler struct {
 	saveMu   sync.Mutex
 	savePath string
 	saveMime string
-	saveReady chan struct{} // signalled when savePath is set
 }
 
 // NewImageHandler creates a new ImageHandler.
@@ -52,9 +51,7 @@ func (h *ImageHandler) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.app.mu.RLock()
-	filePath := h.app.currentImagePath
-	h.app.mu.RUnlock()
+	filePath := h.app.getCurrentImagePath()
 
 	if filePath == "" {
 		http.Error(w, "No image loaded", http.StatusNotFound)
@@ -67,26 +64,13 @@ func (h *ImageHandler) handleImage(w http.ResponseWriter, r *http.Request) {
 }
 
 // prepareSave is called from the IPC side (App.SaveImage) after the native save
-// dialog completes. It stores the target path and signals the HTTP handler.
+// dialog completes. It stores the target path for the subsequent HTTP POST.
 func (h *ImageHandler) prepareSave(savePath string, mimeType string) {
 	h.saveMu.Lock()
 	defer h.saveMu.Unlock()
 
 	h.savePath = savePath
 	h.saveMime = mimeType
-
-	// Create a new channel if nil, then close it to signal readiness
-	if h.saveReady != nil {
-		select {
-		case <-h.saveReady:
-			// already closed, create a new one
-		default:
-			close(h.saveReady)
-			return
-		}
-	}
-	h.saveReady = make(chan struct{})
-	close(h.saveReady)
 }
 
 // handleSave receives binary image data via POST and writes it to the path
@@ -135,7 +119,11 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to write file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		os.Remove(savePath)
+		http.Error(w, "Failed to write file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// Security: Verify the actual file content matches the expected MIME type.
 	// Read only the first 512 bytes (enough for http.DetectContentType) to avoid
