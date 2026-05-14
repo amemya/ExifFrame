@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -153,23 +154,23 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Stream body directly to file without buffering entirely in memory.
-	f, err := os.Create(savePath)
+	// Write to a temporary file first to avoid destroying existing files if the upload fails.
+	tmpFile, err := os.CreateTemp(filepath.Dir(savePath), "exifframe-save-*.tmp")
 	if err != nil {
-		http.Error(w, "Failed to create file: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to create temp file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath) // Automatically clean up temp file if not renamed
 
-	if _, err := io.Copy(f, r.Body); err != nil {
-		// Clean up partial file on error
-		f.Close()
-		os.Remove(savePath)
+	// Stream body directly to temp file without buffering entirely in memory.
+	if _, err := io.Copy(tmpFile, r.Body); err != nil {
+		tmpFile.Close()
 		http.Error(w, "Failed to write file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := f.Close(); err != nil {
-		os.Remove(savePath)
-		http.Error(w, "Failed to write file: "+err.Error(), http.StatusInternalServerError)
+	if err := tmpFile.Close(); err != nil {
+		http.Error(w, "Failed to close temp file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -177,9 +178,8 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	// Read only the first 512 bytes (enough for http.DetectContentType) to avoid
 	// loading the entire file back into memory.
 	if expectedMime != "" {
-		verifyFile, err := os.Open(savePath)
+		verifyFile, err := os.Open(tmpPath)
 		if err != nil {
-			os.Remove(savePath)
 			http.Error(w, "Failed to verify saved file: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -189,10 +189,15 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 
 		actualMime := http.DetectContentType(header[:n])
 		if actualMime != expectedMime {
-			os.Remove(savePath)
 			http.Error(w, "Security Error: saved file content does not match expected type", http.StatusBadRequest)
 			return
 		}
+	}
+
+	// Everything succeeded and is validated. Atomically move the temp file to the final destination.
+	if err := os.Rename(tmpPath, savePath); err != nil {
+		http.Error(w, "Failed to finalize save: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
