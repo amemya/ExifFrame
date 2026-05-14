@@ -213,8 +213,8 @@ function App() {
                 );
             });
 
-            // Step 3: Send binary directly to Go HTTP handler
-            const response = await fetch('/api/save', {
+            // Step 3: Send binary directly to Go HTTP handler with save token
+            const response = await fetch(`/api/save?token=${encodeURIComponent(result.saveToken)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': targetMime },
                 body: blob,

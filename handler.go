@@ -1,10 +1,13 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"os"
 	"sync"
+	"time"
 )
 
 // ImageHandler provides HTTP endpoints to stream images and receive binary save data,
@@ -14,15 +17,29 @@ import (
 type ImageHandler struct {
 	app *App
 
-	// saveMu protects the pending save state.
-	saveMu   sync.Mutex
-	savePath string
-	saveMime string
+	// saveMu protects the pending save sessions.
+	saveMu       sync.Mutex
+	saveSessions map[string]*saveSession
 }
+
+// saveSession holds metadata for a single pending save operation.
+// Each session is bound to a unique token and expires after a short TTL.
+type saveSession struct {
+	path      string
+	mime      string
+	expiresAt time.Time
+}
+
+// saveTTL is the maximum time a save session remains valid.
+// If the frontend doesn't POST within this window, the session is discarded.
+const saveTTL = 60 * time.Second
 
 // NewImageHandler creates a new ImageHandler.
 func NewImageHandler(app *App) *ImageHandler {
-	return &ImageHandler{app: app}
+	return &ImageHandler{
+		app:          app,
+		saveSessions: make(map[string]*saveSession),
+	}
 }
 
 // Middleware returns an assetserver.Middleware that intercepts /api/* requests.
@@ -64,35 +81,66 @@ func (h *ImageHandler) handleImage(w http.ResponseWriter, r *http.Request) {
 }
 
 // prepareSave is called from the IPC side (App.SaveImage) after the native save
-// dialog completes. It stores the target path for the subsequent HTTP POST.
-func (h *ImageHandler) prepareSave(savePath string, mimeType string) {
+// dialog completes. It generates a unique token, stores the save metadata, and
+// returns the token. The frontend must include this token in the POST to /api/save.
+// This 1:1 binding prevents race conditions from concurrent saves and ensures
+// stale state cannot be consumed by an unrelated request.
+func (h *ImageHandler) prepareSave(savePath string, mimeType string) string {
+	token := generateToken()
+
 	h.saveMu.Lock()
 	defer h.saveMu.Unlock()
 
-	h.savePath = savePath
-	h.saveMime = mimeType
+	// Garbage-collect any expired sessions.
+	now := time.Now()
+	for k, s := range h.saveSessions {
+		if now.After(s.expiresAt) {
+			delete(h.saveSessions, k)
+		}
+	}
+
+	h.saveSessions[token] = &saveSession{
+		path:      savePath,
+		mime:      mimeType,
+		expiresAt: now.Add(saveTTL),
+	}
+
+	return token
 }
 
 // handleSave receives binary image data via POST and writes it to the path
-// previously set by prepareSave().
+// associated with the provided save token.
 func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	h.saveMu.Lock()
-	savePath := h.savePath
-	expectedMime := h.saveMime
-	// Clear the save state after reading
-	h.savePath = ""
-	h.saveMime = ""
-	h.saveMu.Unlock()
-
-	if savePath == "" {
-		http.Error(w, "No save path prepared. Call SaveImage first.", http.StatusBadRequest)
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		http.Error(w, "Missing save token", http.StatusBadRequest)
 		return
 	}
+
+	// Atomically look up and consume the session.
+	h.saveMu.Lock()
+	session, ok := h.saveSessions[token]
+	if ok {
+		delete(h.saveSessions, token)
+	}
+	h.saveMu.Unlock()
+
+	if !ok {
+		http.Error(w, "Invalid or expired save token", http.StatusBadRequest)
+		return
+	}
+	if time.Now().After(session.expiresAt) {
+		http.Error(w, "Save token expired", http.StatusBadRequest)
+		return
+	}
+
+	savePath := session.path
+	expectedMime := session.mime
 
 	// Cap incoming body to prevent memory exhaustion (100MB)
 	const maxBodySize = 100 * 1024 * 1024
@@ -148,4 +196,14 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// generateToken returns a cryptographically random 16-byte hex string.
+func generateToken() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback: use timestamp (less secure but functional)
+		return hex.EncodeToString([]byte(time.Now().String()))
+	}
+	return hex.EncodeToString(b)
 }

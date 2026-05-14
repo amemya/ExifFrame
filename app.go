@@ -235,6 +235,7 @@ func parseFraction(s string) (int64, int64) {
 type SaveResult struct {
 	Error     string `json:"error"`
 	Cancelled bool   `json:"cancelled"`
+	SaveToken string `json:"saveToken"`
 }
 
 // SaveImage opens a native save dialog and prepares the save path.
@@ -288,13 +289,13 @@ func (a *App) SaveImage(isPng bool) SaveResult {
 	}
 
 	// Signal the HTTP handler that a save path is ready.
-	// The frontend will then POST the binary data to /api/save.
+	// The frontend will then POST the binary data to /api/save with this token.
 	if a.handler == nil {
 		return SaveResult{Error: "Internal error: image handler not initialized"}
 	}
-	a.handler.prepareSave(savePath, expectedMime)
+	token := a.handler.prepareSave(savePath, expectedMime)
 
-	return SaveResult{}
+	return SaveResult{SaveToken: token}
 }
 
 func formatFocalLength(num, den int64) string {
