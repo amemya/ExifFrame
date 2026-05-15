@@ -144,10 +144,6 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	savePath := session.path
 	expectedMime := session.mime
 
-	// Cap incoming body to prevent memory exhaustion (100MB)
-	const maxBodySize = 100 * 1024 * 1024
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
-
 	// Validate Content-Type matches what was expected from the save dialog.
 	// Use mime.ParseMediaType to ignore parameters like charset.
 	contentType := r.Header.Get("Content-Type")
