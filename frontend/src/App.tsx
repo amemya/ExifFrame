@@ -29,6 +29,7 @@ function App() {
     const isSelectingRef = useRef(false);
     const [filePath, setFilePath] = useState("");
     const [isMac, setIsMac] = useState(false);
+    const [sourceMimeType, setSourceMimeType] = useState("");
 
     useEffect(() => {
         Environment().then(env => {
@@ -56,7 +57,12 @@ function App() {
                 return;
             }
 
-            // Load the Base64 image and await its decoding
+            if (!result.imageURL) {
+                console.error("Server returned an empty image URL");
+                return;
+            }
+
+            // Load the image via HTTP URL (served by AssetServer Middleware)
             await new Promise<void>((resolve, reject) => {
                 const img = new Image();
                 img.onload = () => {
@@ -70,6 +76,7 @@ function App() {
                         iso: result.iso || ""
                     });
                     setFilePath(result.filePath || "");
+                    setSourceMimeType(result.mimeType || "");
 
                     setImageObj(img);
                     setImageLoaded(true);
@@ -79,7 +86,7 @@ function App() {
                     console.error("Failed to decode or render the selected image");
                     reject(new Error("Failed to decode image"));
                 };
-                img.src = result.imageBase64;
+                img.src = result.imageURL;
             });
 
         } catch (err) {
@@ -180,15 +187,13 @@ function App() {
         if (!canvasRef.current || !imageObj) return;
 
         try {
-            // Check original type to maintain lossless PNG if possible
-            const isPng = imageObj.src.startsWith('data:image/png');
+            // Determine format from the actual MIME type detected by Go.
+            // If the source was a PNG, maintain lossless export.
+            const isPng = sourceMimeType === 'image/png';
             const targetMime = isPng ? 'image/png' : 'image/jpeg';
 
-            // For JPEG, 1.0 requests the highest quality setting, though JPEG remains lossy.
-            // PNG ignores the quality parameter.
-            const dataUrl = canvasRef.current.toDataURL(targetMime, 1.0);
-
-            const result = await SaveImage(dataUrl);
+            // Step 1: Open native save dialog via IPC (no binary data transferred)
+            const result = await SaveImage(isPng);
 
             if (result.cancelled) {
                 return;
@@ -196,6 +201,29 @@ function App() {
             if (result.error) {
                 console.error("Export failed:", result.error);
                 alert("Failed to save image: " + result.error);
+                return;
+            }
+
+            // Step 2: Convert canvas to binary Blob (no Base64 intermediate)
+            const blob = await new Promise<Blob>((resolve, reject) => {
+                canvasRef.current!.toBlob(
+                    (b) => b ? resolve(b) : reject(new Error("toBlob returned null")),
+                    targetMime,
+                    1.0 // For JPEG: highest quality. PNG ignores this.
+                );
+            });
+
+            // Step 3: Send binary directly to Go HTTP handler with save token
+            const response = await fetch(`/api/save?token=${encodeURIComponent(result.saveToken)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': targetMime },
+                body: blob,
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error("Save failed:", errText);
+                alert("Failed to save image: " + errText);
             }
         } catch (err) {
             console.error("Failed to execute SaveImage:", err);

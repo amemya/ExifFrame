@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"fmt"
 	"math"
 	"net/http"
@@ -12,6 +11,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -31,6 +32,13 @@ var (
 // App struct
 type App struct {
 	ctx context.Context
+
+	// mu protects currentImagePath for concurrent access from IPC and HTTP handler.
+	mu               sync.RWMutex
+	currentImagePath string
+
+	// handler is set after initialization so SaveImage can call prepareSave.
+	handler *ImageHandler
 }
 
 // NewApp creates a new App application struct
@@ -44,8 +52,16 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
+// getCurrentImagePath returns the path of the currently loaded image in a thread-safe manner.
+func (a *App) getCurrentImagePath() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.currentImagePath
+}
+
 type ExifResult struct {
-	ImageBase64  string `json:"imageBase64"`
+	ImageURL     string `json:"imageURL"`
+	MimeType     string `json:"mimeType"`
 	Camera       string `json:"camera"`
 	Lens         string `json:"lens"`
 	FocalLength  string `json:"focalLength"`
@@ -57,7 +73,9 @@ type ExifResult struct {
 	FilePath     string `json:"filePath"`
 }
 
-// OpenImage opens a native file dialog, reads the image, and returns Base64 + EXIF
+// OpenImage opens a native file dialog, reads EXIF metadata, and returns
+// an HTTP URL for the frontend to fetch the image via the AssetServer Handler.
+// The image bytes are NOT transferred over IPC — only metadata and the URL.
 func (a *App) OpenImage() ExifResult {
 	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select a Photo",
@@ -91,9 +109,16 @@ func (a *App) OpenImage() ExifResult {
 		return ExifResult{Error: "Invalid file: selected file must be a JPG or PNG image."}
 	}
 
+	// Store the file path for the HTTP handler to serve later.
+	a.mu.Lock()
+	a.currentImagePath = filePath
+	a.mu.Unlock()
+
+	// Cache-busting timestamp ensures the browser fetches the new image.
 	result := ExifResult{
-		ImageBase64: fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(fileBytes)),
-		FilePath:    filePath,
+		ImageURL: fmt.Sprintf("/api/image?t=%d", time.Now().UnixNano()),
+		MimeType: mimeType,
+		FilePath: filePath,
 	}
 
 	// Parse EXIF
@@ -210,47 +235,23 @@ func parseFraction(s string) (int64, int64) {
 type SaveResult struct {
 	Error     string `json:"error"`
 	Cancelled bool   `json:"cancelled"`
+	SaveToken string `json:"saveToken"`
 }
 
-// SaveImage triggers a native save dialog and saves the requested base64 data to disk.
-func (a *App) SaveImage(base64Data string) SaveResult {
-	header, payload, found := strings.Cut(base64Data, ",")
-	if !found {
-		return SaveResult{Error: "Invalid image data format"}
-	}
-
-	if header != "data:image/png;base64" && header != "data:image/jpeg;base64" {
-		return SaveResult{Error: "Invalid image data URL header: only PNG and JPEG base64 data URLs are allowed"}
-	}
-
-	// Cap incoming base64 payload to ~100MB to prevent memory exhaustion
-	const maxBase64Length = 100 * 1024 * 1024
-	if len(payload) > maxBase64Length {
-		return SaveResult{Error: "Export failed: generated data URL is too large"}
-	}
-
-	isPng := header == "data:image/png;base64"
-
-	imageData, err := base64.StdEncoding.DecodeString(payload)
-	if err != nil {
-		return SaveResult{Error: "Failed to decode base64 image data: " + err.Error()}
-	}
-
-	// Security: Verify the actual bytes match the claimed image type
-	actualMime := http.DetectContentType(imageData)
-	if isPng && actualMime != "image/png" {
-		return SaveResult{Error: "Security Error: Payload MIME type is not PNG"}
-	} else if !isPng && actualMime != "image/jpeg" {
-		return SaveResult{Error: "Security Error: Payload MIME type is not JPEG"}
-	}
-
+// SaveImage opens a native save dialog and prepares the save path.
+// The actual binary data is received separately via HTTP POST to /api/save,
+// avoiding the memory-intensive Base64 IPC transfer.
+// The isPng parameter indicates whether the export format is PNG (true) or JPEG (false).
+func (a *App) SaveImage(isPng bool) SaveResult {
 	filterName := "JPEG Image"
 	filterPattern := "*.jpg;*.jpeg"
 	defaultFilename := "exif-frame.jpg"
+	expectedMime := "image/jpeg"
 	if isPng {
 		filterName = "PNG Image"
 		filterPattern = "*.png"
 		defaultFilename = "exif-frame.png"
+		expectedMime = "image/png"
 	}
 
 	savePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
@@ -287,12 +288,14 @@ func (a *App) SaveImage(base64Data string) SaveResult {
 		}
 	}
 
-	err = os.WriteFile(savePath, imageData, 0644)
-	if err != nil {
-		return SaveResult{Error: "Failed to save file: " + err.Error()}
+	// Signal the HTTP handler that a save path is ready.
+	// The frontend will then POST the binary data to /api/save with this token.
+	if a.handler == nil {
+		return SaveResult{Error: "Internal error: image handler not initialized"}
 	}
+	token := a.handler.prepareSave(savePath, expectedMime)
 
-	return SaveResult{}
+	return SaveResult{SaveToken: token}
 }
 
 func formatFocalLength(num, den int64) string {
