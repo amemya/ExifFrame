@@ -193,8 +193,8 @@ function App() {
             const targetMime = isPng ? 'image/png' : 'image/jpeg';
 
             // Determine export filename from original path
-            const filenameMatch = filePath ? filePath.split(/[/\\]/).pop() : "exif-frame";
-            const baseName = filenameMatch ? filenameMatch.replace(/\.[^/.]+$/, "") : "exif-frame";
+            const filenameMatch = filePath ? filePath.split(/[/\\]/).pop() : "";
+            const baseName = (filenameMatch ? filenameMatch.replace(/\.[^/.]+$/, "") : "") || "exif-frame";
             const exportName = `${baseName}_ExifFrame`;
 
             // Step 1: Open native save dialog via IPC (no binary data transferred)
