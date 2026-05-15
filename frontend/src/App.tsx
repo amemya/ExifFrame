@@ -30,6 +30,12 @@ function App() {
     const [filePath, setFilePath] = useState("");
     const [isMac, setIsMac] = useState(false);
     const [sourceMimeType, setSourceMimeType] = useState("");
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+    const showToast = (message: string) => {
+        setToastMessage(message);
+        setTimeout(() => setToastMessage(null), 3000);
+    };
 
     useEffect(() => {
         Environment().then(env => {
@@ -224,6 +230,8 @@ function App() {
                 const errText = await response.text();
                 console.error("Save failed:", errText);
                 alert("Failed to save image: " + errText);
+            } else {
+                showToast("Image saved successfully");
             }
         } catch (err) {
             console.error("Failed to execute SaveImage:", err);
@@ -337,6 +345,12 @@ function App() {
                             </div>
                         </div>
                     </aside>
+                )}
+
+                {toastMessage && (
+                    <div className="toast-container">
+                        <div className="toast success">{toastMessage}</div>
+                    </div>
                 )}
             </main>
         </div>
