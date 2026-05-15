@@ -31,11 +31,30 @@ function App() {
     const [isMac, setIsMac] = useState(false);
     const [sourceMimeType, setSourceMimeType] = useState("");
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const toastTimerRef = useRef<number | null>(null);
 
     const showToast = (message: string) => {
-        setToastMessage(message);
-        setTimeout(() => setToastMessage(null), 3000);
+        if (toastTimerRef.current !== null) {
+            window.clearTimeout(toastTimerRef.current);
+        }
+        // Force a re-render by clearing the state first
+        setToastMessage(null);
+        requestAnimationFrame(() => {
+            setToastMessage(message);
+            toastTimerRef.current = window.setTimeout(() => {
+                setToastMessage(null);
+                toastTimerRef.current = null;
+            }, 3000);
+        });
     };
+
+    useEffect(() => {
+        return () => {
+            if (toastTimerRef.current !== null) {
+                window.clearTimeout(toastTimerRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         Environment().then(env => {
@@ -348,7 +367,7 @@ function App() {
                 )}
 
                 {toastMessage && (
-                    <div className="toast-container">
+                    <div className="toast-container" aria-live="polite" aria-atomic="true" role="status">
                         <div className="toast success">{toastMessage}</div>
                     </div>
                 )}
