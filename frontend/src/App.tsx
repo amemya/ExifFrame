@@ -32,19 +32,27 @@ function App() {
     const [sourceMimeType, setSourceMimeType] = useState("");
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const toastTimerRef = useRef<number | null>(null);
+    const toastRafRef = useRef<number | null>(null);
 
     const showToast = (message: string) => {
         if (toastTimerRef.current !== null) {
             window.clearTimeout(toastTimerRef.current);
+            toastTimerRef.current = null;
         }
+        if (toastRafRef.current !== null) {
+            window.cancelAnimationFrame(toastRafRef.current);
+            toastRafRef.current = null;
+        }
+        
         // Force a re-render by clearing the state first
         setToastMessage(null);
-        requestAnimationFrame(() => {
+        toastRafRef.current = requestAnimationFrame(() => {
             setToastMessage(message);
             toastTimerRef.current = window.setTimeout(() => {
                 setToastMessage(null);
                 toastTimerRef.current = null;
             }, 3000);
+            toastRafRef.current = null;
         });
     };
 
@@ -52,6 +60,9 @@ function App() {
         return () => {
             if (toastTimerRef.current !== null) {
                 window.clearTimeout(toastTimerRef.current);
+            }
+            if (toastRafRef.current !== null) {
+                window.cancelAnimationFrame(toastRafRef.current);
             }
         };
     }, []);
