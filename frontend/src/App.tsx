@@ -12,6 +12,8 @@ interface ExifData {
     iso: string;
 }
 
+const TOAST_DURATION_MS = 3000;
+
 function App() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [imageLoaded, setImageLoaded] = useState(false);
@@ -51,7 +53,7 @@ function App() {
             toastTimerRef.current = window.setTimeout(() => {
                 setToastMessage(null);
                 toastTimerRef.current = null;
-            }, 3000);
+            }, TOAST_DURATION_MS);
             toastRafRef.current = null;
         });
     };
@@ -379,7 +381,7 @@ function App() {
 
                 {toastMessage && (
                     <div className="toast-container" aria-live="polite" aria-atomic="true" role="status">
-                        <div className="toast success">{toastMessage}</div>
+                        <div className="toast success" style={{ animationDuration: `${TOAST_DURATION_MS}ms` }}>{toastMessage}</div>
                     </div>
                 )}
             </main>
