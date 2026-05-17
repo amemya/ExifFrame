@@ -226,12 +226,16 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		defer out.Close()
 
 		if _, err := io.Copy(out, in); err != nil {
+			out.Close()
+			os.Remove(savePath)
 			http.Error(w, "Failed to copy to final destination: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		
 		// Ensure it's fully written
 		if err := out.Sync(); err != nil {
+			out.Close()
+			os.Remove(savePath)
 			http.Error(w, "Failed to sync final destination: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
