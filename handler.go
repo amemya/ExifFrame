@@ -7,7 +7,6 @@ import (
 	"mime"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
@@ -158,39 +157,19 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Write to a temporary file first to avoid destroying existing files if the upload fails.
-	tmpFile, err := os.CreateTemp(filepath.Dir(savePath), "exifframe-save-*.tmp")
-	if err != nil {
-		http.Error(w, "Failed to create temp file: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath) // Automatically clean up temp file if not renamed
-
-	// Stream body directly to temp file without buffering entirely in memory.
-	if _, err := io.Copy(tmpFile, r.Body); err != nil {
-		tmpFile.Close()
-		http.Error(w, "Failed to write file: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := tmpFile.Close(); err != nil {
-		http.Error(w, "Failed to close temp file: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	// Security: Verify the actual file content matches the expected MIME type.
-	// Read only the first 512 bytes (enough for http.DetectContentType) to avoid
-	// loading the entire file back into memory.
-	if expectedMime != "" {
-		verifyFile, err := os.Open(tmpPath)
-		if err != nil {
-			http.Error(w, "Failed to verify saved file: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		header := make([]byte, 512)
-		n, _ := verifyFile.Read(header)
-		verifyFile.Close()
+	// We read the first 512 bytes directly from the request body to validate it
+	// before opening the target file. This avoids writing invalid files to the system
+	// and works securely within Mac Sandboxing which prevents creating temp files in
+	// the target directory.
+	header := make([]byte, 512)
+	n, err := io.ReadFull(r.Body, header)
+	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+		http.Error(w, "Failed to read body: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
+	if expectedMime != "" && n > 0 {
 		actualMime := http.DetectContentType(header[:n])
 		if actualMime != expectedMime {
 			http.Error(w, "Security Error: saved file content does not match expected type", http.StatusBadRequest)
@@ -198,9 +177,26 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Everything succeeded and is validated. Atomically move the temp file to the final destination.
-	if err := os.Rename(tmpPath, savePath); err != nil {
-		http.Error(w, "Failed to finalize save: "+err.Error(), http.StatusInternalServerError)
+	// Validation passed. Open the target file directly.
+	// The app has explicit permission to write to this path granted by the native Save Dialog.
+	saveFile, err := os.Create(savePath)
+	if err != nil {
+		http.Error(w, "Failed to create target file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer saveFile.Close()
+
+	// Write the validated header bytes first
+	if n > 0 {
+		if _, err := saveFile.Write(header[:n]); err != nil {
+			http.Error(w, "Failed to write to target file: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Stream the remainder of the payload directly
+	if _, err := io.Copy(saveFile, r.Body); err != nil {
+		http.Error(w, "Failed to stream remainder to target file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
