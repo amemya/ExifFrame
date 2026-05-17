@@ -176,7 +176,10 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to stream upload: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		http.Error(w, "Failed to close and flush temp file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if written == 0 {
 		http.Error(w, "Empty image payload received", http.StatusBadRequest)
