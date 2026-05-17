@@ -12,6 +12,8 @@ interface ExifData {
     iso: string;
 }
 
+const TOAST_DURATION_MS = 3000;
+
 function App() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [imageLoaded, setImageLoaded] = useState(false);
@@ -30,6 +32,42 @@ function App() {
     const [filePath, setFilePath] = useState("");
     const [isMac, setIsMac] = useState(false);
     const [sourceMimeType, setSourceMimeType] = useState("");
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const toastTimerRef = useRef<number | null>(null);
+    const toastRafRef = useRef<number | null>(null);
+
+    const showToast = (message: string) => {
+        if (toastTimerRef.current !== null) {
+            window.clearTimeout(toastTimerRef.current);
+            toastTimerRef.current = null;
+        }
+        if (toastRafRef.current !== null) {
+            window.cancelAnimationFrame(toastRafRef.current);
+            toastRafRef.current = null;
+        }
+        
+        // Force a re-render by clearing the state first
+        setToastMessage(null);
+        toastRafRef.current = requestAnimationFrame(() => {
+            setToastMessage(message);
+            toastTimerRef.current = window.setTimeout(() => {
+                setToastMessage(null);
+                toastTimerRef.current = null;
+            }, TOAST_DURATION_MS);
+            toastRafRef.current = null;
+        });
+    };
+
+    useEffect(() => {
+        return () => {
+            if (toastTimerRef.current !== null) {
+                window.clearTimeout(toastTimerRef.current);
+            }
+            if (toastRafRef.current !== null) {
+                window.cancelAnimationFrame(toastRafRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         Environment().then(env => {
@@ -229,6 +267,8 @@ function App() {
                 const errText = await response.text();
                 console.error("Save failed:", errText);
                 alert("Failed to save image: " + errText);
+            } else {
+                showToast("Image saved successfully");
             }
         } catch (err) {
             console.error("Failed to execute SaveImage:", err);
@@ -342,6 +382,12 @@ function App() {
                             </div>
                         </div>
                     </aside>
+                )}
+
+                {toastMessage && (
+                    <div className="toast-container" aria-live="polite" aria-atomic="true" role="status">
+                        <div className="toast success" style={{ animationDuration: `${TOAST_DURATION_MS}ms` }}>{toastMessage}</div>
+                    </div>
                 )}
             </main>
         </div>
