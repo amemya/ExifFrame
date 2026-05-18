@@ -7,7 +7,6 @@ import (
 	"mime"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
@@ -158,8 +157,11 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Write to a temporary file first to avoid destroying existing files if the upload fails.
-	tmpFile, err := os.CreateTemp(filepath.Dir(savePath), "exifframe-save-*.tmp")
+	// Write to a temporary file in the system temp directory (os.TempDir).
+	// This avoids macOS Sandbox permission issues which restrict writing to
+	// the target's parent directory, and ensures existing files are not truncated
+	// until the entire upload is successful.
+	tmpFile, err := os.CreateTemp("", "exifframe-save-*.tmp")
 	if err != nil {
 		http.Error(w, "Failed to create temp file: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -167,20 +169,24 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	tmpPath := tmpFile.Name()
 	defer os.Remove(tmpPath) // Automatically clean up temp file if not renamed
 
-	// Stream body directly to temp file without buffering entirely in memory.
-	if _, err := io.Copy(tmpFile, r.Body); err != nil {
+	// Stream body directly to the system temp file.
+	written, err := io.Copy(tmpFile, r.Body)
+	if err != nil {
 		tmpFile.Close()
-		http.Error(w, "Failed to write file: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to stream upload: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if err := tmpFile.Close(); err != nil {
-		http.Error(w, "Failed to close temp file: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to close and flush temp file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if written == 0 {
+		http.Error(w, "Empty image payload received", http.StatusBadRequest)
 		return
 	}
 
 	// Security: Verify the actual file content matches the expected MIME type.
-	// Read only the first 512 bytes (enough for http.DetectContentType) to avoid
-	// loading the entire file back into memory.
 	if expectedMime != "" {
 		verifyFile, err := os.Open(tmpPath)
 		if err != nil {
@@ -191,6 +197,11 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		n, _ := verifyFile.Read(header)
 		verifyFile.Close()
 
+		if n == 0 {
+			http.Error(w, "Security Error: Unable to read saved file", http.StatusInternalServerError)
+			return
+		}
+
 		actualMime := http.DetectContentType(header[:n])
 		if actualMime != expectedMime {
 			http.Error(w, "Security Error: saved file content does not match expected type", http.StatusBadRequest)
@@ -198,10 +209,39 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Everything succeeded and is validated. Atomically move the temp file to the final destination.
+	// Everything succeeded and is validated. Move the temp file to the final destination.
+	// We attempt an atomic os.Rename first. If it fails (e.g., EXDEV cross-device link),
+	// we fallback to io.Copy.
 	if err := os.Rename(tmpPath, savePath); err != nil {
-		http.Error(w, "Failed to finalize save: "+err.Error(), http.StatusInternalServerError)
-		return
+		// Fallback: Copy the file manually since os.Rename across volumes is not allowed
+		in, err := os.Open(tmpPath)
+		if err != nil {
+			http.Error(w, "Failed to open temp file for copying: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer in.Close()
+
+		out, err := os.Create(savePath)
+		if err != nil {
+			http.Error(w, "Failed to create final file: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer out.Close()
+
+		if _, err := io.Copy(out, in); err != nil {
+			out.Close()
+			os.Remove(savePath)
+			http.Error(w, "Failed to copy to final destination: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		
+		// Ensure it's fully written
+		if err := out.Sync(); err != nil {
+			out.Close()
+			os.Remove(savePath)
+			http.Error(w, "Failed to sync final destination: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)

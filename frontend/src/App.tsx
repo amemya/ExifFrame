@@ -256,11 +256,14 @@ function App() {
                 );
             });
 
-            // Step 3: Send binary directly to Go HTTP handler with save token
+            // Step 3: Send binary directly to Go HTTP handler with save token.
+            // WARNING: On macOS WebKit, using a Blob body with a custom URL scheme (wails://) 
+            // often results in an empty payload (0kb file). We MUST convert it to an ArrayBuffer first.
+            const arrayBuffer = await blob.arrayBuffer();
             const response = await fetch(`/api/save?token=${encodeURIComponent(result.saveToken)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': targetMime },
-                body: blob,
+                body: arrayBuffer,
             });
 
             if (!response.ok) {
