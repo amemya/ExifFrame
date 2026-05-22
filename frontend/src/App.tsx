@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import './App.css';
 import { OpenImage, SaveImage } from '../wailsjs/go/main/App';
 import { WindowToggleMaximise, Environment } from '../wailsjs/runtime/runtime';
@@ -35,6 +35,12 @@ function App() {
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const toastTimerRef = useRef<number | null>(null);
     const toastRafRef = useRef<number | null>(null);
+
+    const [aspectRatioPreset, setAspectRatioPreset] = useState<string>("4300:3618");
+    const [customRatioW, setCustomRatioW] = useState<number>(4300);
+    const [customRatioH, setCustomRatioH] = useState<number>(3618);
+    const [orientation, setOrientation] = useState<"landscape" | "portrait">("landscape");
+    const [alignment, setAlignment] = useState<"top" | "center">("top");
 
     const showToast = (message: string) => {
         if (toastTimerRef.current !== null) {
@@ -117,6 +123,7 @@ function App() {
                     setSourceMimeType(result.mimeType || "");
 
                     setImageObj(img);
+                    setOrientation(img.height > img.width ? "portrait" : "landscape");
                     setImageLoaded(true);
                     resolve();
                 };
@@ -135,25 +142,58 @@ function App() {
         }
     };
 
-    useEffect(() => {
-        if (!imageObj || !canvasRef.current) return;
 
-        drawCanvas(imageObj);
-    }, [imageObj, exif]);
 
-    const drawCanvas = (img: HTMLImageElement) => {
+    const drawCanvas = useCallback((img: HTMLImageElement) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        // 好みの左右・上の枠の太さ（例：幅の3.5%）
-        const framePadding = Math.floor(img.width * 0.025);
+        // 好みの左右・上の枠の最小太さ（例：幅の2.5%）
+        const minFramePadding = Math.floor(img.width * 0.025);
+        // 下部のテキスト領域に必要な最小スペース
+        const minBottomSpace = Math.floor(minFramePadding * 4.5);
 
-        // 全体の仕上がりを 4300 : 3618 の比率に強制する
-        const targetRatio = 4300 / 3618;
+        let targetRatio = 4300 / 3618;
+        if (aspectRatioPreset === "custom") {
+            if (customRatioW > 0 && customRatioH > 0) {
+                targetRatio = customRatioW / customRatioH;
+            } else {
+                targetRatio = img.width / img.height;
+            }
+        } else {
+            const [w, h] = aspectRatioPreset.split(':').map(Number);
+            if (w && h) targetRatio = w / h;
+        }
 
-        // 完成品の幅を先に決め、ターゲット比率から高さを逆算する
+        // Apply orientation flip
+        if (orientation === "portrait" && targetRatio > 1) {
+            targetRatio = 1 / targetRatio;
+        } else if (orientation === "landscape" && targetRatio < 1) {
+            targetRatio = 1 / targetRatio;
+        }
+
+        const minCanvasWidth = img.width + (minFramePadding * 2);
+        const minCanvasHeight = img.height + minFramePadding + minBottomSpace;
+
+        // まず幅を基準に高さを計算
+        let finalCanvasWidth = minCanvasWidth;
+        let finalCanvasHeight = Math.floor(finalCanvasWidth / targetRatio);
+
+        if (finalCanvasHeight < minCanvasHeight) {
+            // 高さが足りない場合は、最小の高さを基準にして幅を拡張
+            finalCanvasHeight = minCanvasHeight;
+            finalCanvasWidth = Math.floor(finalCanvasHeight * targetRatio);
+        }
+
         // ⚠️ CRITICAL: Must be set BEFORE getContext, otherwise context properties (colorSpace) are reset!
-        canvas.width = img.width + (framePadding * 2);
-        canvas.height = Math.floor(canvas.width / targetRatio);
+        canvas.width = finalCanvasWidth;
+        canvas.height = finalCanvasHeight;
+
+        // 余分な高さを計算
+        const extraHeight = finalCanvasHeight - minCanvasHeight;
+
+        // 画像の配置位置を計算 (左右中央、上固定または上下中央)
+        const drawX = Math.floor((finalCanvasWidth - img.width) / 2);
+        const drawY = alignment === "center" ? minFramePadding + Math.floor(extraHeight / 2) : minFramePadding;
 
         // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
         let ctx: CanvasRenderingContext2D | null = null;
@@ -167,21 +207,20 @@ function App() {
         }
         if (!ctx) return;
 
-        // 完成品の高さから「下の余白（margin）」を逆算
-        const margin = canvas.height - img.height - (framePadding * 2);
-
         // Fill background
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Draw image
-        ctx.drawImage(img, framePadding, framePadding);
+        ctx.drawImage(img, drawX, drawY);
 
-        // 写真の下端からキャンバスの下端までの「目に見える下の白枠すべて」の高さ
-        const bottomSpaceHeight = margin + framePadding;
+        // 画像の下端座標
+        const imgBottomY = drawY + img.height;
+        // 写真の下端からキャンバスの下端までの余白
+        const bottomSpaceHeight = canvas.height - imgBottomY;
 
-        // 本当の視覚的な中央座標を計算
-        const textY = img.height + framePadding + (bottomSpaceHeight / 2);
+        // テキストの配置Y座標は、画像の下端とキャンバス下端の中央
+        const textY = imgBottomY + (bottomSpaceHeight / 2);
 
         // テキストのサイズを（marginではなく）画像自体のサイズを基準にする
         const baseScale = Math.min(img.width, img.height);
@@ -214,12 +253,18 @@ function App() {
 
         // Draw a subtle line separator (just above the text)
         ctx.beginPath();
-        ctx.moveTo(canvas.width * 0.2, img.height + framePadding);
-        ctx.lineTo(canvas.width * 0.8, img.height + framePadding);
+        ctx.moveTo(canvas.width * 0.2, imgBottomY);
+        ctx.lineTo(canvas.width * 0.8, imgBottomY);
         ctx.strokeStyle = '#e0e0e0';
         ctx.lineWidth = Math.max(1, Math.floor(baseScale * 0.0015));
         ctx.stroke();
-    };
+    }, [exif, aspectRatioPreset, customRatioW, customRatioH, orientation, alignment]);
+
+    useEffect(() => {
+        if (!imageObj || !canvasRef.current) return;
+
+        drawCanvas(imageObj);
+    }, [imageObj, drawCanvas]);
 
     const downloadImage = async () => {
         if (!canvasRef.current || !imageObj) return;
@@ -353,7 +398,89 @@ function App() {
 
                 {imageLoaded && (
                     <aside className="sidebar">
-                        <div className="sidebar-section">
+                        <div className="sidebar-section frame-settings-section">
+                            <h3>Frame Settings</h3>
+                            <div className="input-group">
+                                <label htmlFor="aspect-ratio-preset">Aspect Ratio</label>
+                                <select 
+                                    id="aspect-ratio-preset" 
+                                    value={aspectRatioPreset} 
+                                    onChange={(e) => setAspectRatioPreset(e.target.value)}
+                                >
+                                    <option value="4300:3618">Default (4300:3618)</option>
+                                    <option value="1:1">Square (1:1)</option>
+                                    <option value="3:2">3:2</option>
+                                    <option value="4:3">4:3</option>
+                                    <option value="16:9">16:9</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                            {aspectRatioPreset === "custom" && (
+                                <div className="input-row">
+                                    <div className="input-group">
+                                        <label htmlFor="custom-ratio-w">Width</label>
+                                        <input 
+                                            id="custom-ratio-w" 
+                                            type="number" 
+                                            value={customRatioW || ''} 
+                                            onChange={e => setCustomRatioW(Number(e.target.value) || 0)} 
+                                            min="1"
+                                        />
+                                    </div>
+                                    <div className="input-group">
+                                        <label htmlFor="custom-ratio-h">Height</label>
+                                        <input 
+                                            id="custom-ratio-h" 
+                                            type="number" 
+                                            value={customRatioH || ''} 
+                                            onChange={e => setCustomRatioH(Number(e.target.value) || 0)} 
+                                            min="1"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            <div className="input-group">
+                                <label>Orientation</label>
+                                <div className={`segmented-control ${aspectRatioPreset === '1:1' ? 'disabled' : ''}`}>
+                                    <button 
+                                        className={`segment ${orientation === 'landscape' ? 'active' : ''}`}
+                                        onClick={() => setOrientation('landscape')}
+                                        disabled={aspectRatioPreset === '1:1'}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect></svg>
+                                        Landscape
+                                    </button>
+                                    <button 
+                                        className={`segment ${orientation === 'portrait' ? 'active' : ''}`}
+                                        onClick={() => setOrientation('portrait')}
+                                        disabled={aspectRatioPreset === '1:1'}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="2" ry="2"></rect></svg>
+                                        Portrait
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="input-group">
+                                <label>Vertical Alignment</label>
+                                <div className="segmented-control">
+                                    <button 
+                                        className={`segment ${alignment === 'top' ? 'active' : ''}`}
+                                        onClick={() => setAlignment('top')}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="4" x2="20" y2="4"></line><rect x="8" y="8" width="8" height="8" rx="1" ry="1"></rect></svg>
+                                        Top
+                                    </button>
+                                    <button 
+                                        className={`segment ${alignment === 'center' ? 'active' : ''}`}
+                                        onClick={() => setAlignment('center')}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="8" width="8" height="8" rx="1" ry="1"></rect></svg>
+                                        Center
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="sidebar-section metadata-settings-section">
                             <h3>Metadata Settings</h3>
                             <div className="input-group">
                                 <label htmlFor="camera-input">Camera</label>
