@@ -7,6 +7,10 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -242,6 +246,16 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to sync final destination: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+	}
+
+	// Show a native notification on macOS
+	if runtime.GOOS == "darwin" {
+		fileName := filepath.Base(savePath)
+		// Prevent AppleScript injection
+		fileName = strings.ReplaceAll(fileName, `\`, `\\`)
+		fileName = strings.ReplaceAll(fileName, `"`, `\"`)
+		msg := "Saved " + fileName
+		exec.Command("osascript", "-e", `display notification "`+msg+`" with title "ExifFrame"`).Run()
 	}
 
 	w.WriteHeader(http.StatusOK)

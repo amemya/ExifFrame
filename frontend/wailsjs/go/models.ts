@@ -48,6 +48,30 @@ export namespace main {
 	        this.saveToken = source["saveToken"];
 	    }
 	}
+	export class Settings {
+	    watchFolder: string;
+	    exportFolder: string;
+	    aspectRatioPreset: string;
+	    customRatioW: number;
+	    customRatioH: number;
+	    orientation: string;
+	    alignment: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Settings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.watchFolder = source["watchFolder"];
+	        this.exportFolder = source["exportFolder"];
+	        this.aspectRatioPreset = source["aspectRatioPreset"];
+	        this.customRatioW = source["customRatioW"];
+	        this.customRatioH = source["customRatioH"];
+	        this.orientation = source["orientation"];
+	        this.alignment = source["alignment"];
+	    }
+	}
 
 }
 

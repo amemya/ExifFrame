@@ -50,6 +50,18 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	// Restart watcher if configured
+	settingsMu.RLock()
+	watchFolder := currentSettings.WatchFolder
+	settingsMu.RUnlock()
+	if watchFolder != "" {
+		a.updateWatcher(watchFolder)
+	}
+}
+
+// shutdown is called at application termination
+func (a *App) shutdown(ctx context.Context) {
+	a.updateWatcher("") // This properly closes the watcher and waits for its goroutine to exit
 }
 
 // getCurrentImagePath returns the path of the currently loaded image in a thread-safe manner.
@@ -90,6 +102,11 @@ func (a *App) OpenImage() ExifResult {
 		return ExifResult{Cancelled: true} // user cancelled
 	}
 
+	return a.processImageFile(filePath)
+}
+
+// processImageFile reads a file, validates it, and extracts EXIF
+func (a *App) processImageFile(filePath string) ExifResult {
 	const maxFileSize = 100 * 1024 * 1024 // 100 MB
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -109,6 +126,10 @@ func (a *App) OpenImage() ExifResult {
 		return ExifResult{Error: "Invalid file: selected file must be a JPG or PNG image."}
 	}
 
+	return a.doOpenImage(filePath, fileBytes, mimeType)
+}
+
+func (a *App) doOpenImage(filePath string, fileBytes []byte, mimeType string) ExifResult {
 	// Store the file path for the HTTP handler to serve later.
 	a.mu.Lock()
 	a.currentImagePath = filePath
@@ -301,6 +322,50 @@ func (a *App) SaveImage(isPng bool, defaultName string) SaveResult {
 	token := a.handler.prepareSave(savePath, expectedMime)
 
 	return SaveResult{SaveToken: token}
+}
+
+// SaveAutoImage bypasses the native dialog and prepares a save token for automated background saving.
+func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
+	// Validate path is within export folder
+	settingsMu.RLock()
+	exportFolder := currentSettings.ExportFolder
+	settingsMu.RUnlock()
+
+	if exportFolder == "" {
+		return SaveResult{Error: "Export folder is not configured"}
+	}
+
+	cleanSave := filepath.Clean(savePath)
+	cleanExport := filepath.Clean(exportFolder)
+	if !strings.HasPrefix(cleanSave, cleanExport+string(filepath.Separator)) {
+		return SaveResult{Error: "Save path is outside of the allowed export folder"}
+	}
+
+	expectedMime := "image/jpeg"
+	if isPng {
+		expectedMime = "image/png"
+	}
+	if a.handler == nil {
+		return SaveResult{Error: "Internal error: image handler not initialized"}
+	}
+	token := a.handler.prepareSave(savePath, expectedMime)
+	return SaveResult{SaveToken: token}
+}
+
+// SelectWatchFolder opens a directory dialog to pick a watch folder
+func (a *App) SelectWatchFolder() string {
+	path, _ := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Watch Folder",
+	})
+	return path
+}
+
+// SelectExportFolder opens a directory dialog to pick an export folder
+func (a *App) SelectExportFolder() string {
+	path, _ := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Export Folder",
+	})
+	return path
 }
 
 func formatFocalLength(num, den int64) string {
