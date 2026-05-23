@@ -11,3 +11,5 @@ frontend/dist
 # build package
 *.exe
 *.dmg
+ExifFrame
+
