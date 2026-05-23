@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"io"
+	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -248,17 +250,24 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Show a native notification on macOS
-	if runtime.GOOS == "darwin" {
-		fileName := filepath.Base(savePath)
-		// Prevent AppleScript injection
-		fileName = strings.ReplaceAll(fileName, `\`, `\\`)
-		fileName = strings.ReplaceAll(fileName, `"`, `\"`)
-		msg := "Saved " + fileName
-		exec.Command("osascript", "-e", `display notification "`+msg+`" with title "ExifFrame"`).Run()
-	}
-
+	// Send the HTTP response immediately before showing the notification.
 	w.WriteHeader(http.StatusOK)
+
+	// Show a native notification on macOS (asynchronously to avoid blocking the response)
+	if runtime.GOOS == "darwin" {
+		go func() {
+			fileName := filepath.Base(savePath)
+			// Prevent AppleScript injection
+			fileName = strings.ReplaceAll(fileName, `\`, `\\`)
+			fileName = strings.ReplaceAll(fileName, `"`, `\"`)
+			msg := "Saved " + fileName
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := exec.CommandContext(ctx, "osascript", "-e", `display notification "`+msg+`" with title "ExifFrame"`).Run(); err != nil {
+				log.Println("Notification failed:", err)
+			}
+		}()
+	}
 }
 
 // generateToken returns a cryptographically random 16-byte hex string.

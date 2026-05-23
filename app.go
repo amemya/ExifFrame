@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -335,9 +336,19 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 		return SaveResult{Error: "Export folder is not configured"}
 	}
 
-	cleanSave := filepath.Clean(savePath)
-	cleanExport := filepath.Clean(exportFolder)
-	if !strings.HasPrefix(cleanSave, cleanExport+string(filepath.Separator)) {
+	// Resolve symlinks to prevent path traversal attacks
+	realExport, err := filepath.EvalSymlinks(filepath.Clean(exportFolder))
+	if err != nil {
+		return SaveResult{Error: "Failed to resolve export folder path: " + err.Error()}
+	}
+	// Resolve the parent directory of the save path (the file itself may not exist yet)
+	saveDir := filepath.Dir(filepath.Clean(savePath))
+	realSaveDir, err := filepath.EvalSymlinks(saveDir)
+	if err != nil {
+		return SaveResult{Error: "Failed to resolve save path: " + err.Error()}
+	}
+	rel, err := filepath.Rel(realExport, realSaveDir)
+	if err != nil || strings.HasPrefix(rel, "..") {
 		return SaveResult{Error: "Save path is outside of the allowed export folder"}
 	}
 
@@ -354,17 +365,23 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 
 // SelectWatchFolder opens a directory dialog to pick a watch folder
 func (a *App) SelectWatchFolder() string {
-	path, _ := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+	path, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select Watch Folder",
 	})
+	if err != nil {
+		log.Println("Error opening directory dialog:", err)
+	}
 	return path
 }
 
 // SelectExportFolder opens a directory dialog to pick an export folder
 func (a *App) SelectExportFolder() string {
-	path, _ := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+	path, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select Export Folder",
 	})
+	if err != nil {
+		log.Println("Error opening directory dialog:", err)
+	}
 	return path
 }
 

@@ -188,12 +188,17 @@ function App() {
                             const resultSave = await SaveAutoImage(isPng, savePath); 
                             if (resultSave.saveToken) {
                                 const arrayBuffer = await blob.arrayBuffer();
-                                await fetch(`/api/save?token=${encodeURIComponent(resultSave.saveToken)}`, {
+                                const resp = await fetch(`/api/save?token=${encodeURIComponent(resultSave.saveToken)}`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': targetMime },
                                     body: arrayBuffer,
                                 });
-                                console.log("Background save complete:", savePath);
+                                if (!resp.ok) {
+                                    const errText = await resp.text();
+                                    console.error("Background save failed:", resp.status, errText);
+                                } else {
+                                    console.log("Background save complete:", savePath);
+                                }
                             } else {
                                 console.error("Auto save failed:", resultSave.error);
                             }
@@ -228,7 +233,6 @@ function App() {
     const isSelectingRef = useRef(false);
     const [filePath, setFilePath] = useState("");
     const isInitialLoad = useRef(true);
-    const isEventsRegistered = useRef(false);
     const [isMac, setIsMac] = useState(false);
     const [sourceMimeType, setSourceMimeType] = useState("");
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -285,24 +289,27 @@ function App() {
             if (s.customRatioH) setCustomRatioH(s.customRatioH);
             if (s.orientation) setOrientation(s.orientation as any);
             if (s.alignment) setAlignment(s.alignment as any);
-
+        }).catch(err => {
+            console.error("Failed to load settings:", err);
+        }).finally(() => {
             // Allow short delay before enabling auto-save to prevent initial trigger
             setTimeout(() => {
                 isInitialLoad.current = false;
             }, 100);
         });
 
-        if (!isEventsRegistered.current) {
-            EventsOn("open_settings", () => {
-                console.log("open_settings event received");
-                setShowSettings(true);
-            });
-            isEventsRegistered.current = true;
-        }
+        const unsubSettings = EventsOn("open_settings", () => {
+            console.log("open_settings event received");
+            setShowSettings(true);
+        });
         
         // Return cleanup
         return () => {
-            // EventsOff not used due to React StrictMode mounting twice, relying on useRef
+            if (typeof unsubSettings === 'function') {
+                unsubSettings();
+            } else {
+                EventsOff("open_settings");
+            }
         };
     }, []);
 
