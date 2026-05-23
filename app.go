@@ -341,13 +341,29 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 	if err != nil {
 		return SaveResult{Error: "Failed to resolve export folder path: " + err.Error()}
 	}
-	// Resolve the parent directory of the save path (the file itself may not exist yet)
-	saveDir := filepath.Dir(filepath.Clean(savePath))
-	realSaveDir, err := filepath.EvalSymlinks(saveDir)
+
+	// Walk up from the save directory to find the nearest existing ancestor.
+	// This allows saving into not-yet-created subdirectories under ExportFolder
+	// (e.g. ExportFolder/2026-05/photo.jpg where 2026-05/ doesn't exist yet).
+	cleanSave := filepath.Clean(savePath)
+	ancestor := filepath.Dir(cleanSave)
+	for {
+		if _, statErr := os.Stat(ancestor); statErr == nil {
+			break
+		}
+		parent := filepath.Dir(ancestor)
+		if parent == ancestor {
+			// Reached filesystem root without finding an existing directory
+			break
+		}
+		ancestor = parent
+	}
+
+	realAncestor, err := filepath.EvalSymlinks(ancestor)
 	if err != nil {
 		return SaveResult{Error: "Failed to resolve save path: " + err.Error()}
 	}
-	rel, err := filepath.Rel(realExport, realSaveDir)
+	rel, err := filepath.Rel(realExport, realAncestor)
 	if err != nil || strings.HasPrefix(rel, "..") {
 		return SaveResult{Error: "Save path is outside of the allowed export folder"}
 	}

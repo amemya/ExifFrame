@@ -107,31 +107,51 @@ func (a *App) GetSettings() Settings {
 // SaveSettings is called from frontend to save settings and restart watcher if needed
 func (a *App) SaveSettings(s Settings) string {
 	// Validate folder hierarchy to prevent infinite loop (Task 9)
+	// Resolve symlinks for accurate comparison — plain filepath.Clean can be
+	// bypassed when one of the folders is a symlink.
 	if s.WatchFolder != "" && s.ExportFolder != "" {
-		watchNorm := normalizePathForCompare(s.WatchFolder)
-		exportNorm := normalizePathForCompare(s.ExportFolder)
-		if watchNorm == exportNorm {
+		watchReal, errW := filepath.EvalSymlinks(filepath.Clean(s.WatchFolder))
+		exportReal, errE := filepath.EvalSymlinks(filepath.Clean(s.ExportFolder))
+
+		// If EvalSymlinks fails (e.g. folder doesn't exist yet), fall back to
+		// normalized string comparison so we still catch obvious conflicts.
+		if errW != nil {
+			watchReal = normalizePathForCompare(s.WatchFolder)
+		} else {
+			watchReal = normalizePathForCompare(watchReal)
+		}
+		if errE != nil {
+			exportReal = normalizePathForCompare(s.ExportFolder)
+		} else {
+			exportReal = normalizePathForCompare(exportReal)
+		}
+
+		if watchReal == exportReal {
 			return "Error: Export folder cannot be the same as the Watch folder."
 		}
-		if strings.HasPrefix(exportNorm, watchNorm+string(filepath.Separator)) {
+		if strings.HasPrefix(exportReal, watchReal+string(filepath.Separator)) {
 			return "Error: Export folder cannot be a subdirectory of the Watch folder."
 		}
-		if strings.HasPrefix(watchNorm, exportNorm+string(filepath.Separator)) {
+		if strings.HasPrefix(watchReal, exportReal+string(filepath.Separator)) {
 			return "Error: Watch folder cannot be a subdirectory of the Export folder."
 		}
 	}
 
 	settingsMu.Lock()
-	oldWatch := currentSettings.WatchFolder
+	oldSettings := currentSettings
 	currentSettings = s
 	settingsMu.Unlock()
 
 	if err := saveSettings(); err != nil {
+		// Rollback to previous settings on persistence failure
+		settingsMu.Lock()
+		currentSettings = oldSettings
+		settingsMu.Unlock()
 		log.Println("Error saving settings:", err)
 		return "Error: Failed to save settings: " + err.Error()
 	}
 	
-	if oldWatch != s.WatchFolder {
+	if oldSettings.WatchFolder != s.WatchFolder {
 		a.updateWatcher(s.WatchFolder)
 	}
 	return "" // Success
