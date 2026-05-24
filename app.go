@@ -364,7 +364,7 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 		return SaveResult{Error: "Failed to resolve save path: " + err.Error()}
 	}
 	rel, err := filepath.Rel(realExport, realAncestor)
-	if err != nil || strings.HasPrefix(rel, "..") {
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return SaveResult{Error: "Save path is outside of the allowed export folder"}
 	}
 

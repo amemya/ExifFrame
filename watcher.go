@@ -20,7 +20,7 @@ var (
 )
 
 // updateWatcher restarts the fsnotify watcher for the given directory
-func (a *App) updateWatcher(folder string) {
+func (a *App) updateWatcher(folder string) error {
 	watcherMu.Lock()
 	defer watcherMu.Unlock()
 
@@ -34,13 +34,13 @@ func (a *App) updateWatcher(folder string) {
 	}
 
 	if folder == "" {
-		return
+		return nil
 	}
 
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Println("Error creating watcher:", err)
-		return
+		return err
 	}
 	watcher = w
 
@@ -49,7 +49,7 @@ func (a *App) updateWatcher(folder string) {
 		log.Println("Error adding watcher for folder:", folder, err)
 		watcher.Close()
 		watcher = nil
-		return
+		return err
 	}
 
 	wDone := make(chan struct{})
@@ -109,6 +109,8 @@ func (a *App) updateWatcher(folder string) {
 			}
 		}
 	}()
+
+	return nil
 }
 
 // processBackgroundFile extracts EXIF and sends it to the frontend quietly

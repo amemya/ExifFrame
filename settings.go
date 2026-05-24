@@ -129,10 +129,11 @@ func (a *App) SaveSettings(s Settings) string {
 		if watchReal == exportReal {
 			return "Error: Export folder cannot be the same as the Watch folder."
 		}
-		if strings.HasPrefix(exportReal, watchReal+string(filepath.Separator)) {
+		sep := string(filepath.Separator)
+		if (watchReal == sep && strings.HasPrefix(exportReal, sep)) || strings.HasPrefix(exportReal, watchReal+sep) {
 			return "Error: Export folder cannot be a subdirectory of the Watch folder."
 		}
-		if strings.HasPrefix(watchReal, exportReal+string(filepath.Separator)) {
+		if (exportReal == sep && strings.HasPrefix(watchReal, sep)) || strings.HasPrefix(watchReal, exportReal+sep) {
 			return "Error: Watch folder cannot be a subdirectory of the Export folder."
 		}
 	}
@@ -152,7 +153,15 @@ func (a *App) SaveSettings(s Settings) string {
 	}
 	
 	if oldSettings.WatchFolder != s.WatchFolder {
-		a.updateWatcher(s.WatchFolder)
+		if err := a.updateWatcher(s.WatchFolder); err != nil {
+			// Rollback to previous settings
+			settingsMu.Lock()
+			currentSettings = oldSettings
+			settingsMu.Unlock()
+			saveSettings() // rollback the file as well
+			a.updateWatcher(oldSettings.WatchFolder) // restore watcher
+			return "Error: Failed to start watcher: " + err.Error()
+		}
 	}
 	return "" // Success
 }
