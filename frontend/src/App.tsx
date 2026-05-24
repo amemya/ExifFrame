@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './App.css';
-import { OpenImage, SaveImage } from '../wailsjs/go/main/App';
-import { WindowToggleMaximise, Environment } from '../wailsjs/runtime/runtime';
+import { OpenImage, SaveImage, GetSettings, SaveSettings, SaveAutoImage, SelectWatchFolder, SelectExportFolder } from '../wailsjs/go/main/App';
+import { main } from '../wailsjs/go/models';
+import { WindowToggleMaximise, Environment, EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 
 interface ExifData {
     camera: string;
@@ -14,7 +15,208 @@ interface ExifData {
 
 const TOAST_DURATION_MS = 3000;
 
+function renderImageToCanvas(
+    canvas: HTMLCanvasElement,
+    img: HTMLImageElement,
+    exif: ExifData,
+    settings: {
+        aspectRatioPreset: string;
+        customRatioW: number;
+        customRatioH: number;
+        orientation: "landscape" | "portrait";
+        alignment: "top" | "center";
+    }
+) {
+    // 好みの左右・上の枠の最小太さ（例：幅の2.5%）
+    const minFramePadding = Math.floor(img.width * 0.025);
+    // 下部のテキスト領域に必要な最小スペース
+    const minBottomSpace = Math.floor(minFramePadding * 4.5);
+
+    let targetRatio = 4300 / 3618;
+    if (settings.aspectRatioPreset === "custom") {
+        if (settings.customRatioW > 0 && settings.customRatioH > 0) {
+            targetRatio = settings.customRatioW / settings.customRatioH;
+        } else {
+            targetRatio = img.width / img.height;
+        }
+    } else {
+        const [w, h] = settings.aspectRatioPreset.split(':').map(Number);
+        if (w && h) targetRatio = w / h;
+    }
+
+    // Apply orientation flip
+    if (settings.orientation === "portrait" && targetRatio > 1) {
+        targetRatio = 1 / targetRatio;
+    } else if (settings.orientation === "landscape" && targetRatio < 1) {
+        targetRatio = 1 / targetRatio;
+    }
+
+    const minCanvasWidth = img.width + (minFramePadding * 2);
+    const minCanvasHeight = img.height + minFramePadding + minBottomSpace;
+
+    // まず幅を基準に高さを計算
+    let finalCanvasWidth = minCanvasWidth;
+    let finalCanvasHeight = Math.floor(finalCanvasWidth / targetRatio);
+
+    if (finalCanvasHeight < minCanvasHeight) {
+        // 高さが足りない場合は、最小の高さを基準にして幅を拡張
+        finalCanvasHeight = minCanvasHeight;
+        finalCanvasWidth = Math.floor(finalCanvasHeight * targetRatio);
+    }
+
+    // ⚠️ CRITICAL: Must be set BEFORE getContext, otherwise context properties (colorSpace) are reset!
+    canvas.width = finalCanvasWidth;
+    canvas.height = finalCanvasHeight;
+
+    // 余分な高さを計算
+    const extraHeight = finalCanvasHeight - minCanvasHeight;
+
+    // 画像の配置位置を計算 (左右中央、上固定または上下中央)
+    const drawX = Math.floor((finalCanvasWidth - img.width) / 2);
+    const drawY = settings.alignment === "center" ? minFramePadding + Math.floor(extraHeight / 2) : minFramePadding;
+
+    // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
+    let ctx: CanvasRenderingContext2D | null = null;
+    try {
+        ctx = canvas.getContext('2d', { colorSpace: 'display-p3' } as CanvasRenderingContext2DSettings);
+    } catch (e) {
+        // Context with colorSpace might throw in unsupported environments
+    }
+    if (!ctx) {
+        ctx = canvas.getContext('2d');
+    }
+    if (!ctx) return;
+
+    // Fill background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw image
+    ctx.drawImage(img, drawX, drawY);
+
+    // 画像の下端座標
+    const imgBottomY = drawY + img.height;
+    // 写真の下端からキャンバスの下端までの余白
+    const bottomSpaceHeight = canvas.height - imgBottomY;
+
+    // テキストの配置Y座標は、画像の下端とキャンバス下端の中央
+    const textY = imgBottomY + (bottomSpaceHeight / 2);
+
+    // テキストのサイズを（marginではなく）画像自体のサイズを基準にする
+    const baseScale = Math.min(img.width, img.height);
+
+    // Settings for text
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Camera and Lens
+    const topElements = [exif.camera, exif.lens].filter(Boolean);
+    const topText = topElements.join(" | ");
+
+    if (topText) {
+        const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
+        ctx.font = `normal ${titleFontSize}px "Gill Sans", sans-serif`;
+        ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
+    }
+
+    // Settings (Aperture, SS, ISO etc)
+    const bottomElements = [exif.focalLength, exif.aperture, exif.shutterSpeed, exif.iso].filter(Boolean);
+    const bottomText = bottomElements.join(" | ");
+
+    if (bottomText) {
+        const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
+        ctx.font = `normal ${descFontSize}px "Gill Sans", sans-serif`;
+        ctx.fillStyle = '#555555';
+        ctx.fillText(bottomText, canvas.width / 2, textY + (descFontSize * 0.8));
+    }
+
+    // Draw a subtle line separator (just above the text)
+    ctx.beginPath();
+    ctx.moveTo(canvas.width * 0.2, imgBottomY);
+    ctx.lineTo(canvas.width * 0.8, imgBottomY);
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = Math.max(1, Math.floor(baseScale * 0.0015));
+    ctx.stroke();
+}
+
 function App() {
+    const [showSettings, setShowSettings] = useState(false);
+    const [watchFolder, setWatchFolder] = useState("");
+    const [exportFolder, setExportFolder] = useState("");
+
+    useEffect(() => {
+        EventsOn("process_file", async (data: any) => {
+            const { result, export: exportFolderStr } = data;
+            if (!result || !result.imageURL) return;
+
+            try {
+                const currentSet = await GetSettings();
+
+                const img = new Image();
+                img.onload = async () => {
+                    const offscreenCanvas = document.createElement('canvas');
+                    const exifData = {
+                        camera: result.camera || "",
+                        lens: result.lens || "",
+                        focalLength: result.focalLength || "",
+                        aperture: result.aperture || "",
+                        shutterSpeed: result.shutterSpeed || "",
+                        iso: result.iso || ""
+                    };
+                    
+                    renderImageToCanvas(offscreenCanvas, img, exifData, {
+                        aspectRatioPreset: currentSet.aspectRatioPreset || "4300:3618",
+                        customRatioW: currentSet.customRatioW || 4300,
+                        customRatioH: currentSet.customRatioH || 3618,
+                        orientation: (currentSet.orientation as any) || "landscape",
+                        alignment: (currentSet.alignment as any) || "top"
+                    });
+
+                    const isPng = result.mimeType === 'image/png';
+                    const targetMime = isPng ? 'image/png' : 'image/jpeg';
+                    const filenameMatch = result.filePath ? result.filePath.split(/[/\\]/).pop() : "";
+                    const baseName = (filenameMatch ? filenameMatch.replace(/\.[^/.]+$/, "") : "") || "exif-frame";
+                    let exportName = `${baseName}_ExifFrame`;
+                    if (isPng) exportName += ".png"; else exportName += ".jpg";
+
+                    const savePath = exportFolderStr + "/" + exportName;
+
+                    offscreenCanvas.toBlob(async (blob) => {
+                        if (!blob) return;
+                        try {
+                            const resultSave = await SaveAutoImage(isPng, savePath); 
+                            if (resultSave.saveToken) {
+                                const arrayBuffer = await blob.arrayBuffer();
+                                const resp = await fetch(`/api/save?token=${encodeURIComponent(resultSave.saveToken)}`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': targetMime },
+                                    body: arrayBuffer,
+                                });
+                                if (!resp.ok) {
+                                    const errText = await resp.text();
+                                    console.error("Background save failed:", resp.status, errText);
+                                } else {
+                                    console.log("Background save complete:", savePath);
+                                }
+                            } else {
+                                console.error("Auto save failed:", resultSave.error);
+                            }
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }, targetMime, 1.0);
+                };
+                img.src = result.imageURL;
+            } catch (e) {
+                console.error(e);
+            }
+        });
+
+        return () => {
+            EventsOff("process_file");
+        };
+    }, []);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [imageLoaded, setImageLoaded] = useState(false);
     const [exif, setExif] = useState<ExifData>({
@@ -30,11 +232,24 @@ function App() {
     const [isSelecting, setIsSelecting] = useState(false);
     const isSelectingRef = useRef(false);
     const [filePath, setFilePath] = useState("");
+    const isInitialLoad = useRef(true);
     const [isMac, setIsMac] = useState(false);
     const [sourceMimeType, setSourceMimeType] = useState("");
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const toastTimerRef = useRef<number | null>(null);
     const toastRafRef = useRef<number | null>(null);
+
+    // Toast cleanup
+    useEffect(() => {
+        return () => {
+            if (toastTimerRef.current !== null) {
+                window.clearTimeout(toastTimerRef.current);
+            }
+            if (toastRafRef.current !== null) {
+                window.cancelAnimationFrame(toastRafRef.current);
+            }
+        };
+    }, []);
 
     const [aspectRatioPreset, setAspectRatioPreset] = useState<string>("4300:3618");
     const [customRatioW, setCustomRatioW] = useState<number>(4300);
@@ -65,15 +280,81 @@ function App() {
     };
 
     useEffect(() => {
+        // Load settings on mount
+        GetSettings().then(s => {
+            if (s.watchFolder) setWatchFolder(s.watchFolder);
+            if (s.exportFolder) setExportFolder(s.exportFolder);
+            if (s.aspectRatioPreset) setAspectRatioPreset(s.aspectRatioPreset);
+            if (s.customRatioW) setCustomRatioW(s.customRatioW);
+            if (s.customRatioH) setCustomRatioH(s.customRatioH);
+            if (s.orientation) setOrientation(s.orientation as any);
+            if (s.alignment) setAlignment(s.alignment as any);
+        }).catch(err => {
+            console.error("Failed to load settings:", err);
+        }).finally(() => {
+            // Allow short delay before enabling auto-save to prevent initial trigger
+            setTimeout(() => {
+                isInitialLoad.current = false;
+            }, 100);
+        });
+
+        const unsubSettings = EventsOn("open_settings", () => {
+            console.log("open_settings event received");
+            setShowSettings(true);
+        });
+        
+        // Return cleanup
         return () => {
-            if (toastTimerRef.current !== null) {
-                window.clearTimeout(toastTimerRef.current);
-            }
-            if (toastRafRef.current !== null) {
-                window.cancelAnimationFrame(toastRafRef.current);
+            if (typeof unsubSettings === 'function') {
+                unsubSettings();
+            } else {
+                EventsOff("open_settings");
             }
         };
     }, []);
+
+    // Escape key to close settings modal
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowSettings(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    // Save settings when aspect ratio etc changes
+    useEffect(() => {
+        if (isInitialLoad.current) return;
+        
+        const saveCurrentSettings = async () => {
+            const s = new main.Settings();
+            s.watchFolder = watchFolder;
+            s.exportFolder = exportFolder;
+            s.aspectRatioPreset = aspectRatioPreset;
+            s.customRatioW = customRatioW;
+            s.customRatioH = customRatioH;
+            s.orientation = orientation;
+            s.alignment = alignment;
+            try {
+                const errStr = await SaveSettings(s);
+                if (errStr && errStr !== "") {
+                    showToast(errStr);
+                } else {
+                    showToast("Settings saved");
+                }
+            } catch (e: any) {
+                showToast("Error saving settings");
+            }
+        };
+
+        // Debounce saving settings when UI changes
+        const t = setTimeout(() => {
+            saveCurrentSettings();
+        }, 500);
+        return () => clearTimeout(t);
+    }, [aspectRatioPreset, customRatioW, customRatioH, orientation, alignment, watchFolder, exportFolder]);
 
     useEffect(() => {
         Environment().then(env => {
@@ -142,122 +423,16 @@ function App() {
         }
     };
 
-
-
     const drawCanvas = useCallback((img: HTMLImageElement) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        // 好みの左右・上の枠の最小太さ（例：幅の2.5%）
-        const minFramePadding = Math.floor(img.width * 0.025);
-        // 下部のテキスト領域に必要な最小スペース
-        const minBottomSpace = Math.floor(minFramePadding * 4.5);
-
-        let targetRatio = 4300 / 3618;
-        if (aspectRatioPreset === "custom") {
-            if (customRatioW > 0 && customRatioH > 0) {
-                targetRatio = customRatioW / customRatioH;
-            } else {
-                targetRatio = img.width / img.height;
-            }
-        } else {
-            const [w, h] = aspectRatioPreset.split(':').map(Number);
-            if (w && h) targetRatio = w / h;
-        }
-
-        // Apply orientation flip
-        if (orientation === "portrait" && targetRatio > 1) {
-            targetRatio = 1 / targetRatio;
-        } else if (orientation === "landscape" && targetRatio < 1) {
-            targetRatio = 1 / targetRatio;
-        }
-
-        const minCanvasWidth = img.width + (minFramePadding * 2);
-        const minCanvasHeight = img.height + minFramePadding + minBottomSpace;
-
-        // まず幅を基準に高さを計算
-        let finalCanvasWidth = minCanvasWidth;
-        let finalCanvasHeight = Math.floor(finalCanvasWidth / targetRatio);
-
-        if (finalCanvasHeight < minCanvasHeight) {
-            // 高さが足りない場合は、最小の高さを基準にして幅を拡張
-            finalCanvasHeight = minCanvasHeight;
-            finalCanvasWidth = Math.floor(finalCanvasHeight * targetRatio);
-        }
-
-        // ⚠️ CRITICAL: Must be set BEFORE getContext, otherwise context properties (colorSpace) are reset!
-        canvas.width = finalCanvasWidth;
-        canvas.height = finalCanvasHeight;
-
-        // 余分な高さを計算
-        const extraHeight = finalCanvasHeight - minCanvasHeight;
-
-        // 画像の配置位置を計算 (左右中央、上固定または上下中央)
-        const drawX = Math.floor((finalCanvasWidth - img.width) / 2);
-        const drawY = alignment === "center" ? minFramePadding + Math.floor(extraHeight / 2) : minFramePadding;
-
-        // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
-        let ctx: CanvasRenderingContext2D | null = null;
-        try {
-            ctx = canvas.getContext('2d', { colorSpace: 'display-p3' } as CanvasRenderingContext2DSettings);
-        } catch (e) {
-            // Context with colorSpace might throw in unsupported environments
-        }
-        if (!ctx) {
-            ctx = canvas.getContext('2d');
-        }
-        if (!ctx) return;
-
-        // Fill background
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Draw image
-        ctx.drawImage(img, drawX, drawY);
-
-        // 画像の下端座標
-        const imgBottomY = drawY + img.height;
-        // 写真の下端からキャンバスの下端までの余白
-        const bottomSpaceHeight = canvas.height - imgBottomY;
-
-        // テキストの配置Y座標は、画像の下端とキャンバス下端の中央
-        const textY = imgBottomY + (bottomSpaceHeight / 2);
-
-        // テキストのサイズを（marginではなく）画像自体のサイズを基準にする
-        const baseScale = Math.min(img.width, img.height);
-
-        // Settings for text
-        ctx.fillStyle = '#000000';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        // Camera and Lens
-        const topElements = [exif.camera, exif.lens].filter(Boolean);
-        const topText = topElements.join(" | ");
-
-        if (topText) {
-            const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
-            ctx.font = `normal ${titleFontSize}px "Gill Sans", sans-serif`;
-            ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
-        }
-
-        // Settings (Aperture, SS, ISO etc)
-        const bottomElements = [exif.focalLength, exif.aperture, exif.shutterSpeed, exif.iso].filter(Boolean);
-        const bottomText = bottomElements.join(" | ");
-
-        if (bottomText) {
-            const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
-            ctx.font = `normal ${descFontSize}px "Gill Sans", sans-serif`;
-            ctx.fillStyle = '#555555';
-            ctx.fillText(bottomText, canvas.width / 2, textY + (descFontSize * 0.8));
-        }
-
-        // Draw a subtle line separator (just above the text)
-        ctx.beginPath();
-        ctx.moveTo(canvas.width * 0.2, imgBottomY);
-        ctx.lineTo(canvas.width * 0.8, imgBottomY);
-        ctx.strokeStyle = '#e0e0e0';
-        ctx.lineWidth = Math.max(1, Math.floor(baseScale * 0.0015));
-        ctx.stroke();
+        renderImageToCanvas(canvas, img, exif, {
+            aspectRatioPreset,
+            customRatioW,
+            customRatioH,
+            orientation,
+            alignment
+        });
     }, [exif, aspectRatioPreset, customRatioW, customRatioH, orientation, alignment]);
 
     useEffect(() => {
@@ -520,6 +695,53 @@ function App() {
                     </div>
                 )}
             </main>
+
+            {showSettings && (
+                <div className="modal-overlay" onClick={() => setShowSettings(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <h2>Preferences</h2>
+                        <div className="input-group">
+                            <label>Watch Folder (Auto-process)</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <input 
+                                    type="text" 
+                                    value={watchFolder} 
+                                    readOnly 
+                                    placeholder="/path/to/watch/folder"
+                                    style={{ flex: 1 }}
+                                />
+                                <button onClick={async () => {
+                                    const path = await SelectWatchFolder();
+                                    if (path) setWatchFolder(path);
+                                }} className="btn btn-secondary">Select</button>
+                                <button onClick={() => setWatchFolder("")} className="btn btn-secondary" title="Clear Folder">✕</button>
+                            </div>
+                            <small>Images dropped here will be processed automatically.</small>
+                        </div>
+                        <div className="input-group">
+                            <label>Export Folder (Auto-save)</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <input 
+                                    type="text" 
+                                    value={exportFolder} 
+                                    readOnly 
+                                    placeholder="/path/to/export/folder"
+                                    style={{ flex: 1 }}
+                                />
+                                <button onClick={async () => {
+                                    const path = await SelectExportFolder();
+                                    if (path) setExportFolder(path);
+                                }} className="btn btn-secondary">Select</button>
+                                <button onClick={() => setExportFolder("")} className="btn btn-secondary" title="Clear Folder">✕</button>
+                            </div>
+                            <small>Auto-processed images will be saved here.</small>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-primary" onClick={() => setShowSettings(false)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
