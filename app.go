@@ -386,6 +386,7 @@ func (a *App) SelectWatchFolder() string {
 	})
 	if err != nil {
 		log.Println("Error opening directory dialog:", err)
+		return ""
 	}
 	return path
 }
@@ -397,6 +398,7 @@ func (a *App) SelectExportFolder() string {
 	})
 	if err != nil {
 		log.Println("Error opening directory dialog:", err)
+		return ""
 	}
 	return path
 }

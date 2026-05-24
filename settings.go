@@ -158,8 +158,12 @@ func (a *App) SaveSettings(s Settings) string {
 			settingsMu.Lock()
 			currentSettings = oldSettings
 			settingsMu.Unlock()
-			saveSettings() // rollback the file as well
-			a.updateWatcher(oldSettings.WatchFolder) // restore watcher
+			if rollbackErr := saveSettings(); rollbackErr != nil {
+				log.Println("Error rolling back settings file:", rollbackErr)
+			}
+			if watcherErr := a.updateWatcher(oldSettings.WatchFolder); watcherErr != nil {
+				log.Println("Error restoring previous watcher:", watcherErr)
+			}
 			return "Error: Failed to start watcher: " + err.Error()
 		}
 	}
