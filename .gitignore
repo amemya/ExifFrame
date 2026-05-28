@@ -20,3 +20,5 @@ ExifFrame
 bin/
 build/linux/appimage/build
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+frontend/bindings/
+frontend/package.json.md5
