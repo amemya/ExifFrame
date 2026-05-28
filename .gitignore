@@ -15,3 +15,8 @@ ExifFrame
 
 
 .task
+
+# Wails v3
+bin/
+build/linux/appimage/build
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
