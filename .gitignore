@@ -13,3 +13,5 @@ frontend/dist
 *.dmg
 ExifFrame
 
+
+.task
