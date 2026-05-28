@@ -85,9 +85,8 @@ func main() {
 		},
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",
-		// In v2 WindowStartState: options.Maximised was used.
-		// Wails v3 equivalent might be to call window.Maximise() after creation.
-	}).Maximise()
+		StartState:       application.WindowStateMaximised,
+	})
 
 	err := app.Run()
 	if err != nil {
