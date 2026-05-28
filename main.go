@@ -19,8 +19,7 @@ func buildMenu(app *App) *application.Menu {
 		appleMenu.Add("About ExifFrame").OnClick(func(ctx *application.Context) {})
 		appleMenu.AddSeparator()
 		appleMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
-			application.Get().Show()
-			application.Get().Event.Emit("open_settings")
+			go application.Get().Event.Emit("open_settings")
 		})
 		appleMenu.AddSeparator()
 		appleMenu.Add("Hide ExifFrame").SetAccelerator("CmdOrCtrl+h").OnClick(func(ctx *application.Context) {
@@ -28,7 +27,6 @@ func buildMenu(app *App) *application.Menu {
 		})
 		appleMenu.Add("Hide Others").SetAccelerator("OptionOrAlt+h").OnClick(func(ctx *application.Context) {})
 		appleMenu.Add("Show All").OnClick(func(ctx *application.Context) {
-			application.Get().Show()
 		})
 		appleMenu.AddSeparator()
 		appleMenu.Add("Quit ExifFrame").SetAccelerator("CmdOrCtrl+q").OnClick(func(ctx *application.Context) {
@@ -40,8 +38,7 @@ func buildMenu(app *App) *application.Menu {
 	} else {
 		fileMenu := appMenu.AddSubmenu("File")
 		fileMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
-			application.Get().Show()
-			application.Get().Event.Emit("open_settings")
+			go application.Get().Event.Emit("open_settings")
 		})
 	}
 
