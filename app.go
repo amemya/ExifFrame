@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"log"
 	"math"
@@ -16,7 +15,7 @@ import (
 	"time"
 
 	"github.com/rwcarlsen/goexif/exif"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 var (
@@ -32,8 +31,6 @@ var (
 
 // App struct
 type App struct {
-	ctx context.Context
-
 	// mu protects currentImagePath for concurrent access from IPC and HTTP handler.
 	mu               sync.RWMutex
 	currentImagePath string
@@ -47,10 +44,8 @@ func NewApp() *App {
 	return &App{}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
-func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
+// OnStartup is called when the app starts.
+func (a *App) OnStartup() {
 	// Restart watcher if configured
 	settingsMu.RLock()
 	watchFolder := currentSettings.WatchFolder
@@ -60,8 +55,8 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
-// shutdown is called at application termination
-func (a *App) shutdown(ctx context.Context) {
+// OnShutdown is called at application termination
+func (a *App) OnShutdown() {
 	a.updateWatcher("") // This properly closes the watcher and waits for its goroutine to exit
 }
 
@@ -90,12 +85,10 @@ type ExifResult struct {
 // an HTTP URL for the frontend to fetch the image via the AssetServer Handler.
 // The image bytes are NOT transferred over IPC — only metadata and the URL.
 func (a *App) OpenImage() ExifResult {
-	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Select a Photo",
-		Filters: []runtime.FileFilter{
-			{DisplayName: "Images", Pattern: "*.jpg;*.jpeg;*.png"},
-		},
-	})
+	filePath, err := application.Get().Dialog.OpenFile().
+		SetTitle("Select a Photo").
+		AddFilter("Images", "*.jpg;*.jpeg;*.png").
+		PromptForSingleSelection()
 	if err != nil {
 		return ExifResult{Error: err.Error()}
 	}
@@ -281,13 +274,11 @@ func (a *App) SaveImage(isPng bool, defaultName string) SaveResult {
 		expectedMime = "image/png"
 	}
 
-	savePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           "Save ExifFrame Image",
-		DefaultFilename: defaultFilename,
-		Filters: []runtime.FileFilter{
-			{DisplayName: filterName, Pattern: filterPattern},
-		},
-	})
+	savePath, err := application.Get().Dialog.SaveFile().
+		SetMessage("Save ExifFrame Image").
+		SetFilename(defaultFilename).
+		AddFilter(filterName, filterPattern).
+		PromptForSingleSelection()
 
 	if err != nil {
 		return SaveResult{Error: "Failed to open save dialog: " + err.Error()}
@@ -381,9 +372,10 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 
 // SelectWatchFolder opens a directory dialog to pick a watch folder
 func (a *App) SelectWatchFolder() string {
-	path, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Select Watch Folder",
-	})
+	path, err := application.Get().Dialog.OpenFile().
+		SetTitle("Select Watch Folder").
+		CanChooseDirectories(true).
+		PromptForSingleSelection()
 	if err != nil {
 		log.Println("Error opening directory dialog:", err)
 		return ""
@@ -393,9 +385,10 @@ func (a *App) SelectWatchFolder() string {
 
 // SelectExportFolder opens a directory dialog to pick an export folder
 func (a *App) SelectExportFolder() string {
-	path, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Select Export Folder",
-	})
+	path, err := application.Get().Dialog.OpenFile().
+		SetTitle("Select Export Folder").
+		CanChooseDirectories(true).
+		PromptForSingleSelection()
 	if err != nil {
 		log.Println("Error opening directory dialog:", err)
 		return ""

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 var (
@@ -115,11 +115,6 @@ func (a *App) updateWatcher(folder string) error {
 
 // processBackgroundFile extracts EXIF and sends it to the frontend quietly
 func (a *App) processBackgroundFile(filePath string) {
-	if a.ctx == nil {
-		return
-	}
-
-	// Make sure we have the settings for export
 	settingsMu.RLock()
 	exportFolder := currentSettings.ExportFolder
 	settingsMu.RUnlock()
@@ -135,7 +130,7 @@ func (a *App) processBackgroundFile(filePath string) {
 	}
 
 	// Emit event to frontend with file details
-	runtime.EventsEmit(a.ctx, "process_file", map[string]interface{}{
+	application.Get().Event.Emit("process_file", map[string]interface{}{
 		"result": result,
 		"export": exportFolder,
 	})

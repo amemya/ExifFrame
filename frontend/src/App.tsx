@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './App.css';
-import { OpenImage, SaveImage, GetSettings, SaveSettings, SaveAutoImage, SelectWatchFolder, SelectExportFolder } from '../wailsjs/go/main/App';
-import { main } from '../wailsjs/go/models';
-import { WindowToggleMaximise, Environment, EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
+import { App as AppAPI, Settings } from '../bindings/ExifFrame/index';
+import { Window, Events, System } from '@wailsio/runtime';
 
 interface ExifData {
     camera: string;
@@ -146,14 +145,13 @@ function App() {
     const [exportFolder, setExportFolder] = useState("");
 
     useEffect(() => {
-        EventsOn("process_file", async (data: any) => {
+        const unsubProcess = Events.On("process_file", (event: any) => {
+            const data = event.data[0];
             const { result, export: exportFolderStr } = data;
             if (!result || !result.imageURL) return;
 
-            try {
-                const currentSet = await GetSettings();
-
-                const img = new Image();
+                AppAPI.GetSettings().then(async (currentSet: Settings) => {
+                    const img = new Image();
                 img.onload = async () => {
                     const offscreenCanvas = document.createElement('canvas');
                     const exifData = {
@@ -185,7 +183,7 @@ function App() {
                     offscreenCanvas.toBlob(async (blob) => {
                         if (!blob) return;
                         try {
-                            const resultSave = await SaveAutoImage(isPng, savePath); 
+                            const resultSave = await AppAPI.SaveAutoImage(isPng, savePath); 
                             if (resultSave.saveToken) {
                                 const arrayBuffer = await blob.arrayBuffer();
                                 const resp = await fetch(`/api/save?token=${encodeURIComponent(resultSave.saveToken)}`, {
@@ -208,13 +206,11 @@ function App() {
                     }, targetMime, 1.0);
                 };
                 img.src = result.imageURL;
-            } catch (e) {
-                console.error(e);
-            }
+            }).catch((e: any) => console.error(e));
         });
 
         return () => {
-            EventsOff("process_file");
+            unsubProcess();
         };
     }, []);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -281,7 +277,7 @@ function App() {
 
     useEffect(() => {
         // Load settings on mount
-        GetSettings().then(s => {
+        AppAPI.GetSettings().then((s: Settings) => {
             if (s.watchFolder) setWatchFolder(s.watchFolder);
             if (s.exportFolder) setExportFolder(s.exportFolder);
             if (s.aspectRatioPreset) setAspectRatioPreset(s.aspectRatioPreset);
@@ -289,7 +285,7 @@ function App() {
             if (s.customRatioH) setCustomRatioH(s.customRatioH);
             if (s.orientation) setOrientation(s.orientation as any);
             if (s.alignment) setAlignment(s.alignment as any);
-        }).catch(err => {
+        }).catch((err: any) => {
             console.error("Failed to load settings:", err);
         }).finally(() => {
             // Allow short delay before enabling auto-save to prevent initial trigger
@@ -298,18 +294,13 @@ function App() {
             }, 100);
         });
 
-        const unsubSettings = EventsOn("open_settings", () => {
+        const unsubSettings = Events.On("open_settings", () => {
             console.log("open_settings event received");
             setShowSettings(true);
         });
         
-        // Return cleanup
         return () => {
-            if (typeof unsubSettings === 'function') {
-                unsubSettings();
-            } else {
-                EventsOff("open_settings");
-            }
+            unsubSettings();
         };
     }, []);
 
@@ -329,7 +320,7 @@ function App() {
         if (isInitialLoad.current) return;
         
         const saveCurrentSettings = async () => {
-            const s = new main.Settings();
+            const s = new Settings();
             s.watchFolder = watchFolder;
             s.exportFolder = exportFolder;
             s.aspectRatioPreset = aspectRatioPreset;
@@ -338,7 +329,7 @@ function App() {
             s.orientation = orientation;
             s.alignment = alignment;
             try {
-                const errStr = await SaveSettings(s);
+                const errStr = await AppAPI.SaveSettings(s);
                 if (errStr && errStr !== "") {
                     showToast(errStr);
                 } else {
@@ -357,13 +348,7 @@ function App() {
     }, [aspectRatioPreset, customRatioW, customRatioH, orientation, alignment, watchFolder, exportFolder]);
 
     useEffect(() => {
-        Environment().then(env => {
-            if (env.platform === 'darwin') {
-                setIsMac(true);
-            }
-        }).catch(err => {
-            console.debug("Failed to get Environment:", err);
-        });
+        setIsMac(System.IsMac());
     }, []);
 
     const handleSelectImage = async () => {
@@ -371,7 +356,7 @@ function App() {
         isSelectingRef.current = true;
         setIsSelecting(true);
         try {
-            const result = await OpenImage();
+            const result = await AppAPI.OpenImage();
 
             if (result.cancelled) {
                 return;
@@ -456,7 +441,7 @@ function App() {
             const exportName = `${baseName}_ExifFrame`;
 
             // Step 1: Open native save dialog via IPC (no binary data transferred)
-            const result = await SaveImage(isPng, exportName);
+            const result = await AppAPI.SaveImage(isPng, exportName);
 
             if (result.cancelled) {
                 return;
@@ -502,7 +487,7 @@ function App() {
         <div className={`app-container ${isMac ? 'mac-os' : ''}`}>
             <header className="top-bar" onDoubleClick={(e) => {
                 if ((e.target as HTMLElement).closest('button')) return;
-                WindowToggleMaximise();
+                Window.Get("").ToggleMaximise();
             }}>
                 <div className="top-bar-left">
                     <h1>ExifFrame</h1>
@@ -711,7 +696,7 @@ function App() {
                                     style={{ flex: 1 }}
                                 />
                                 <button onClick={async () => {
-                                    const path = await SelectWatchFolder();
+                                    const path = await AppAPI.SelectWatchFolder();
                                     if (path) setWatchFolder(path);
                                 }} className="btn btn-secondary">Select</button>
                                 <button onClick={() => setWatchFolder("")} className="btn btn-secondary" title="Clear Folder">✕</button>
@@ -729,7 +714,7 @@ function App() {
                                     style={{ flex: 1 }}
                                 />
                                 <button onClick={async () => {
-                                    const path = await SelectExportFolder();
+                                    const path = await AppAPI.SelectExportFolder();
                                     if (path) setExportFolder(path);
                                 }} className="btn btn-secondary">Select</button>
                                 <button onClick={() => setExportFolder("")} className="btn btn-secondary" title="Clear Folder">✕</button>
