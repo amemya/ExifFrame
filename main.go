@@ -2,105 +2,86 @@ package main
 
 import (
 	"embed"
+	"log"
 	"runtime"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/menu"
-	"github.com/wailsapp/wails/v2/pkg/menu/keys"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/mac"
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
-// buildMenu constructs the application menu
-func buildMenu(app *App) *menu.Menu {
-	AppMenu := menu.NewMenu()
+func buildMenu(app *App) *application.Menu {
+	appMenu := application.NewMenu()
+
 	if runtime.GOOS == "darwin" {
-		// Manually construct the Application Menu (ExifFrame) to allow injecting Preferences
-		appMenu := menu.NewMenu()
-		appMenu.AddText("About ExifFrame", nil, func(_ *menu.CallbackData) {})
-		appMenu.AddSeparator()
-		appMenu.AddText("Preferences...", keys.CmdOrCtrl(","), func(_ *menu.CallbackData) {
-			if app.ctx != nil {
-				wailsruntime.WindowUnminimise(app.ctx)
-				wailsruntime.WindowShow(app.ctx)
-				wailsruntime.EventsEmit(app.ctx, "open_settings")
-			}
+		appleMenu := appMenu.AddSubmenu("ExifFrame")
+		appleMenu.AddRole(application.About)
+		appleMenu.AddSeparator()
+		appleMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
+			application.Get().Show()
+			go application.Get().Event.Emit("open_settings")
 		})
-		appMenu.AddSeparator()
-		appMenu.AddText("Hide ExifFrame", keys.CmdOrCtrl("h"), func(_ *menu.CallbackData) {
-			if app.ctx != nil {
-				wailsruntime.WindowHide(app.ctx)
-			}
+		appleMenu.AddSeparator()
+		appleMenu.Add("Hide ExifFrame").SetAccelerator("CmdOrCtrl+h").OnClick(func(ctx *application.Context) {
+			application.Get().Hide()
 		})
-		// Dummy item for standard Mac UI completeness
-		appMenu.AddText("Hide Others", keys.OptionOrAlt("h"), func(_ *menu.CallbackData) {})
-		appMenu.AddText("Show All", nil, func(_ *menu.CallbackData) {
-			if app.ctx != nil {
-				wailsruntime.WindowShow(app.ctx)
-			}
-		})
-		appMenu.AddSeparator()
-		appMenu.AddText("Quit ExifFrame", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
-			if app.ctx != nil {
-				wailsruntime.Quit(app.ctx)
-			}
+		appleMenu.AddRole(application.HideOthers)
+		appleMenu.AddRole(application.ShowAll)
+		appleMenu.AddSeparator()
+		appleMenu.Add("Quit ExifFrame").SetAccelerator("CmdOrCtrl+q").OnClick(func(ctx *application.Context) {
+			application.Get().Quit()
 		})
 
-		// macOS uses the first menu as the Application Menu and renames it to the App Name natively
-		AppMenu.Append(menu.SubMenu("ExifFrame", appMenu))
-
-		AppMenu.Append(menu.EditMenu())
-		AppMenu.Append(menu.WindowMenu())
+		appMenu.AddRole(application.EditMenu)
+		appMenu.AddRole(application.WindowMenu)
 	} else {
-		prefsMenu := AppMenu.AddSubmenu("File")
-		prefsMenu.AddText("Preferences...", keys.CmdOrCtrl(","), func(_ *menu.CallbackData) {
-			if app.ctx != nil {
-				wailsruntime.WindowUnminimise(app.ctx)
-				wailsruntime.WindowShow(app.ctx)
-				wailsruntime.EventsEmit(app.ctx, "open_settings")
-			}
+		fileMenu := appMenu.AddSubmenu("File")
+		fileMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
+			application.Get().Show()
+			go application.Get().Event.Emit("open_settings")
 		})
 	}
-	return AppMenu
+
+	return appMenu
 }
 
 func main() {
-	// Create an instance of the app structure
-	app := NewApp()
-	handler := NewImageHandler(app)
-	app.handler = handler
+	appStruct := NewApp()
+	handler := NewImageHandler(appStruct)
+	appStruct.handler = handler
 
-	// Setup application menu
-	AppMenu := buildMenu(app)
-
-	// Create application with options
-	err := wails.Run(&options.App{
-		Title:            "ExifFrame",
-		Width:            1024,
-		Height:           768,
-		WindowStartState: options.Maximised,
-		AssetServer: &assetserver.Options{
-			Assets:     assets,
+	app := application.New(application.Options{
+		Name:        "ExifFrame",
+		Description: "ExifFrame",
+		Services: []application.Service{
+			application.NewService(appStruct),
+		},
+		Assets: application.AssetOptions{
+			Handler:    application.AssetFileServerFS(assets),
 			Middleware: handler.Middleware,
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		Mac: &mac.Options{
-			TitleBar: mac.TitleBarHiddenInset(),
-		},
-		Menu:             AppMenu,
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
-		Bind: []interface{}{
-			app,
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+	app.Menu.SetApplicationMenu(buildMenu(appStruct))
 
+
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:  "ExifFrame",
+		Width:  1024,
+		Height: 768,
+		Mac: application.MacWindow{
+			TitleBar: application.MacTitleBarHiddenInset,
+		},
+		BackgroundColour: application.NewRGB(27, 38, 54),
+		URL:              "/",
+		StartState:       application.WindowStateMaximised,
+	})
+
+	err := app.Run()
 	if err != nil {
-		println("Error:", err.Error())
+		log.Fatal("Error:", err)
 	}
 }
