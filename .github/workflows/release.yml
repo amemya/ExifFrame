@@ -92,7 +92,7 @@ jobs:
         shell: bash
         run: |
           cd bin
-          mv ExifFrame.exe ExifFrame-windows-amd64.exe
+          mv ExifFrame ExifFrame-windows-amd64.exe || mv ExifFrame.exe ExifFrame-windows-amd64.exe
 
       - name: Package Linux App
         if: runner.os == 'Linux'
