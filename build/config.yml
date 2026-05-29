@@ -7,7 +7,7 @@ version: '3'
 info:
   companyName: "amemiya" # The name of the company
   productName: "ExifFrame" # The name of the application
-  productIdentifier: "io.github.amemya.exifframe" # The unique product identifier
+  productIdentifier: "blog.amemiya.exifframe" # The unique product identifier
   description: "A desktop app for adding Exif frames to your photos" # The application description
   copyright: "(c) 2026, amemiya" # Copyright text
   comments: "ExifFrame - Photo Exif Frame Generator" # Comments

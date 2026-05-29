@@ -16,7 +16,7 @@ func buildMenu(app *App) *application.Menu {
 
 	if runtime.GOOS == "darwin" {
 		appleMenu := appMenu.AddSubmenu("ExifFrame")
-		appleMenu.Add("About ExifFrame").OnClick(func(ctx *application.Context) {})
+		appleMenu.AddRole(application.About)
 		appleMenu.AddSeparator()
 		appleMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
 			application.Get().Show()
@@ -26,10 +26,8 @@ func buildMenu(app *App) *application.Menu {
 		appleMenu.Add("Hide ExifFrame").SetAccelerator("CmdOrCtrl+h").OnClick(func(ctx *application.Context) {
 			application.Get().Hide()
 		})
-		appleMenu.Add("Hide Others").SetAccelerator("OptionOrAlt+h").OnClick(func(ctx *application.Context) {})
-		appleMenu.Add("Show All").OnClick(func(ctx *application.Context) {
-			application.Get().Show()
-		})
+		appleMenu.AddRole(application.HideOthers)
+		appleMenu.AddRole(application.ShowAll)
 		appleMenu.AddSeparator()
 		appleMenu.Add("Quit ExifFrame").SetAccelerator("CmdOrCtrl+q").OnClick(func(ctx *application.Context) {
 			application.Get().Quit()
