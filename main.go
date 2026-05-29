@@ -19,6 +19,7 @@ func buildMenu(app *App) *application.Menu {
 		appleMenu.Add("About ExifFrame").OnClick(func(ctx *application.Context) {})
 		appleMenu.AddSeparator()
 		appleMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
+			application.Get().Show()
 			go application.Get().Event.Emit("open_settings")
 		})
 		appleMenu.AddSeparator()
@@ -27,6 +28,7 @@ func buildMenu(app *App) *application.Menu {
 		})
 		appleMenu.Add("Hide Others").SetAccelerator("OptionOrAlt+h").OnClick(func(ctx *application.Context) {})
 		appleMenu.Add("Show All").OnClick(func(ctx *application.Context) {
+			application.Get().Show()
 		})
 		appleMenu.AddSeparator()
 		appleMenu.Add("Quit ExifFrame").SetAccelerator("CmdOrCtrl+q").OnClick(func(ctx *application.Context) {
@@ -38,6 +40,7 @@ func buildMenu(app *App) *application.Menu {
 	} else {
 		fileMenu := appMenu.AddSubmenu("File")
 		fileMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
+			application.Get().Show()
 			go application.Get().Event.Emit("open_settings")
 		})
 	}
@@ -66,12 +69,6 @@ func main() {
 	})
 	app.Menu.SetApplicationMenu(buildMenu(appStruct))
 
-	// Let the App struct handle its own startup/shutdown via Wails Service interfaces if supported,
-	// or we can just call startup directly for now.
-	go func() {
-		// Temporary workaround for startup hook
-		appStruct.OnStartup()
-	}()
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  "ExifFrame",

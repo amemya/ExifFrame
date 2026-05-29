@@ -40,7 +40,7 @@
             # wails3 コマンドがなければインストール
             if ! command -v wails3 > /dev/null; then
               echo "Installing Wails v3 CLI (wails3)..."
-              go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+              go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
             fi
 
             echo "Go version: $(go version)"

@@ -146,6 +146,7 @@ function App() {
 
     useEffect(() => {
         const unsubProcess = Events.On("process_file", (event: any) => {
+            if (!event?.data?.[0]) return;
             const data = event.data[0];
             const { result, export: exportFolderStr } = data;
             if (!result || !result.imageURL) return;
@@ -204,6 +205,9 @@ function App() {
                             console.error(e);
                         }
                     }, targetMime, 1.0);
+                };
+                img.onerror = () => {
+                    console.error("Background image load failed:", result.imageURL);
                 };
                 img.src = result.imageURL;
             }).catch((e: any) => console.error(e));

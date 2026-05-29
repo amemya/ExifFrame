@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"math"
@@ -58,6 +59,20 @@ func (a *App) OnStartup() {
 // OnShutdown is called at application termination
 func (a *App) OnShutdown() {
 	a.updateWatcher("") // This properly closes the watcher and waits for its goroutine to exit
+}
+
+// ServiceStartup implements the Wails v3 service lifecycle interface.
+// Called automatically by the framework when the application starts.
+func (a *App) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	a.OnStartup()
+	return nil
+}
+
+// ServiceShutdown implements the Wails v3 service lifecycle interface.
+// Called automatically by the framework when the application shuts down.
+func (a *App) ServiceShutdown() error {
+	a.OnShutdown()
+	return nil
 }
 
 // getCurrentImagePath returns the path of the currently loaded image in a thread-safe manner.
@@ -375,6 +390,7 @@ func (a *App) SelectWatchFolder() string {
 	path, err := application.Get().Dialog.OpenFile().
 		SetTitle("Select Watch Folder").
 		CanChooseDirectories(true).
+		CanChooseFiles(false).
 		PromptForSingleSelection()
 	if err != nil {
 		log.Println("Error opening directory dialog:", err)
@@ -388,6 +404,7 @@ func (a *App) SelectExportFolder() string {
 	path, err := application.Get().Dialog.OpenFile().
 		SetTitle("Select Export Folder").
 		CanChooseDirectories(true).
+		CanChooseFiles(false).
 		PromptForSingleSelection()
 	if err != nil {
 		log.Println("Error opening directory dialog:", err)
