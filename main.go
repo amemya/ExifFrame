@@ -67,13 +67,12 @@ func main() {
 	})
 	app.Menu.SetApplicationMenu(buildMenu(appStruct))
 
-
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  "ExifFrame",
 		Width:  1024,
 		Height: 768,
 		Mac: application.MacWindow{
-			TitleBar: application.MacTitleBarHiddenInset,
+			TitleBar: application.MacTitleBarHiddenInsetUnified,
 		},
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",

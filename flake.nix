@@ -26,15 +26,17 @@
           ];
 
           # 開発に必要なパッケージ群
-          # macOS: Cocoa/WebKit等のフレームワークはデフォルトSDKに含まれるため明示不要
           buildInputs = with pkgs; [
-            go_1_25     # バックエンド用 (go.mod は go 1.23 だが後方互換)
+            go_1_25     # バックエンド用
             nodejs_22   # フロントエンド用 (LTS)
+          ] ++ lib.optionals stdenv.isDarwin [
+            apple-sdk_15  # macOS 15+ SDK — Cocoa/WebKit フレームワーク含む
           ] ++ linuxDeps;
 
           # 環境に入った時に実行されるフック
           shellHook = ''
             export CGO_ENABLED=1
+            export MACOSX_DEPLOYMENT_TARGET=15.0
             export PATH=$PATH:$(go env GOPATH)/bin
             
             # wails3 コマンドがなければインストール
