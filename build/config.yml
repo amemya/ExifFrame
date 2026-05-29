@@ -11,7 +11,7 @@ info:
   description: "A desktop app for adding Exif frames to your photos" # The application description
   copyright: "(c) 2026, amemiya" # Copyright text
   comments: "ExifFrame - Photo Exif Frame Generator" # Comments
-  version: "0.0.1" # The application version
+  version: "${VERSION:-0.0.1}" # The application version
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
   #                               # Should match the name of your .icon file without the extension
   #                               # If not set and Assets.car exists, defaults to "appicon"

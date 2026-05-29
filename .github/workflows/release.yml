@@ -66,6 +66,14 @@ jobs:
         shell: bash
         run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o bin/ExifFrame
 
+      - name: Update Assets (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          sed -i.bak -e "s/\${VERSION:-0.0.1}/$VERSION/" build/config.yml
+          wails3 task common:update:build-assets
+
       - name: Package macOS App
         if: runner.os == 'macOS'
         shell: bash
