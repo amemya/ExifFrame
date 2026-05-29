@@ -85,7 +85,7 @@ jobs:
           cp build/darwin/Info.plist bin/ExifFrame.app/Contents/
           codesign --force --deep --sign - bin/ExifFrame.app
           cd bin
-          zip -r ExifFrame-macos-arm64.zip ExifFrame.app
+          ditto -c -k --keepParent ExifFrame.app ExifFrame-macos-arm64.zip
 
       - name: Package Windows App
         if: runner.os == 'Windows'
