@@ -27,7 +27,7 @@
 
           # 開発に必要なパッケージ群
           buildInputs = with pkgs; [
-            go_1_25     # バックエンド用
+            go_1_25     # バックエンド用 (go.mod は go 1.23 だが後方互換)
             nodejs_22   # フロントエンド用 (LTS)
           ] ++ lib.optionals stdenv.isDarwin [
             apple-sdk_15  # macOS 15+ SDK — Cocoa/WebKit フレームワーク含む
