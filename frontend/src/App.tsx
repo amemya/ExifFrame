@@ -203,8 +203,8 @@ const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility }
                 type="button" 
                 onClick={onToggleVisibility} 
                 className={`toggle-visibility-btn ${visible ? 'visible' : ''}`}
-                title={visible ? "Hide this field" : "Show this field"}
-                aria-label={visible ? "Hide this field" : "Show this field"}
+                title={visible ? `Hide ${label}` : `Show ${label}`}
+                aria-label={visible ? `Hide ${label}` : `Show ${label}`}
                 aria-pressed={visible}
             >
                 <EyeIcon visible={visible} />
@@ -783,6 +783,7 @@ function App() {
                                         className={`segment ${orientation === 'landscape' ? 'active' : ''}`}
                                         onClick={() => setOrientation('landscape')}
                                         disabled={aspectRatioPreset === '1:1'}
+                                        aria-pressed={orientation === 'landscape'}
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect></svg>
                                         Landscape
@@ -791,6 +792,7 @@ function App() {
                                         className={`segment ${orientation === 'portrait' ? 'active' : ''}`}
                                         onClick={() => setOrientation('portrait')}
                                         disabled={aspectRatioPreset === '1:1'}
+                                        aria-pressed={orientation === 'portrait'}
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="2" ry="2"></rect></svg>
                                         Portrait
@@ -803,6 +805,7 @@ function App() {
                                     <button 
                                         className={`segment ${alignment === 'top' ? 'active' : ''}`}
                                         onClick={() => setAlignment('top')}
+                                        aria-pressed={alignment === 'top'}
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="4" x2="20" y2="4"></line><rect x="8" y="8" width="8" height="8" rx="1" ry="1"></rect></svg>
                                         Top
@@ -810,6 +813,7 @@ function App() {
                                     <button 
                                         className={`segment ${alignment === 'center' ? 'active' : ''}`}
                                         onClick={() => setAlignment('center')}
+                                        aria-pressed={alignment === 'center'}
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="8" width="8" height="8" rx="1" ry="1"></rect></svg>
                                         Center
@@ -822,12 +826,14 @@ function App() {
                                     <button 
                                         className={`segment ${showPipeSeparator ? 'active' : ''}`}
                                         onClick={() => setShowPipeSeparator(true)}
+                                        aria-pressed={showPipeSeparator}
                                     >
                                         Pipe (|)
                                     </button>
                                     <button 
                                         className={`segment ${!showPipeSeparator ? 'active' : ''}`}
                                         onClick={() => setShowPipeSeparator(false)}
+                                        aria-pressed={!showPipeSeparator}
                                     >
                                         Space
                                     </button>
@@ -842,12 +848,14 @@ function App() {
                                     <button 
                                         className={`segment ${profile === 'digital' ? 'active' : ''}`}
                                         onClick={() => setProfile('digital')}
+                                        aria-pressed={profile === 'digital'}
                                     >
                                         Digital
                                     </button>
                                     <button 
                                         className={`segment ${profile === 'film' ? 'active' : ''}`}
                                         onClick={() => setProfile('film')}
+                                        aria-pressed={profile === 'film'}
                                     >
                                         Film
                                     </button>
