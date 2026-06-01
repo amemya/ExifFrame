@@ -19,6 +19,28 @@ type Settings struct {
 	CustomRatioH      int    `json:"customRatioH"`
 	Orientation       string `json:"orientation"`
 	Alignment         string `json:"alignment"`
+	ShowPipeSeparator bool   `json:"showPipeSeparator"`
+
+	// New fields for Profiles and Film metadata
+	Profile     string `json:"profile"`
+	Film        string `json:"film"`
+	Developer   string `json:"developer"`
+	Dilution    string `json:"dilution"`
+	Temperature string `json:"temperature"`
+	Time        string `json:"time"`
+
+	// Visibility toggles
+	VisibilityCamera       bool `json:"visibilityCamera"`
+	VisibilityLens         bool `json:"visibilityLens"`
+	VisibilityFocalLength  bool `json:"visibilityFocalLength"`
+	VisibilityAperture     bool `json:"visibilityAperture"`
+	VisibilityShutterSpeed bool `json:"visibilityShutterSpeed"`
+	VisibilityISO          bool `json:"visibilityISO"`
+	VisibilityFilm         bool `json:"visibilityFilm"`
+	VisibilityDeveloper    bool `json:"visibilityDeveloper"`
+	VisibilityDilution     bool `json:"visibilityDilution"`
+	VisibilityTemperature  bool `json:"visibilityTemperature"`
+	VisibilityTime         bool `json:"visibilityTime"`
 }
 
 var (
@@ -47,6 +69,19 @@ func init() {
 		CustomRatioH:      3618,
 		Orientation:       "landscape",
 		Alignment:         "top",
+		ShowPipeSeparator: true,
+		Profile:           "digital",
+		VisibilityCamera:       true,
+		VisibilityLens:         true,
+		VisibilityFocalLength:  true,
+		VisibilityAperture:     true,
+		VisibilityShutterSpeed: true,
+		VisibilityISO:          true,
+		VisibilityFilm:         true,
+		VisibilityDeveloper:    true,
+		VisibilityDilution:     true,
+		VisibilityTemperature:  true,
+		VisibilityTime:         true,
 	}
 	loadSettings()
 }

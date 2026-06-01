@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './App.css';
+// @ts-expect-error generated bindings does not provide declaration files for JS module
 import { App as AppAPI, Settings } from '../bindings/ExifFrame/index';
 import { Window, Events, System } from '@wailsio/runtime';
 
@@ -10,6 +11,25 @@ interface ExifData {
     aperture: string;
     shutterSpeed: string;
     iso: string;
+    film: string;
+    developer: string;
+    dilution: string;
+    temperature: string;
+    time: string;
+}
+
+interface MetadataVisibility {
+    camera: boolean;
+    lens: boolean;
+    focalLength: boolean;
+    aperture: boolean;
+    shutterSpeed: boolean;
+    iso: boolean;
+    film: boolean;
+    developer: boolean;
+    dilution: boolean;
+    temperature: boolean;
+    time: boolean;
 }
 
 const TOAST_DURATION_MS = 3000;
@@ -24,6 +44,9 @@ function renderImageToCanvas(
         customRatioH: number;
         orientation: "landscape" | "portrait";
         alignment: "top" | "center";
+        showPipeSeparator: boolean;
+        profile: string;
+        visibility: MetadataVisibility;
     }
 ) {
     // 好みの左右・上の枠の最小太さ（例：幅の2.5%）
@@ -109,9 +132,13 @@ function renderImageToCanvas(
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    const separator = settings.showPipeSeparator ? " | " : "   ";
+
     // Camera and Lens
-    const topElements = [exif.camera, exif.lens].filter(Boolean);
-    const topText = topElements.join(" | ");
+    const topElements = [];
+    if (settings.visibility.camera && exif.camera) topElements.push(exif.camera);
+    if (settings.visibility.lens && exif.lens) topElements.push(exif.lens);
+    const topText = topElements.join(separator);
 
     if (topText) {
         const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
@@ -119,9 +146,21 @@ function renderImageToCanvas(
         ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
     }
 
-    // Settings (Aperture, SS, ISO etc)
-    const bottomElements = [exif.focalLength, exif.aperture, exif.shutterSpeed, exif.iso].filter(Boolean);
-    const bottomText = bottomElements.join(" | ");
+    const bottomElements: string[] = [];
+    if (settings.visibility.focalLength && exif.focalLength) bottomElements.push(exif.focalLength);
+    if (settings.visibility.aperture && exif.aperture) bottomElements.push(exif.aperture);
+    if (settings.visibility.shutterSpeed && exif.shutterSpeed) bottomElements.push(exif.shutterSpeed);
+
+    if (settings.profile === "film") {
+        if (settings.visibility.film && exif.film) bottomElements.push(exif.film);
+        if (settings.visibility.developer && exif.developer) bottomElements.push(exif.developer);
+        if (settings.visibility.dilution && exif.dilution) bottomElements.push(exif.dilution);
+        if (settings.visibility.temperature && exif.temperature) bottomElements.push(exif.temperature);
+        if (settings.visibility.time && exif.time) bottomElements.push(exif.time);
+    } else {
+        if (settings.visibility.iso && exif.iso) bottomElements.push(exif.iso);
+    }
+    const bottomText = bottomElements.join(separator);
 
     if (bottomText) {
         const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
@@ -139,11 +178,55 @@ function renderImageToCanvas(
     ctx.stroke();
 }
 
+const EyeIcon = ({ visible }: { visible: boolean }) => (
+    visible ? (
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    ) : (
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+    )
+);
+
+interface ToggleInputProps {
+    label: string;
+    id: string;
+    value: string;
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    visible: boolean;
+    onToggleVisibility: () => void;
+}
+
+const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility }: ToggleInputProps) => (
+    <div className="input-group">
+        <div className="toggle-input-header">
+            <label htmlFor={id} className="toggle-input-label">{label}</label>
+            <button 
+                type="button" 
+                onClick={onToggleVisibility} 
+                className={`toggle-visibility-btn ${visible ? 'visible' : ''}`}
+                title={visible ? "Hide this field" : "Show this field"}
+                aria-label={visible ? "Hide this field" : "Show this field"}
+                aria-pressed={visible}
+            >
+                <EyeIcon visible={visible} />
+            </button>
+        </div>
+        <input 
+            id={id} 
+            type="text" 
+            value={value} 
+            onChange={onChange} 
+            className={`toggle-input-field ${!visible ? 'hidden' : ''}`} 
+        />
+    </div>
+);
+
 function App() {
     const [showSettings, setShowSettings] = useState(false);
     const [watchFolder, setWatchFolder] = useState("");
     const [exportFolder, setExportFolder] = useState("");
 
+    const [profile, setProfile] = useState<string>("digital");
+    
     useEffect(() => {
         const unsubProcess = Events.On("process_file", (event: any) => {
             if (!event?.data?.[0]) return;
@@ -161,7 +244,12 @@ function App() {
                         focalLength: result.focalLength || "",
                         aperture: result.aperture || "",
                         shutterSpeed: result.shutterSpeed || "",
-                        iso: result.iso || ""
+                        iso: result.iso || "",
+                        film: currentSet.film || "",
+                        developer: currentSet.developer || "",
+                        dilution: currentSet.dilution || "",
+                        temperature: currentSet.temperature || "",
+                        time: currentSet.time || ""
                     };
                     
                     renderImageToCanvas(offscreenCanvas, img, exifData, {
@@ -169,7 +257,22 @@ function App() {
                         customRatioW: currentSet.customRatioW || 4300,
                         customRatioH: currentSet.customRatioH || 3618,
                         orientation: (currentSet.orientation as any) || "landscape",
-                        alignment: (currentSet.alignment as any) || "top"
+                        alignment: (currentSet.alignment as any) || "top",
+                        showPipeSeparator: currentSet.showPipeSeparator ?? true,
+                        profile: currentSet.profile || "digital",
+                        visibility: {
+                            camera: currentSet.visibilityCamera ?? true,
+                            lens: currentSet.visibilityLens ?? true,
+                            focalLength: currentSet.visibilityFocalLength ?? true,
+                            aperture: currentSet.visibilityAperture ?? true,
+                            shutterSpeed: currentSet.visibilityShutterSpeed ?? true,
+                            iso: currentSet.visibilityISO ?? true,
+                            film: currentSet.visibilityFilm ?? true,
+                            developer: currentSet.visibilityDeveloper ?? true,
+                            dilution: currentSet.visibilityDilution ?? true,
+                            temperature: currentSet.visibilityTemperature ?? true,
+                            time: currentSet.visibilityTime ?? true
+                        }
                     });
 
                     const isPng = result.mimeType === 'image/png';
@@ -217,6 +320,7 @@ function App() {
             unsubProcess();
         };
     }, []);
+    
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [imageLoaded, setImageLoaded] = useState(false);
     const [exif, setExif] = useState<ExifData>({
@@ -225,7 +329,26 @@ function App() {
         focalLength: "",
         aperture: "",
         shutterSpeed: "",
-        iso: ""
+        iso: "",
+        film: "",
+        developer: "",
+        dilution: "",
+        temperature: "",
+        time: ""
+    });
+
+    const [visibility, setVisibility] = useState<MetadataVisibility>({
+        camera: true,
+        lens: true,
+        focalLength: true,
+        aperture: true,
+        shutterSpeed: true,
+        iso: true,
+        film: true,
+        developer: true,
+        dilution: true,
+        temperature: true,
+        time: true
     });
 
     const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
@@ -256,6 +379,7 @@ function App() {
     const [customRatioH, setCustomRatioH] = useState<number>(3618);
     const [orientation, setOrientation] = useState<"landscape" | "portrait">("landscape");
     const [alignment, setAlignment] = useState<"top" | "center">("top");
+    const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
 
     const showToast = (message: string) => {
         if (toastTimerRef.current !== null) {
@@ -289,6 +413,31 @@ function App() {
             if (s.customRatioH) setCustomRatioH(s.customRatioH);
             if (s.orientation) setOrientation(s.orientation as any);
             if (s.alignment) setAlignment(s.alignment as any);
+            if (s.showPipeSeparator !== undefined) setShowPipeSeparator(s.showPipeSeparator);
+            if (s.profile) setProfile(s.profile);
+            
+            setExif(prev => ({
+                ...prev,
+                film: s.film || "",
+                developer: s.developer || "",
+                dilution: s.dilution || "",
+                temperature: s.temperature || "",
+                time: s.time || ""
+            }));
+
+            setVisibility({
+                camera: s.visibilityCamera ?? true,
+                lens: s.visibilityLens ?? true,
+                focalLength: s.visibilityFocalLength ?? true,
+                aperture: s.visibilityAperture ?? true,
+                shutterSpeed: s.visibilityShutterSpeed ?? true,
+                iso: s.visibilityISO ?? true,
+                film: s.visibilityFilm ?? true,
+                developer: s.visibilityDeveloper ?? true,
+                dilution: s.visibilityDilution ?? true,
+                temperature: s.visibilityTemperature ?? true,
+                time: s.visibilityTime ?? true
+            });
         }).catch((err: any) => {
             console.error("Failed to load settings:", err);
         }).finally(() => {
@@ -332,6 +481,26 @@ function App() {
             s.customRatioH = customRatioH;
             s.orientation = orientation;
             s.alignment = alignment;
+            s.showPipeSeparator = showPipeSeparator;
+            s.profile = profile;
+            s.film = exif.film;
+            s.developer = exif.developer;
+            s.dilution = exif.dilution;
+            s.temperature = exif.temperature;
+            s.time = exif.time;
+            
+            s.visibilityCamera = visibility.camera;
+            s.visibilityLens = visibility.lens;
+            s.visibilityFocalLength = visibility.focalLength;
+            s.visibilityAperture = visibility.aperture;
+            s.visibilityShutterSpeed = visibility.shutterSpeed;
+            s.visibilityISO = visibility.iso;
+            s.visibilityFilm = visibility.film;
+            s.visibilityDeveloper = visibility.developer;
+            s.visibilityDilution = visibility.dilution;
+            s.visibilityTemperature = visibility.temperature;
+            s.visibilityTime = visibility.time;
+
             try {
                 const errStr = await AppAPI.SaveSettings(s);
                 if (errStr && errStr !== "") {
@@ -349,7 +518,7 @@ function App() {
             saveCurrentSettings();
         }, 500);
         return () => clearTimeout(t);
-    }, [aspectRatioPreset, customRatioW, customRatioH, orientation, alignment, watchFolder, exportFolder]);
+    }, [aspectRatioPreset, customRatioW, customRatioH, orientation, alignment, showPipeSeparator, watchFolder, exportFolder, profile, exif.film, exif.developer, exif.dilution, exif.temperature, exif.time, visibility.camera, visibility.lens, visibility.focalLength, visibility.aperture, visibility.shutterSpeed, visibility.iso, visibility.film, visibility.developer, visibility.dilution, visibility.temperature, visibility.time]);
 
     useEffect(() => {
         setIsMac(System.IsMac());
@@ -381,14 +550,15 @@ function App() {
                 const img = new Image();
                 img.onload = () => {
                     // Update EXIF state (leave empty if not found)
-                    setExif({
+                    setExif(prev => ({
+                        ...prev,
                         camera: result.camera || "",
                         lens: result.lens || "",
                         focalLength: result.focalLength || "",
                         aperture: result.aperture || "",
                         shutterSpeed: result.shutterSpeed || "",
                         iso: result.iso || ""
-                    });
+                    }));
                     setFilePath(result.filePath || "");
                     setSourceMimeType(result.mimeType || "");
 
@@ -420,9 +590,12 @@ function App() {
             customRatioW,
             customRatioH,
             orientation,
-            alignment
+            alignment,
+            showPipeSeparator,
+            profile,
+            visibility
         });
-    }, [exif, aspectRatioPreset, customRatioW, customRatioH, orientation, alignment]);
+    }, [exif, aspectRatioPreset, customRatioW, customRatioH, orientation, alignment, showPipeSeparator, profile, visibility]);
 
     useEffect(() => {
         if (!imageObj || !canvasRef.current) return;
@@ -643,37 +816,150 @@ function App() {
                                     </button>
                                 </div>
                             </div>
+                            <div className="input-group">
+                                <label>Separator Style</label>
+                                <div className="segmented-control">
+                                    <button 
+                                        className={`segment ${showPipeSeparator ? 'active' : ''}`}
+                                        onClick={() => setShowPipeSeparator(true)}
+                                    >
+                                        Pipe (|)
+                                    </button>
+                                    <button 
+                                        className={`segment ${!showPipeSeparator ? 'active' : ''}`}
+                                        onClick={() => setShowPipeSeparator(false)}
+                                    >
+                                        Space
+                                    </button>
+                                </div>
+                            </div>
                         </div>
+                        
                         <div className="sidebar-section metadata-settings-section">
-                            <h3>Metadata Settings</h3>
-                            <div className="input-group">
-                                <label htmlFor="camera-input">Camera</label>
-                                <input id="camera-input" type="text" value={exif.camera} onChange={e => setExif({ ...exif, camera: e.target.value })} />
+                            <div className="metadata-settings-header">
+                                <h3>Metadata Settings</h3>
+                                <div className="segmented-control">
+                                    <button 
+                                        className={`segment ${profile === 'digital' ? 'active' : ''}`}
+                                        onClick={() => setProfile('digital')}
+                                    >
+                                        Digital
+                                    </button>
+                                    <button 
+                                        className={`segment ${profile === 'film' ? 'active' : ''}`}
+                                        onClick={() => setProfile('film')}
+                                    >
+                                        Film
+                                    </button>
+                                </div>
                             </div>
-                            <div className="input-group">
-                                <label htmlFor="lens-input">Lens</label>
-                                <input id="lens-input" type="text" value={exif.lens} onChange={e => setExif({ ...exif, lens: e.target.value })} />
-                            </div>
+                            
+                            <ToggleInput 
+                                label="Camera" 
+                                id="camera-input" 
+                                value={exif.camera} 
+                                onChange={(e) => setExif(prev => ({ ...prev, camera: e.target.value }))} 
+                                visible={visibility.camera}
+                                onToggleVisibility={() => setVisibility(prev => ({ ...prev, camera: !prev.camera }))}
+                            />
+                            <ToggleInput 
+                                label="Lens" 
+                                id="lens-input" 
+                                value={exif.lens} 
+                                onChange={(e) => setExif(prev => ({ ...prev, lens: e.target.value }))} 
+                                visible={visibility.lens}
+                                onToggleVisibility={() => setVisibility(prev => ({ ...prev, lens: !prev.lens }))}
+                            />
+                            
                             <div className="input-row">
-                                <div className="input-group">
-                                    <label htmlFor="focalLength-input">Focal Length</label>
-                                    <input id="focalLength-input" type="text" value={exif.focalLength} onChange={e => setExif({ ...exif, focalLength: e.target.value })} />
-                                </div>
-                                <div className="input-group">
-                                    <label htmlFor="aperture-input">Aperture</label>
-                                    <input id="aperture-input" type="text" value={exif.aperture} onChange={e => setExif({ ...exif, aperture: e.target.value })} />
-                                </div>
+                                <ToggleInput 
+                                    label="Focal Length" 
+                                    id="focalLength-input" 
+                                    value={exif.focalLength} 
+                                    onChange={(e) => setExif(prev => ({ ...prev, focalLength: e.target.value }))} 
+                                    visible={visibility.focalLength}
+                                    onToggleVisibility={() => setVisibility(prev => ({ ...prev, focalLength: !prev.focalLength }))}
+                                />
+                                <ToggleInput 
+                                    label="Aperture" 
+                                    id="aperture-input" 
+                                    value={exif.aperture} 
+                                    onChange={(e) => setExif(prev => ({ ...prev, aperture: e.target.value }))} 
+                                    visible={visibility.aperture}
+                                    onToggleVisibility={() => setVisibility(prev => ({ ...prev, aperture: !prev.aperture }))}
+                                />
                             </div>
+                            
                             <div className="input-row">
-                                <div className="input-group">
-                                    <label htmlFor="shutterSpeed-input">Shutter Speed</label>
-                                    <input id="shutterSpeed-input" type="text" value={exif.shutterSpeed} onChange={e => setExif({ ...exif, shutterSpeed: e.target.value })} />
-                                </div>
-                                <div className="input-group">
-                                    <label htmlFor="iso-input">ISO</label>
-                                    <input id="iso-input" type="text" value={exif.iso} onChange={e => setExif({ ...exif, iso: e.target.value })} />
-                                </div>
+                                <ToggleInput 
+                                    label="Shutter Speed" 
+                                    id="shutterSpeed-input" 
+                                    value={exif.shutterSpeed} 
+                                    onChange={(e) => setExif(prev => ({ ...prev, shutterSpeed: e.target.value }))} 
+                                    visible={visibility.shutterSpeed}
+                                    onToggleVisibility={() => setVisibility(prev => ({ ...prev, shutterSpeed: !prev.shutterSpeed }))}
+                                />
+                                {profile === 'digital' ? (
+                                    <ToggleInput 
+                                        label="ISO" 
+                                        id="iso-input" 
+                                        value={exif.iso} 
+                                        onChange={(e) => setExif(prev => ({ ...prev, iso: e.target.value }))} 
+                                        visible={visibility.iso}
+                                        onToggleVisibility={() => setVisibility(prev => ({ ...prev, iso: !prev.iso }))}
+                                    />
+                                ) : (
+                                    <ToggleInput 
+                                        label="Film" 
+                                        id="film-input" 
+                                        value={exif.film} 
+                                        onChange={(e) => setExif(prev => ({ ...prev, film: e.target.value }))} 
+                                        visible={visibility.film}
+                                        onToggleVisibility={() => setVisibility(prev => ({ ...prev, film: !prev.film }))}
+                                    />
+                                )}
                             </div>
+                            
+                            {profile === 'film' && (
+                                <>
+                                    <div className="input-row">
+                                        <ToggleInput 
+                                            label="Developer" 
+                                            id="developer-input" 
+                                            value={exif.developer} 
+                                            onChange={(e) => setExif(prev => ({ ...prev, developer: e.target.value }))} 
+                                            visible={visibility.developer}
+                                            onToggleVisibility={() => setVisibility(prev => ({ ...prev, developer: !prev.developer }))}
+                                        />
+                                        <ToggleInput 
+                                            label="Dilution" 
+                                            id="dilution-input" 
+                                            value={exif.dilution} 
+                                            onChange={(e) => setExif(prev => ({ ...prev, dilution: e.target.value }))} 
+                                            visible={visibility.dilution}
+                                            onToggleVisibility={() => setVisibility(prev => ({ ...prev, dilution: !prev.dilution }))}
+                                        />
+                                    </div>
+                                    <div className="input-row">
+                                        <ToggleInput 
+                                            label="Temperature" 
+                                            id="temperature-input" 
+                                            value={exif.temperature} 
+                                            onChange={(e) => setExif(prev => ({ ...prev, temperature: e.target.value }))} 
+                                            visible={visibility.temperature}
+                                            onToggleVisibility={() => setVisibility(prev => ({ ...prev, temperature: !prev.temperature }))}
+                                        />
+                                        <ToggleInput 
+                                            label="Time" 
+                                            id="time-input" 
+                                            value={exif.time} 
+                                            onChange={(e) => setExif(prev => ({ ...prev, time: e.target.value }))} 
+                                            visible={visibility.time}
+                                            onToggleVisibility={() => setVisibility(prev => ({ ...prev, time: !prev.time }))}
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </aside>
                 )}
