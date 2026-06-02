@@ -459,7 +459,6 @@ body {
 
 .toggle-input-field {
     transition: opacity 0.2s ease;
-    will-change: opacity;
 }
 
 .toggle-input-field.hidden {

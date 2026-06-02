@@ -32,6 +32,24 @@ interface MetadataVisibility {
     time: boolean;
 }
 
+const VISIBILITY_KEYS = [
+    'camera','lens','focalLength','aperture','shutterSpeed','iso',
+    'film','developer','dilution','temperature','time',
+] as const;
+
+const settingsKey = (k: typeof VISIBILITY_KEYS[number]) =>
+    `visibility${k.charAt(0).toUpperCase()}${k.slice(1)}`;
+
+function toVisibility(s: any): MetadataVisibility {
+    return Object.fromEntries(
+        VISIBILITY_KEYS.map(k => [k, (s[settingsKey(k)] as boolean) ?? true])
+    ) as unknown as MetadataVisibility;
+}
+
+function applyVisibility(s: any, v: MetadataVisibility): void {
+    VISIBILITY_KEYS.forEach(k => { s[settingsKey(k)] = v[k]; });
+}
+
 const TOAST_DURATION_MS = 3000;
 
 function renderImageToCanvas(
@@ -260,19 +278,7 @@ function App() {
                         alignment: (currentSet.alignment as any) || "top",
                         showPipeSeparator: currentSet.showPipeSeparator ?? true,
                         profile: currentSet.profile || "digital",
-                        visibility: {
-                            camera: currentSet.visibilityCamera ?? true,
-                            lens: currentSet.visibilityLens ?? true,
-                            focalLength: currentSet.visibilityFocalLength ?? true,
-                            aperture: currentSet.visibilityAperture ?? true,
-                            shutterSpeed: currentSet.visibilityShutterSpeed ?? true,
-                            iso: currentSet.visibilityISO ?? true,
-                            film: currentSet.visibilityFilm ?? true,
-                            developer: currentSet.visibilityDeveloper ?? true,
-                            dilution: currentSet.visibilityDilution ?? true,
-                            temperature: currentSet.visibilityTemperature ?? true,
-                            time: currentSet.visibilityTime ?? true
-                        }
+                        visibility: toVisibility(currentSet)
                     });
 
                     const isPng = result.mimeType === 'image/png';
@@ -427,19 +433,7 @@ function App() {
                 time: s.time || ""
             }));
 
-            setVisibility({
-                camera: s.visibilityCamera ?? true,
-                lens: s.visibilityLens ?? true,
-                focalLength: s.visibilityFocalLength ?? true,
-                aperture: s.visibilityAperture ?? true,
-                shutterSpeed: s.visibilityShutterSpeed ?? true,
-                iso: s.visibilityISO ?? true,
-                film: s.visibilityFilm ?? true,
-                developer: s.visibilityDeveloper ?? true,
-                dilution: s.visibilityDilution ?? true,
-                temperature: s.visibilityTemperature ?? true,
-                time: s.visibilityTime ?? true
-            });
+            setVisibility(toVisibility(s));
         }).catch((err: any) => {
             console.error("Failed to load settings:", err);
         }).finally(() => {
@@ -491,17 +485,7 @@ function App() {
             s.temperature = exif.temperature;
             s.time = exif.time;
             
-            s.visibilityCamera = visibility.camera;
-            s.visibilityLens = visibility.lens;
-            s.visibilityFocalLength = visibility.focalLength;
-            s.visibilityAperture = visibility.aperture;
-            s.visibilityShutterSpeed = visibility.shutterSpeed;
-            s.visibilityISO = visibility.iso;
-            s.visibilityFilm = visibility.film;
-            s.visibilityDeveloper = visibility.developer;
-            s.visibilityDilution = visibility.dilution;
-            s.visibilityTemperature = visibility.temperature;
-            s.visibilityTime = visibility.time;
+            applyVisibility(s, visibility);
 
             try {
                 const errStr = await AppAPI.SaveSettings(s);
@@ -782,6 +766,7 @@ function App() {
                                 <label>Orientation</label>
                                 <div className={`segmented-control ${aspectRatioPreset === '1:1' ? 'disabled' : ''}`}>
                                     <button 
+                                        type="button"
                                         className={`segment ${orientation === 'landscape' ? 'active' : ''}`}
                                         onClick={() => setOrientation('landscape')}
                                         disabled={aspectRatioPreset === '1:1'}
@@ -791,6 +776,7 @@ function App() {
                                         Landscape
                                     </button>
                                     <button 
+                                        type="button"
                                         className={`segment ${orientation === 'portrait' ? 'active' : ''}`}
                                         onClick={() => setOrientation('portrait')}
                                         disabled={aspectRatioPreset === '1:1'}
@@ -805,6 +791,7 @@ function App() {
                                 <label>Vertical Alignment</label>
                                 <div className="segmented-control">
                                     <button 
+                                        type="button"
                                         className={`segment ${alignment === 'top' ? 'active' : ''}`}
                                         onClick={() => setAlignment('top')}
                                         aria-pressed={alignment === 'top'}
@@ -813,6 +800,7 @@ function App() {
                                         Top
                                     </button>
                                     <button 
+                                        type="button"
                                         className={`segment ${alignment === 'center' ? 'active' : ''}`}
                                         onClick={() => setAlignment('center')}
                                         aria-pressed={alignment === 'center'}
@@ -826,6 +814,7 @@ function App() {
                                 <label>Separator Style</label>
                                 <div className="segmented-control">
                                     <button 
+                                        type="button"
                                         className={`segment ${showPipeSeparator ? 'active' : ''}`}
                                         onClick={() => setShowPipeSeparator(true)}
                                         aria-pressed={showPipeSeparator}
@@ -833,6 +822,7 @@ function App() {
                                         Pipe (|)
                                     </button>
                                     <button 
+                                        type="button"
                                         className={`segment ${!showPipeSeparator ? 'active' : ''}`}
                                         onClick={() => setShowPipeSeparator(false)}
                                         aria-pressed={!showPipeSeparator}
@@ -848,6 +838,7 @@ function App() {
                                 <h3>Metadata Settings</h3>
                                 <div className="segmented-control">
                                     <button 
+                                        type="button"
                                         className={`segment ${profile === 'digital' ? 'active' : ''}`}
                                         onClick={() => setProfile('digital')}
                                         aria-pressed={profile === 'digital'}
@@ -855,6 +846,7 @@ function App() {
                                         Digital
                                     </button>
                                     <button 
+                                        type="button"
                                         className={`segment ${profile === 'film' ? 'active' : ''}`}
                                         onClick={() => setProfile('film')}
                                         aria-pressed={profile === 'film'}
