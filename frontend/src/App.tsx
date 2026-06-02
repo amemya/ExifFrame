@@ -252,7 +252,7 @@ interface ProcessFileResult {
 
 interface ProcessFileData {
     result?: ProcessFileResult;
-    export: string;
+    export?: string;
 }
 
 interface WailsProcessFileEvent {
@@ -281,7 +281,7 @@ function App() {
                 return;
             }
             const { result, export: exportFolderStr } = data;
-            if (!result.imageURL) return;
+            if (!result.imageURL || !exportFolderStr) return;
 
                 AppAPI.GetSettings().then(async (currentSet: Settings) => {
                     const img = new Image();

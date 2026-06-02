@@ -157,7 +157,7 @@ func (h *ImageHandler) registerImageToken(filePath string) string {
 
 	// Optional: Limit size to prevent memory leaks if many images are opened
 	if len(h.imageTokens) >= 100 {
-		// Evict the oldest entry (LRU) to free space.
+		// Evict the oldest entry (FIFO with registration-time refresh) to free space.
 		if len(h.imageTokenOrder) > 0 {
 			oldestToken := h.imageTokenOrder[0]
 			// Shift elements to avoid allocating new backing arrays and prevent memory leaks
