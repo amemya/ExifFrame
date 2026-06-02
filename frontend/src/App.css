@@ -420,3 +420,68 @@ body {
     justify-content: flex-end;
     margin-top: 2rem;
 }
+
+/* Toggle Input */
+.toggle-input-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.toggle-input-header .toggle-input-label {
+    margin-bottom: 0;
+}
+
+.toggle-visibility-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary, #9aa0a6);
+}
+
+.toggle-visibility-btn.visible {
+    color: var(--text-primary, #e0e0e0);
+}
+
+.toggle-visibility-btn:hover {
+    color: var(--text-primary, #e0e0e0);
+}
+
+.toggle-visibility-btn:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+.toggle-input-field {
+    transition: opacity 0.2s ease;
+}
+
+.toggle-input-field.hidden {
+    opacity: 0.6;
+}
+
+/* Metadata Settings */
+.metadata-settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.metadata-settings-header h3 {
+    margin: 0;
+}
+
+.metadata-settings-header .segmented-control {
+    width: auto;
+    font-size: 12px;
+}
+
+.metadata-settings-header .segment {
+    padding: 4px 8px;
+}
