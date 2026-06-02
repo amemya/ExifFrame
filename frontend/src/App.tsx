@@ -239,7 +239,7 @@ const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility }
 );
 
 interface ProcessFileResult {
-    imageURL: string;
+    imageURL?: string;
     camera?: string;
     lens?: string;
     focalLength?: string;
@@ -251,7 +251,7 @@ interface ProcessFileResult {
 }
 
 interface ProcessFileData {
-    result: ProcessFileResult;
+    result?: ProcessFileResult;
     export: string;
 }
 

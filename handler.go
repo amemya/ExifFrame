@@ -160,7 +160,11 @@ func (h *ImageHandler) registerImageToken(filePath string) string {
 		// Evict the oldest entry (LRU) to free space.
 		if len(h.imageTokenOrder) > 0 {
 			oldestToken := h.imageTokenOrder[0]
-			h.imageTokenOrder = h.imageTokenOrder[1:]
+			// Shift elements to avoid allocating new backing arrays and prevent memory leaks
+			copy(h.imageTokenOrder, h.imageTokenOrder[1:])
+			h.imageTokenOrder[len(h.imageTokenOrder)-1] = "" // clear old reference
+			h.imageTokenOrder = h.imageTokenOrder[:len(h.imageTokenOrder)-1]
+
 			if oldPath, ok := h.imageTokens[oldestToken]; ok {
 				delete(h.pathToToken, oldPath)
 			}
