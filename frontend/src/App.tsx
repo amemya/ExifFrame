@@ -269,7 +269,9 @@ function App() {
     useEffect(() => {
         const unsubProcess = Events.On("process_file", (event: WailsProcessFileEvent) => {
             if (!event?.data) return;
-            // Handle both Wails v2 (array) and Wails v3 (single object) format
+            // Handle Wails v2 vs v3 payload differences:
+            // - Wails v2 wraps arguments in an array: [{ result, export }]
+            // - Wails v3 passes single arguments directly: { result, export }
             const data = Array.isArray(event.data) ? event.data[0] : event.data;
             if (!data || !data.result) return;
             const { result, export: exportFolderStr } = data;
