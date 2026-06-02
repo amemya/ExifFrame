@@ -19,6 +19,7 @@ func buildMenu(app *App) *application.Menu {
 		appleMenu.AddRole(application.About)
 		appleMenu.AddSeparator()
 		appleMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
+			application.Get().Show()
 			application.Get().Event.Emit("open_settings")
 		})
 		appleMenu.AddSeparator()
@@ -37,6 +38,7 @@ func buildMenu(app *App) *application.Menu {
 	} else {
 		fileMenu := appMenu.AddSubmenu("File")
 		fileMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
+			application.Get().Show()
 			application.Get().Event.Emit("open_settings")
 		})
 	}
