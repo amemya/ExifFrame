@@ -238,6 +238,10 @@ const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility }
     </div>
 );
 
+interface WailsProcessFileEvent {
+    data: any[] | { result: any; export: string };
+}
+
 function App() {
     const [showSettings, setShowSettings] = useState(false);
     const [watchFolder, setWatchFolder] = useState("");
@@ -246,7 +250,7 @@ function App() {
     const [profile, setProfile] = useState<string>("digital");
     
     useEffect(() => {
-        const unsubProcess = Events.On("process_file", (event: any) => {
+        const unsubProcess = Events.On("process_file", (event: WailsProcessFileEvent) => {
             if (!event?.data) return;
             // Handle both Wails v2 (array) and Wails v3 (single object) format
             const data = Array.isArray(event.data) ? event.data[0] : event.data;

@@ -133,14 +133,25 @@ func (h *ImageHandler) prepareSave(savePath string, mimeType string) string {
 // registerImageToken creates a token mapped to a specific file path
 // and returns the token so it can be used in /api/image requests.
 func (h *ImageHandler) registerImageToken(filePath string) string {
-	token := generateToken()
-
 	h.imgMu.Lock()
 	defer h.imgMu.Unlock()
+
+	// Reuse existing token if filePath is already registered
+	for t, p := range h.imageTokens {
+		if p == filePath {
+			return t
+		}
+	}
 	
+	token := generateToken()
+
 	// Optional: Limit size to prevent memory leaks if many images are opened
 	if len(h.imageTokens) > 100 {
-		h.imageTokens = make(map[string]string)
+		// Evict one pseudo-random entry to free space
+		for k := range h.imageTokens {
+			delete(h.imageTokens, k)
+			break
+		}
 	}
 
 	h.imageTokens[token] = filePath
