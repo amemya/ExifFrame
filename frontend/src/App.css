@@ -119,6 +119,18 @@ body {
     background-color: var(--accent-hover);
 }
 
+.btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem;
+    color: var(--text-secondary);
+}
+
+.btn-icon:hover {
+    color: var(--text-primary);
+}
+
 /* Main Workspace */
 .workspace {
     display: flex;
