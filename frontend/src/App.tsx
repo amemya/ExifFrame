@@ -269,13 +269,19 @@ function App() {
     useEffect(() => {
         const unsubProcess = Events.On("process_file", (event: WailsProcessFileEvent) => {
             if (!event?.data) return;
-            // Handle Wails v2 vs v3 payload differences:
+            // Handle both Wails v2 (array) and Wails v3 (single object) format:
             // - Wails v2 wraps arguments in an array: [{ result, export }]
             // - Wails v3 passes single arguments directly: { result, export }
+            // We pick the first element if it's an array to support v2 payloads.
             const data = Array.isArray(event.data) ? event.data[0] : event.data;
-            if (!data || !data.result) return;
+            if (!data || !data.result) {
+                if (Array.isArray(event.data) && event.data.length === 0) {
+                    console.warn("process_file event received empty array");
+                }
+                return;
+            }
             const { result, export: exportFolderStr } = data;
-            if (!result || !result.imageURL) return;
+            if (!result.imageURL) return;
 
                 AppAPI.GetSettings().then(async (currentSet: Settings) => {
                     const img = new Image();

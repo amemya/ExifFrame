@@ -30,7 +30,8 @@ type ImageHandler struct {
 
 	// imgMu protects the image tokens for serving specific files.
 	imgMu           sync.RWMutex
-	imageTokens     map[string]string
+	imageTokens     map[string]string // token -> filePath
+	pathToToken     map[string]string // filePath -> token
 	imageTokenOrder []string
 }
 
@@ -52,6 +53,7 @@ func NewImageHandler(app *App) *ImageHandler {
 		app:             app,
 		saveSessions:    make(map[string]*saveSession),
 		imageTokens:     make(map[string]string),
+		pathToToken:     make(map[string]string),
 		imageTokenOrder: make([]string, 0, 100),
 	}
 }
@@ -139,24 +141,34 @@ func (h *ImageHandler) registerImageToken(filePath string) string {
 	defer h.imgMu.Unlock()
 
 	// Reuse existing token if filePath is already registered
-	for t, p := range h.imageTokens {
-		if p == filePath {
-			return t
+	if t, exists := h.pathToToken[filePath]; exists {
+		// Move to end for LRU behavior
+		for i, ot := range h.imageTokenOrder {
+			if ot == t {
+				h.imageTokenOrder = append(h.imageTokenOrder[:i], h.imageTokenOrder[i+1:]...)
+				h.imageTokenOrder = append(h.imageTokenOrder, t)
+				break
+			}
 		}
+		return t
 	}
 	
 	token := generateToken()
 
 	// Optional: Limit size to prevent memory leaks if many images are opened
 	if len(h.imageTokens) >= 100 {
-		// Evict the oldest entry (FIFO) to free space.
+		// Evict the oldest entry (LRU) to free space.
 		if len(h.imageTokenOrder) > 0 {
 			oldestToken := h.imageTokenOrder[0]
 			h.imageTokenOrder = h.imageTokenOrder[1:]
+			if oldPath, ok := h.imageTokens[oldestToken]; ok {
+				delete(h.pathToToken, oldPath)
+			}
 			delete(h.imageTokens, oldestToken)
 		} else {
 			// Fallback (should not happen if imageTokenOrder is consistent)
-			for k := range h.imageTokens {
+			for k, p := range h.imageTokens {
+				delete(h.pathToToken, p)
 				delete(h.imageTokens, k)
 				break
 			}
@@ -164,6 +176,7 @@ func (h *ImageHandler) registerImageToken(filePath string) string {
 	}
 
 	h.imageTokens[token] = filePath
+	h.pathToToken[filePath] = token
 	h.imageTokenOrder = append(h.imageTokenOrder, token)
 	return token
 }
