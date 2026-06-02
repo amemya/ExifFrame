@@ -238,8 +238,25 @@ const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility }
     </div>
 );
 
+interface ProcessFileResult {
+    imageURL: string;
+    camera?: string;
+    lens?: string;
+    focalLength?: string;
+    aperture?: string;
+    shutterSpeed?: string;
+    iso?: string;
+    mimeType?: string;
+    filePath?: string;
+}
+
+interface ProcessFileData {
+    result: ProcessFileResult;
+    export: string;
+}
+
 interface WailsProcessFileEvent {
-    data: any[] | { result: any; export: string };
+    data: ProcessFileData[] | ProcessFileData;
 }
 
 function App() {

@@ -93,7 +93,7 @@ func (h *ImageHandler) handleImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if filePath == "" {
-		http.Error(w, "No image loaded or token expired", http.StatusNotFound)
+		http.Error(w, "No image loaded or token not found", http.StatusNotFound)
 		return
 	}
 
@@ -146,8 +146,9 @@ func (h *ImageHandler) registerImageToken(filePath string) string {
 	token := generateToken()
 
 	// Optional: Limit size to prevent memory leaks if many images are opened
-	if len(h.imageTokens) > 100 {
-		// Evict one pseudo-random entry to free space
+	if len(h.imageTokens) >= 100 {
+		// Evict one pseudo-random entry to free space.
+		// (YAGNI: A full LRU is over-engineering for a simple 100-item desktop app cache)
 		for k := range h.imageTokens {
 			delete(h.imageTokens, k)
 			break

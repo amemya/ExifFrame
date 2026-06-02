@@ -147,7 +147,7 @@ func (a *App) doOpenImage(filePath string, fileBytes []byte, mimeType string) Ex
 	var url string
 	if a.handler != nil {
 		token := a.handler.registerImageToken(filePath)
-		url = fmt.Sprintf("/api/image?token=%s", token)
+		url = fmt.Sprintf("/api/image?token=%s&t=%d", token, time.Now().UnixNano())
 	} else {
 		// Cache-busting timestamp ensures the browser fetches the new image.
 		url = fmt.Sprintf("/api/image?t=%d", time.Now().UnixNano())
