@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             artifact: ExifFrame-linux-amd64.tar.gz
           - os: windows-2022
             artifact: ExifFrame-windows-amd64.exe
