@@ -135,7 +135,7 @@ function renderImageToCanvas(
     const separator = settings.showPipeSeparator ? " | " : "   ";
 
     // Camera and Lens
-    const topElements = [];
+    const topElements: string[] = [];
     if (settings.visibility.camera && exif.camera) topElements.push(exif.camera);
     if (settings.visibility.lens && exif.lens) topElements.push(exif.lens);
     const topText = topElements.join(separator);
@@ -203,8 +203,8 @@ const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility }
                 type="button" 
                 onClick={onToggleVisibility} 
                 className={`toggle-visibility-btn ${visible ? 'visible' : ''}`}
-                title={visible ? `Hide ${label}` : `Show ${label}`}
-                aria-label={visible ? `Hide ${label}` : `Show ${label}`}
+                title={visible ? `Hide ${label} from frame` : `Show ${label} on frame`}
+                aria-label={visible ? `Hide ${label} from frame` : `Show ${label} on frame`}
                 aria-pressed={visible}
             >
                 <EyeIcon visible={visible} />
@@ -414,7 +414,9 @@ function App() {
             if (s.orientation) setOrientation(s.orientation as any);
             if (s.alignment) setAlignment(s.alignment as any);
             if (s.showPipeSeparator !== undefined) setShowPipeSeparator(s.showPipeSeparator);
-            if (s.profile) setProfile(s.profile);
+            if (s.profile) {
+                setProfile(['digital', 'film'].includes(s.profile) ? s.profile : 'digital');
+            }
             
             setExif(prev => ({
                 ...prev,
