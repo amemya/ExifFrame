@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react';
 import './App.css';
 // @ts-expect-error generated bindings does not provide declaration files for JS module
 import { App as AppAPI, Settings } from '../bindings/ExifFrame/index';
@@ -38,7 +38,7 @@ const VISIBILITY_KEYS = [
 ] as const;
 
 const settingsKey = (k: typeof VISIBILITY_KEYS[number]) =>
-    `visibility${k.charAt(0).toUpperCase()}${k.slice(1)}`;
+    k === 'iso' ? 'visibilityISO' : `visibility${k.charAt(0).toUpperCase()}${k.slice(1)}`;
 
 function toVisibility(s: any): MetadataVisibility {
     return Object.fromEntries(
@@ -208,7 +208,7 @@ interface ToggleInputProps {
     label: string;
     id: string;
     value: string;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onChange: (e: ChangeEvent<HTMLInputElement>) => void;
     visible: boolean;
     onToggleVisibility: () => void;
 }
