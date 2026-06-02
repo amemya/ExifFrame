@@ -27,6 +27,10 @@ type ImageHandler struct {
 	// saveMu protects the pending save sessions.
 	saveMu       sync.Mutex
 	saveSessions map[string]*saveSession
+
+	// imgMu protects the image tokens for serving specific files.
+	imgMu       sync.RWMutex
+	imageTokens map[string]string
 }
 
 // saveSession holds metadata for a single pending save operation.
@@ -46,6 +50,7 @@ func NewImageHandler(app *App) *ImageHandler {
 	return &ImageHandler{
 		app:          app,
 		saveSessions: make(map[string]*saveSession),
+		imageTokens:  make(map[string]string),
 	}
 }
 
@@ -75,10 +80,20 @@ func (h *ImageHandler) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filePath := h.app.getCurrentImagePath()
+	var filePath string
+	token := r.URL.Query().Get("token")
+	
+	if token != "" {
+		h.imgMu.RLock()
+		filePath = h.imageTokens[token]
+		h.imgMu.RUnlock()
+	} else {
+		// Fallback for legacy behavior
+		filePath = h.app.getCurrentImagePath()
+	}
 
 	if filePath == "" {
-		http.Error(w, "No image loaded", http.StatusNotFound)
+		http.Error(w, "No image loaded or token expired", http.StatusNotFound)
 		return
 	}
 
@@ -112,6 +127,23 @@ func (h *ImageHandler) prepareSave(savePath string, mimeType string) string {
 		expiresAt: now.Add(saveTTL),
 	}
 
+	return token
+}
+
+// registerImageToken creates a token mapped to a specific file path
+// and returns the token so it can be used in /api/image requests.
+func (h *ImageHandler) registerImageToken(filePath string) string {
+	token := generateToken()
+
+	h.imgMu.Lock()
+	defer h.imgMu.Unlock()
+	
+	// Optional: Limit size to prevent memory leaks if many images are opened
+	if len(h.imageTokens) > 100 {
+		h.imageTokens = make(map[string]string)
+	}
+
+	h.imageTokens[token] = filePath
 	return token
 }
 

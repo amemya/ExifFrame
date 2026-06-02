@@ -247,8 +247,10 @@ function App() {
     
     useEffect(() => {
         const unsubProcess = Events.On("process_file", (event: any) => {
-            if (!event?.data?.[0]) return;
-            const data = event.data[0];
+            if (!event?.data) return;
+            // Handle both Wails v2 (array) and Wails v3 (single object) format
+            const data = Array.isArray(event.data) ? event.data[0] : event.data;
+            if (!data || !data.result) return;
             const { result, export: exportFolderStr } = data;
             if (!result || !result.imageURL) return;
 
