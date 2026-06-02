@@ -29,8 +29,9 @@ type ImageHandler struct {
 	saveSessions map[string]*saveSession
 
 	// imgMu protects the image tokens for serving specific files.
-	imgMu       sync.RWMutex
-	imageTokens map[string]string
+	imgMu           sync.RWMutex
+	imageTokens     map[string]string
+	imageTokenOrder []string
 }
 
 // saveSession holds metadata for a single pending save operation.
@@ -48,9 +49,10 @@ const saveTTL = 60 * time.Second
 // NewImageHandler creates a new ImageHandler.
 func NewImageHandler(app *App) *ImageHandler {
 	return &ImageHandler{
-		app:          app,
-		saveSessions: make(map[string]*saveSession),
-		imageTokens:  make(map[string]string),
+		app:             app,
+		saveSessions:    make(map[string]*saveSession),
+		imageTokens:     make(map[string]string),
+		imageTokenOrder: make([]string, 0, 100),
 	}
 }
 
@@ -147,15 +149,22 @@ func (h *ImageHandler) registerImageToken(filePath string) string {
 
 	// Optional: Limit size to prevent memory leaks if many images are opened
 	if len(h.imageTokens) >= 100 {
-		// Evict one pseudo-random entry to free space.
-		// (YAGNI: A full LRU is over-engineering for a simple 100-item desktop app cache)
-		for k := range h.imageTokens {
-			delete(h.imageTokens, k)
-			break
+		// Evict the oldest entry (FIFO) to free space.
+		if len(h.imageTokenOrder) > 0 {
+			oldestToken := h.imageTokenOrder[0]
+			h.imageTokenOrder = h.imageTokenOrder[1:]
+			delete(h.imageTokens, oldestToken)
+		} else {
+			// Fallback (should not happen if imageTokenOrder is consistent)
+			for k := range h.imageTokens {
+				delete(h.imageTokens, k)
+				break
+			}
 		}
 	}
 
 	h.imageTokens[token] = filePath
+	h.imageTokenOrder = append(h.imageTokenOrder, token)
 	return token
 }
 
