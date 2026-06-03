@@ -62,9 +62,15 @@ jobs:
           cd frontend
           npm run build
 
-      - name: Build Application
+      - name: Build Application (Linux/macOS)
+        if: runner.os != 'Windows'
         shell: bash
         run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o bin/ExifFrame
+
+      - name: Build Application (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui" -o bin/ExifFrame
 
       - name: Update Assets (macOS)
         if: runner.os == 'macOS'
