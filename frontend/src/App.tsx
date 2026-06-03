@@ -281,10 +281,11 @@ function App() {
                 return;
             }
             const { result, export: exportFolderStr } = data;
-            if (!result.imageURL || !exportFolderStr) return;
+            const imageUrl = result.imageURL;
+            if (!imageUrl || !exportFolderStr) return;
 
-                AppAPI.GetSettings().then(async (currentSet: Settings) => {
-                    const img = new Image();
+            AppAPI.GetSettings().then(async (currentSet: Settings) => {
+                const img = new Image();
                 img.onload = async () => {
                     const offscreenCanvas = document.createElement('canvas');
                     const exifData = {
@@ -347,9 +348,9 @@ function App() {
                     }, targetMime, 1.0);
                 };
                 img.onerror = () => {
-                    console.error("Background image load failed:", result.imageURL);
+                    console.error("Background image load failed:", imageUrl);
                 };
-                img.src = result.imageURL;
+                img.src = imageUrl;
             }).catch((e: any) => console.error(e));
         });
 
