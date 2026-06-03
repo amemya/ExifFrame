@@ -20,7 +20,7 @@ func buildMenu(app *App) *application.Menu {
 		appleMenu.AddSeparator()
 		appleMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
 			application.Get().Show()
-			go application.Get().Event.Emit("open_settings")
+			application.Get().Event.Emit("open_settings")
 		})
 		appleMenu.AddSeparator()
 		appleMenu.Add("Hide ExifFrame").SetAccelerator("CmdOrCtrl+h").OnClick(func(ctx *application.Context) {
@@ -39,7 +39,7 @@ func buildMenu(app *App) *application.Menu {
 		fileMenu := appMenu.AddSubmenu("File")
 		fileMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
 			application.Get().Show()
-			go application.Get().Event.Emit("open_settings")
+			application.Get().Event.Emit("open_settings")
 		})
 	}
 
@@ -73,6 +73,9 @@ func main() {
 		Height: 768,
 		Mac: application.MacWindow{
 			TitleBar: application.MacTitleBarHiddenInsetUnified,
+		},
+		Windows: application.WindowsWindow{
+			Menu: buildMenu(appStruct),
 		},
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",
