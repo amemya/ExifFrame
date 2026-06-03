@@ -139,14 +139,22 @@ func (a *App) processImageFile(filePath string) ExifResult {
 }
 
 func (a *App) doOpenImage(filePath string, fileBytes []byte, mimeType string) ExifResult {
-	// Store the file path for the HTTP handler to serve later.
+	// Store the file path for the HTTP handler to serve later (legacy fallback).
 	a.mu.Lock()
 	a.currentImagePath = filePath
 	a.mu.Unlock()
 
-	// Cache-busting timestamp ensures the browser fetches the new image.
+	var url string
+	if a.handler != nil {
+		token := a.handler.registerImageToken(filePath)
+		url = fmt.Sprintf("/api/image?token=%s&t=%d", token, time.Now().UnixNano())
+	} else {
+		// Cache-busting timestamp ensures the browser fetches the new image.
+		url = fmt.Sprintf("/api/image?t=%d", time.Now().UnixNano())
+	}
+
 	result := ExifResult{
-		ImageURL: fmt.Sprintf("/api/image?t=%d", time.Now().UnixNano()),
+		ImageURL: url,
 		MimeType: mimeType,
 		FilePath: filePath,
 	}

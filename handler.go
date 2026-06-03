@@ -27,6 +27,12 @@ type ImageHandler struct {
 	// saveMu protects the pending save sessions.
 	saveMu       sync.Mutex
 	saveSessions map[string]*saveSession
+
+	// imgMu protects the image tokens for serving specific files.
+	imgMu           sync.RWMutex
+	imageTokens     map[string]string // token -> filePath
+	pathToToken     map[string]string // filePath -> token
+	imageTokenOrder []string
 }
 
 // saveSession holds metadata for a single pending save operation.
@@ -44,8 +50,11 @@ const saveTTL = 60 * time.Second
 // NewImageHandler creates a new ImageHandler.
 func NewImageHandler(app *App) *ImageHandler {
 	return &ImageHandler{
-		app:          app,
-		saveSessions: make(map[string]*saveSession),
+		app:             app,
+		saveSessions:    make(map[string]*saveSession),
+		imageTokens:     make(map[string]string),
+		pathToToken:     make(map[string]string),
+		imageTokenOrder: make([]string, 0, 100),
 	}
 }
 
@@ -75,10 +84,20 @@ func (h *ImageHandler) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filePath := h.app.getCurrentImagePath()
+	var filePath string
+	token := r.URL.Query().Get("token")
+	
+	if token != "" {
+		h.imgMu.RLock()
+		filePath = h.imageTokens[token]
+		h.imgMu.RUnlock()
+	} else {
+		// Fallback for legacy behavior
+		filePath = h.app.getCurrentImagePath()
+	}
 
 	if filePath == "" {
-		http.Error(w, "No image loaded", http.StatusNotFound)
+		http.Error(w, "No image loaded or token not found", http.StatusNotFound)
 		return
 	}
 
@@ -112,6 +131,57 @@ func (h *ImageHandler) prepareSave(savePath string, mimeType string) string {
 		expiresAt: now.Add(saveTTL),
 	}
 
+	return token
+}
+
+// registerImageToken creates a token mapped to a specific file path
+// and returns the token so it can be used in /api/image requests.
+func (h *ImageHandler) registerImageToken(filePath string) string {
+	h.imgMu.Lock()
+	defer h.imgMu.Unlock()
+
+	// Reuse existing token if filePath is already registered
+	if t, exists := h.pathToToken[filePath]; exists {
+		// Move to end for LRU behavior
+		for i, ot := range h.imageTokenOrder {
+			if ot == t {
+				h.imageTokenOrder = append(h.imageTokenOrder[:i], h.imageTokenOrder[i+1:]...)
+				h.imageTokenOrder = append(h.imageTokenOrder, t)
+				break
+			}
+		}
+		return t
+	}
+	
+	token := generateToken()
+
+	// Optional: Limit size to prevent memory leaks if many images are opened
+	if len(h.imageTokens) >= 100 {
+		// Evict the oldest entry (FIFO with registration-time refresh) to free space.
+		if len(h.imageTokenOrder) > 0 {
+			oldestToken := h.imageTokenOrder[0]
+			// Shift elements to avoid allocating new backing arrays and prevent memory leaks
+			copy(h.imageTokenOrder, h.imageTokenOrder[1:])
+			h.imageTokenOrder[len(h.imageTokenOrder)-1] = "" // clear old reference
+			h.imageTokenOrder = h.imageTokenOrder[:len(h.imageTokenOrder)-1]
+
+			if oldPath, ok := h.imageTokens[oldestToken]; ok {
+				delete(h.pathToToken, oldPath)
+			}
+			delete(h.imageTokens, oldestToken)
+		} else {
+			// Fallback (should not happen if imageTokenOrder is consistent)
+			for k, p := range h.imageTokens {
+				delete(h.pathToToken, p)
+				delete(h.imageTokens, k)
+				break
+			}
+		}
+	}
+
+	h.imageTokens[token] = filePath
+	h.pathToToken[filePath] = token
+	h.imageTokenOrder = append(h.imageTokenOrder, token)
 	return token
 }
 
