@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net/http"
@@ -116,29 +117,28 @@ func (a *App) OpenImage() ExifResult {
 
 // processImageFile reads a file, validates it, and extracts EXIF
 func (a *App) processImageFile(filePath string) ExifResult {
-	const maxFileSize = 100 * 1024 * 1024 // 100 MB
-	fileInfo, err := os.Stat(filePath)
+	f, err := os.Open(filePath)
 	if err != nil {
-		return ExifResult{Error: "Failed to stat file: " + err.Error()}
+		return ExifResult{Error: "Failed to open file: " + err.Error()}
 	}
-	if fileInfo.Size() > maxFileSize {
-		return ExifResult{Error: fmt.Sprintf("File is too large (max 100MB): %d bytes", fileInfo.Size())}
+	defer f.Close()
+
+	// Read up to 512 bytes for MIME type detection
+	header := make([]byte, 512)
+	n, err := f.Read(header)
+	if err != nil && err != io.EOF {
+		return ExifResult{Error: "Failed to read file header: " + err.Error()}
 	}
 
-	fileBytes, err := os.ReadFile(filePath)
-	if err != nil {
-		return ExifResult{Error: "Failed to read file: " + err.Error()}
-	}
-
-	mimeType := http.DetectContentType(fileBytes)
+	mimeType := http.DetectContentType(header[:n])
 	if mimeType != "image/jpeg" && mimeType != "image/png" {
 		return ExifResult{Error: "Invalid file: selected file must be a JPG or PNG image."}
 	}
 
-	return a.doOpenImage(filePath, fileBytes, mimeType)
+	return a.doOpenImage(filePath, f, mimeType)
 }
 
-func (a *App) doOpenImage(filePath string, fileBytes []byte, mimeType string) ExifResult {
+func (a *App) doOpenImage(filePath string, f *os.File, mimeType string) ExifResult {
 	// Store the file path for the HTTP handler to serve later (legacy fallback).
 	a.mu.Lock()
 	a.currentImagePath = filePath
@@ -160,41 +160,60 @@ func (a *App) doOpenImage(filePath string, fileBytes []byte, mimeType string) Ex
 	}
 
 	// Parse EXIF
-	reader := bytes.NewReader(fileBytes)
-	x, err := exif.Decode(reader)
-	if err == nil {
-		if cam, err := x.Get(exif.Model); err == nil {
-			result.Camera, _ = cam.StringVal()
-		}
-		if lens, err := x.Get(exif.LensModel); err == nil {
-			result.Lens, _ = lens.StringVal()
-		}
+	// Reset file pointer to the beginning for EXIF decoding
+	if _, err := f.Seek(0, io.SeekStart); err == nil {
+		x, err := exif.Decode(f)
+		if err == nil {
+			if cam, err := x.Get(exif.Model); err == nil {
+				result.Camera, _ = cam.StringVal()
+			}
+			if lens, err := x.Get(exif.LensModel); err == nil {
+				result.Lens, _ = lens.StringVal()
+			}
 
-		if foc, err := x.Get(exif.FocalLength); err == nil {
-			num, den, _ := foc.Rat2(0)
-			result.FocalLength = formatFocalLength(num, den)
-		}
-		if fno, err := x.Get(exif.FNumber); err == nil {
-			num, den, _ := fno.Rat2(0)
-			result.Aperture = formatAperture(num, den)
-		}
-		if ss, err := x.Get(exif.ExposureTime); err == nil {
-			num, den, _ := ss.Rat2(0)
-			result.ShutterSpeed = formatShutterSpeed(num, den)
-		}
-		if iso, err := x.Get(exif.ISOSpeedRatings); err == nil {
-			result.ISO = "ISO" + iso.String()
+			if foc, err := x.Get(exif.FocalLength); err == nil {
+				num, den, _ := foc.Rat2(0)
+				result.FocalLength = formatFocalLength(num, den)
+			}
+			if fno, err := x.Get(exif.FNumber); err == nil {
+				num, den, _ := fno.Rat2(0)
+				result.Aperture = formatAperture(num, den)
+			}
+			if ss, err := x.Get(exif.ExposureTime); err == nil {
+				num, den, _ := ss.Rat2(0)
+				result.ShutterSpeed = formatShutterSpeed(num, den)
+			}
+			if iso, err := x.Get(exif.ISOSpeedRatings); err == nil {
+				result.ISO = "ISO" + iso.String()
+			}
 		}
 	}
 
 	// Adobe PNG/XMP Fallback (Extract metadata directly from raw XMP block)
+	// We read a maximum of the first 50MB to search for the XMP block.
 	var xmpData []byte
 	const xmpStartTag = "<x:xmpmeta"
 	const xmpEndTag = "</x:xmpmeta>"
+	const maxXmpSearchSize = 50 * 1024 * 1024 // 50 MB
 
-	if start := bytes.Index(fileBytes, []byte(xmpStartTag)); start != -1 {
-		if end := bytes.Index(fileBytes[start:], []byte(xmpEndTag)); end != -1 {
-			xmpData = fileBytes[start : start+end+len(xmpEndTag)]
+	if _, err := f.Seek(0, io.SeekStart); err == nil {
+		if fileInfo, statErr := f.Stat(); statErr == nil {
+			readSize := fileInfo.Size()
+			if readSize > maxXmpSearchSize {
+				readSize = maxXmpSearchSize
+			}
+			if readSize > 0 {
+				searchBuf := make([]byte, readSize)
+				n, readErr := io.ReadFull(f, searchBuf)
+				if n > 0 && (readErr == nil || readErr == io.EOF || readErr == io.ErrUnexpectedEOF) {
+					searchBuf = searchBuf[:n]
+					if start := bytes.Index(searchBuf, []byte(xmpStartTag)); start != -1 {
+						if end := bytes.Index(searchBuf[start:], []byte(xmpEndTag)); end != -1 {
+							xmpData = searchBuf[start : start+end+len(xmpEndTag)]
+						}
+					}
+				}
+			}
 		}
 	}
 
