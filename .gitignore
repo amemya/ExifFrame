@@ -24,3 +24,7 @@ frontend/bindings/
 frontend/package.json.md5
 build/ios/xcode/
 build/android/app/
+
+# reference files
+reference/
+
