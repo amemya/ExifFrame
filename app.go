@@ -489,3 +489,27 @@ func formatShutterSpeed(num, den int64) string {
 		return fmt.Sprintf("%d/%ds", reducedNum, reducedDen)
 	}
 }
+
+// OpenSettingsWindow opens the settings window or focuses it if already open.
+func (a *App) OpenSettingsWindow() {
+	app := application.Get()
+
+	// If the window already exists, focus it
+	if win, ok := app.Window.GetByName("settings"); ok && win != nil {
+		win.Show()
+		win.Focus()
+		return
+	}
+
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:  "settings",
+		Title: "Preferences",
+		Width: 600,
+		Height: 500,
+		Mac: application.MacWindow{
+			TitleBar: application.MacTitleBarHiddenInsetUnified,
+		},
+		BackgroundColour: application.NewRGB(27, 38, 54),
+		URL:              "/settings",
+	})
+}
