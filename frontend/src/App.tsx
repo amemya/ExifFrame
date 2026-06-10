@@ -1,54 +1,12 @@
-import { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import './App.css';
 // @ts-expect-error generated bindings does not provide declaration files for JS module
 import { App as AppAPI, Settings } from '../bindings/ExifFrame/index';
 import { Window, Events, System, Call } from '@wailsio/runtime';
 
-interface ExifData {
-    camera: string;
-    lens: string;
-    focalLength: string;
-    aperture: string;
-    shutterSpeed: string;
-    iso: string;
-    film: string;
-    developer: string;
-    dilution: string;
-    temperature: string;
-    time: string;
-}
-
-interface MetadataVisibility {
-    camera: boolean;
-    lens: boolean;
-    focalLength: boolean;
-    aperture: boolean;
-    shutterSpeed: boolean;
-    iso: boolean;
-    film: boolean;
-    developer: boolean;
-    dilution: boolean;
-    temperature: boolean;
-    time: boolean;
-}
-
-const VISIBILITY_KEYS = [
-    'camera', 'lens', 'focalLength', 'aperture', 'shutterSpeed', 'iso',
-    'film', 'developer', 'dilution', 'temperature', 'time',
-] as const;
-
-const settingsKey = (k: typeof VISIBILITY_KEYS[number]) =>
-    k === 'iso' ? 'visibilityISO' : `visibility${k.charAt(0).toUpperCase()}${k.slice(1)}`;
-
-function toVisibility(s: any): MetadataVisibility {
-    return Object.fromEntries(
-        VISIBILITY_KEYS.map(k => [k, (s[settingsKey(k)] as boolean) ?? true])
-    ) as unknown as MetadataVisibility;
-}
-
-function applyVisibility(s: any, v: MetadataVisibility): void {
-    VISIBILITY_KEYS.forEach(k => { s[settingsKey(k)] = v[k]; });
-}
+import { ExifData, MetadataVisibility, toVisibility, applyVisibility } from './types';
+import { FrameSettingsPanel } from './components/FrameSettingsPanel';
+import { MetadataSettingsPanel } from './components/MetadataSettingsPanel';
 
 const TOAST_DURATION_MS = 3000;
 
@@ -195,49 +153,6 @@ function renderImageToCanvas(
     ctx.lineWidth = Math.max(1, Math.floor(baseScale * 0.0015));
     ctx.stroke();
 }
-
-const EyeIcon = ({ visible }: { visible: boolean }) => (
-    visible ? (
-        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-    ) : (
-        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-    )
-);
-
-interface ToggleInputProps {
-    label: string;
-    id: string;
-    value: string;
-    onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-    visible: boolean;
-    onToggleVisibility: () => void;
-}
-
-const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility }: ToggleInputProps) => (
-    <div className="input-group">
-        <div className="toggle-input-header">
-            <label htmlFor={id} className="toggle-input-label">{label}</label>
-            <button
-                type="button"
-                onClick={onToggleVisibility}
-                className={`toggle-visibility-btn ${visible ? 'visible' : ''}`}
-                title={visible ? `Hide ${label} from frame` : `Show ${label} on frame`}
-                aria-label={visible ? `Hide ${label} from frame` : `Show ${label} on frame`}
-                aria-pressed={visible}
-            >
-                <EyeIcon visible={visible} />
-            </button>
-        </div>
-        <input
-            id={id}
-            type="text"
-            value={value}
-            onChange={onChange}
-            className={`toggle-input-field ${!visible ? 'hidden' : ''}`}
-        />
-    </div>
-);
-
 interface ProcessFileResult {
     imageURL?: string;
     camera?: string;
@@ -287,13 +202,19 @@ function App() {
                 const img = new Image();
                 img.onload = async () => {
                     const offscreenCanvas = document.createElement('canvas');
+
+                    const override = currentSet.overrideExif;
+                    
+                    const pick = (settingsVal: string | undefined, exifVal: string | undefined) => 
+                        override && settingsVal ? settingsVal : exifVal || "";
+
                     const exifData = {
-                        camera: result.camera || "",
-                        lens: result.lens || "",
-                        focalLength: result.focalLength || "",
-                        aperture: result.aperture || "",
-                        shutterSpeed: result.shutterSpeed || "",
-                        iso: result.iso || "",
+                        camera: pick(currentSet.camera, result.camera),
+                        lens: pick(currentSet.lens, result.lens),
+                        focalLength: pick(currentSet.focalLength, result.focalLength),
+                        aperture: pick(currentSet.aperture, result.aperture),
+                        shutterSpeed: pick(currentSet.shutterSpeed, result.shutterSpeed),
+                        iso: pick(currentSet.iso, result.iso),
                         film: currentSet.film || "",
                         developer: currentSet.developer || "",
                         dilution: currentSet.dilution || "",
@@ -489,48 +410,53 @@ function App() {
             unsubSettings();
         };
     }, []);
+    const handleSaveAutoExportDefault = async () => {
+        const s = new Settings();
+        s.watchFolder = watchFolder;
+        s.exportFolder = exportFolder;
+        s.aspectRatioPreset = aspectRatioPreset;
+        s.customRatioW = customRatioW;
+        s.customRatioH = customRatioH;
+        s.orientation = orientation;
+        s.alignment = alignment;
+        s.showPipeSeparator = showPipeSeparator;
+        s.profile = profile;
+        // In App.tsx (manual view), we don't have an overrideExif toggle. 
+        // We probably shouldn't overwrite overrideExif if we don't have it in state,
+        // so let's preserve it from the current global settings before saving.
 
-    // Save settings when aspect ratio etc changes
-    useEffect(() => {
-        if (isInitialLoad.current) return;
+        try {
+            const currentSettings = await AppAPI.GetSettings();
+            s.overrideExif = currentSettings.overrideExif;
+        } catch (e) {
+            s.overrideExif = false;
+        }
 
-        const saveCurrentSettings = async () => {
-            const s = new Settings();
-            s.watchFolder = watchFolder;
-            s.exportFolder = exportFolder;
-            s.aspectRatioPreset = aspectRatioPreset;
-            s.customRatioW = customRatioW;
-            s.customRatioH = customRatioH;
-            s.orientation = orientation;
-            s.alignment = alignment;
-            s.showPipeSeparator = showPipeSeparator;
-            s.profile = profile;
-            s.film = exif.film;
-            s.developer = exif.developer;
-            s.dilution = exif.dilution;
-            s.temperature = exif.temperature;
-            s.time = exif.time;
+        s.camera = exif.camera;
+        s.lens = exif.lens;
+        s.focalLength = exif.focalLength;
+        s.aperture = exif.aperture;
+        s.shutterSpeed = exif.shutterSpeed;
+        s.iso = exif.iso;
+        s.film = exif.film;
+        s.developer = exif.developer;
+        s.dilution = exif.dilution;
+        s.temperature = exif.temperature;
+        s.time = exif.time;
 
-            applyVisibility(s, visibility);
+        applyVisibility(s, visibility);
 
-            try {
-                const errStr = await AppAPI.SaveSettings(s);
-                if (errStr && errStr !== "") {
-                    showToast(errStr);
-                } else {
-                    showToast("Settings saved");
-                }
-            } catch (e: any) {
-                showToast("Error saving settings");
+        try {
+            const errStr = await AppAPI.SaveSettings(s);
+            if (errStr && errStr !== "") {
+                showToast(errStr);
+            } else {
+                showToast("Auto-export default saved");
             }
-        };
-
-        // Debounce saving settings when UI changes
-        const t = setTimeout(() => {
-            saveCurrentSettings();
-        }, 500);
-        return () => clearTimeout(t);
-    }, [aspectRatioPreset, customRatioW, customRatioH, orientation, alignment, showPipeSeparator, watchFolder, exportFolder, profile, exif.film, exif.developer, exif.dilution, exif.temperature, exif.time, visibility.camera, visibility.lens, visibility.focalLength, visibility.aperture, visibility.shutterSpeed, visibility.iso, visibility.film, visibility.developer, visibility.dilution, visibility.temperature, visibility.time]);
+        } catch (e: any) {
+            showToast("Error saving settings");
+        }
+    };
 
     useEffect(() => {
         setIsMac(System.IsMac());
@@ -755,247 +681,31 @@ function App() {
 
                 {imageLoaded && (
                     <aside className="sidebar">
-                        <div className="sidebar-section frame-settings-section">
-                            <h3>Frame Settings</h3>
-                            <div className="input-group">
-                                <label htmlFor="aspect-ratio-preset">Aspect Ratio</label>
-                                <select
-                                    id="aspect-ratio-preset"
-                                    value={aspectRatioPreset}
-                                    onChange={(e) => setAspectRatioPreset(e.target.value)}
-                                >
-                                    <option value="4300:3618">Default (4300:3618)</option>
-                                    <option value="1:1">Square (1:1)</option>
-                                    <option value="3:2">3:2</option>
-                                    <option value="4:3">4:3</option>
-                                    <option value="16:9">16:9</option>
-                                    <option value="custom">Custom</option>
-                                </select>
-                            </div>
-                            {aspectRatioPreset === "custom" && (
-                                <div className="input-row">
-                                    <div className="input-group">
-                                        <label htmlFor="custom-ratio-w">Width</label>
-                                        <input
-                                            id="custom-ratio-w"
-                                            type="number"
-                                            value={customRatioW || ''}
-                                            onChange={e => setCustomRatioW(Number(e.target.value) || 0)}
-                                            min="1"
-                                        />
-                                    </div>
-                                    <div className="input-group">
-                                        <label htmlFor="custom-ratio-h">Height</label>
-                                        <input
-                                            id="custom-ratio-h"
-                                            type="number"
-                                            value={customRatioH || ''}
-                                            onChange={e => setCustomRatioH(Number(e.target.value) || 0)}
-                                            min="1"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                            <div className="input-group">
-                                <label>Orientation</label>
-                                <div className={`segmented-control ${aspectRatioPreset === '1:1' ? 'disabled' : ''}`}>
-                                    <button
-                                        type="button"
-                                        className={`segment ${orientation === 'landscape' ? 'active' : ''}`}
-                                        onClick={() => setOrientation('landscape')}
-                                        disabled={aspectRatioPreset === '1:1'}
-                                        aria-pressed={orientation === 'landscape'}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect></svg>
-                                        Landscape
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`segment ${orientation === 'portrait' ? 'active' : ''}`}
-                                        onClick={() => setOrientation('portrait')}
-                                        disabled={aspectRatioPreset === '1:1'}
-                                        aria-pressed={orientation === 'portrait'}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="2" ry="2"></rect></svg>
-                                        Portrait
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="input-group">
-                                <label>Vertical Alignment</label>
-                                <div className="segmented-control">
-                                    <button
-                                        type="button"
-                                        className={`segment ${alignment === 'top' ? 'active' : ''}`}
-                                        onClick={() => setAlignment('top')}
-                                        aria-pressed={alignment === 'top'}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="4" x2="20" y2="4"></line><rect x="8" y="8" width="8" height="8" rx="1" ry="1"></rect></svg>
-                                        Top
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`segment ${alignment === 'center' ? 'active' : ''}`}
-                                        onClick={() => setAlignment('center')}
-                                        aria-pressed={alignment === 'center'}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><rect x="8" y="8" width="8" height="8" rx="1" ry="1"></rect></svg>
-                                        Center
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="input-group">
-                                <label>Separator Style</label>
-                                <div className="segmented-control">
-                                    <button
-                                        type="button"
-                                        className={`segment ${showPipeSeparator ? 'active' : ''}`}
-                                        onClick={() => setShowPipeSeparator(true)}
-                                        aria-pressed={showPipeSeparator}
-                                    >
-                                        Pipe (|)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`segment ${!showPipeSeparator ? 'active' : ''}`}
-                                        onClick={() => setShowPipeSeparator(false)}
-                                        aria-pressed={!showPipeSeparator}
-                                    >
-                                        Space
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <FrameSettingsPanel
+                            aspectRatioPreset={aspectRatioPreset} setAspectRatioPreset={setAspectRatioPreset}
+                            customRatioW={customRatioW} setCustomRatioW={setCustomRatioW}
+                            customRatioH={customRatioH} setCustomRatioH={setCustomRatioH}
+                            orientation={orientation} setOrientation={setOrientation}
+                            alignment={alignment} setAlignment={setAlignment}
+                            showPipeSeparator={showPipeSeparator} setShowPipeSeparator={setShowPipeSeparator}
+                        />
 
-                        <div className="sidebar-section metadata-settings-section">
-                            <div className="metadata-settings-header">
-                                <h3>Metadata Settings</h3>
-                                <div className="segmented-control">
-                                    <button
-                                        type="button"
-                                        className={`segment ${profile === 'digital' ? 'active' : ''}`}
-                                        onClick={() => setProfile('digital')}
-                                        aria-pressed={profile === 'digital'}
-                                    >
-                                        Digital
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`segment ${profile === 'film' ? 'active' : ''}`}
-                                        onClick={() => setProfile('film')}
-                                        aria-pressed={profile === 'film'}
-                                    >
-                                        Film
-                                    </button>
-                                </div>
-                            </div>
+                        <MetadataSettingsPanel
+                            profile={profile} setProfile={setProfile}
+                            exif={exif} setExif={setExif}
+                            visibility={visibility} setVisibility={setVisibility}
+                        />
 
-                            <ToggleInput
-                                label="Camera"
-                                id="camera-input"
-                                value={exif.camera}
-                                onChange={(e) => setExif(prev => ({ ...prev, camera: e.target.value }))}
-                                visible={visibility.camera}
-                                onToggleVisibility={() => setVisibility(prev => ({ ...prev, camera: !prev.camera }))}
-                            />
-                            <ToggleInput
-                                label="Lens"
-                                id="lens-input"
-                                value={exif.lens}
-                                onChange={(e) => setExif(prev => ({ ...prev, lens: e.target.value }))}
-                                visible={visibility.lens}
-                                onToggleVisibility={() => setVisibility(prev => ({ ...prev, lens: !prev.lens }))}
-                            />
-
-                            <div className="input-row">
-                                <ToggleInput
-                                    label="Focal Length"
-                                    id="focalLength-input"
-                                    value={exif.focalLength}
-                                    onChange={(e) => setExif(prev => ({ ...prev, focalLength: e.target.value }))}
-                                    visible={visibility.focalLength}
-                                    onToggleVisibility={() => setVisibility(prev => ({ ...prev, focalLength: !prev.focalLength }))}
-                                />
-                                <ToggleInput
-                                    label="Aperture"
-                                    id="aperture-input"
-                                    value={exif.aperture}
-                                    onChange={(e) => setExif(prev => ({ ...prev, aperture: e.target.value }))}
-                                    visible={visibility.aperture}
-                                    onToggleVisibility={() => setVisibility(prev => ({ ...prev, aperture: !prev.aperture }))}
-                                />
-                            </div>
-
-                            <div className="input-row">
-                                <ToggleInput
-                                    label="Shutter Speed"
-                                    id="shutterSpeed-input"
-                                    value={exif.shutterSpeed}
-                                    onChange={(e) => setExif(prev => ({ ...prev, shutterSpeed: e.target.value }))}
-                                    visible={visibility.shutterSpeed}
-                                    onToggleVisibility={() => setVisibility(prev => ({ ...prev, shutterSpeed: !prev.shutterSpeed }))}
-                                />
-                                {profile === 'digital' ? (
-                                    <ToggleInput
-                                        label="ISO"
-                                        id="iso-input"
-                                        value={exif.iso}
-                                        onChange={(e) => setExif(prev => ({ ...prev, iso: e.target.value }))}
-                                        visible={visibility.iso}
-                                        onToggleVisibility={() => setVisibility(prev => ({ ...prev, iso: !prev.iso }))}
-                                    />
-                                ) : (
-                                    <ToggleInput
-                                        label="Film"
-                                        id="film-input"
-                                        value={exif.film}
-                                        onChange={(e) => setExif(prev => ({ ...prev, film: e.target.value }))}
-                                        visible={visibility.film}
-                                        onToggleVisibility={() => setVisibility(prev => ({ ...prev, film: !prev.film }))}
-                                    />
-                                )}
-                            </div>
-
-                            {profile === 'film' && (
-                                <>
-                                    <div className="input-row">
-                                        <ToggleInput
-                                            label="Developer"
-                                            id="developer-input"
-                                            value={exif.developer}
-                                            onChange={(e) => setExif(prev => ({ ...prev, developer: e.target.value }))}
-                                            visible={visibility.developer}
-                                            onToggleVisibility={() => setVisibility(prev => ({ ...prev, developer: !prev.developer }))}
-                                        />
-                                        <ToggleInput
-                                            label="Dilution"
-                                            id="dilution-input"
-                                            value={exif.dilution}
-                                            onChange={(e) => setExif(prev => ({ ...prev, dilution: e.target.value }))}
-                                            visible={visibility.dilution}
-                                            onToggleVisibility={() => setVisibility(prev => ({ ...prev, dilution: !prev.dilution }))}
-                                        />
-                                    </div>
-                                    <div className="input-row">
-                                        <ToggleInput
-                                            label="Temperature"
-                                            id="temperature-input"
-                                            value={exif.temperature}
-                                            onChange={(e) => setExif(prev => ({ ...prev, temperature: e.target.value }))}
-                                            visible={visibility.temperature}
-                                            onToggleVisibility={() => setVisibility(prev => ({ ...prev, temperature: !prev.temperature }))}
-                                        />
-                                        <ToggleInput
-                                            label="Time"
-                                            id="time-input"
-                                            value={exif.time}
-                                            onChange={(e) => setExif(prev => ({ ...prev, time: e.target.value }))}
-                                            visible={visibility.time}
-                                            onToggleVisibility={() => setVisibility(prev => ({ ...prev, time: !prev.time }))}
-                                        />
-                                    </div>
-                                </>
-                            )}
+                        <div className="sidebar-section default-settings-section" style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+                            <button
+                                className="btn btn-primary"
+                                style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                                onClick={handleSaveAutoExportDefault}
+                                title="Save current settings as default for auto-processing"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                Save as Auto-Export Default
+                            </button>
                         </div>
                     </aside>
                 )}

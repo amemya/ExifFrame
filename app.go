@@ -504,8 +504,8 @@ func (a *App) OpenSettingsWindow() {
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:  "settings",
 		Title: "Preferences",
-		Width: 600,
-		Height: 500,
+		Width: 800,
+		Height: 600,
 		Mac: application.MacWindow{
 			TitleBar: application.MacTitleBarHiddenInsetUnified,
 		},

@@ -22,12 +22,19 @@ type Settings struct {
 	ShowPipeSeparator bool   `json:"showPipeSeparator"`
 
 	// New fields for Profiles and Film metadata
-	Profile     string `json:"profile"`
-	Film        string `json:"film"`
-	Developer   string `json:"developer"`
-	Dilution    string `json:"dilution"`
-	Temperature string `json:"temperature"`
-	Time        string `json:"time"`
+	Profile      string `json:"profile"`
+	Camera       string `json:"camera"`
+	Lens         string `json:"lens"`
+	FocalLength  string `json:"focalLength"`
+	Aperture     string `json:"aperture"`
+	ShutterSpeed string `json:"shutterSpeed"`
+	ISO          string `json:"iso"`
+	Film         string `json:"film"`
+	Developer    string `json:"developer"`
+	Dilution     string `json:"dilution"`
+	Temperature  string `json:"temperature"`
+	Time         string `json:"time"`
+	OverrideExif bool   `json:"overrideExif"`
 
 	// Visibility toggles
 	VisibilityCamera       bool `json:"visibilityCamera"`
