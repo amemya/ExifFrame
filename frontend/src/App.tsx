@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react';
 import './App.css';
 // @ts-expect-error generated bindings does not provide declaration files for JS module
 import { App as AppAPI, Settings } from '../bindings/ExifFrame/index';
-import { Window, Events, System } from '@wailsio/runtime';
+import { Window, Events, System, Call } from '@wailsio/runtime';
 
 interface ExifData {
     camera: string;
@@ -33,8 +33,8 @@ interface MetadataVisibility {
 }
 
 const VISIBILITY_KEYS = [
-    'camera','lens','focalLength','aperture','shutterSpeed','iso',
-    'film','developer','dilution','temperature','time',
+    'camera', 'lens', 'focalLength', 'aperture', 'shutterSpeed', 'iso',
+    'film', 'developer', 'dilution', 'temperature', 'time',
 ] as const;
 
 const settingsKey = (k: typeof VISIBILITY_KEYS[number]) =>
@@ -217,9 +217,9 @@ const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility }
     <div className="input-group">
         <div className="toggle-input-header">
             <label htmlFor={id} className="toggle-input-label">{label}</label>
-            <button 
-                type="button" 
-                onClick={onToggleVisibility} 
+            <button
+                type="button"
+                onClick={onToggleVisibility}
                 className={`toggle-visibility-btn ${visible ? 'visible' : ''}`}
                 title={visible ? `Hide ${label} from frame` : `Show ${label} on frame`}
                 aria-label={visible ? `Hide ${label} from frame` : `Show ${label} on frame`}
@@ -228,12 +228,12 @@ const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility }
                 <EyeIcon visible={visible} />
             </button>
         </div>
-        <input 
-            id={id} 
-            type="text" 
-            value={value} 
-            onChange={onChange} 
-            className={`toggle-input-field ${!visible ? 'hidden' : ''}`} 
+        <input
+            id={id}
+            type="text"
+            value={value}
+            onChange={onChange}
+            className={`toggle-input-field ${!visible ? 'hidden' : ''}`}
         />
     </div>
 );
@@ -260,12 +260,11 @@ interface WailsProcessFileEvent {
 }
 
 function App() {
-    const [showSettings, setShowSettings] = useState(false);
     const [watchFolder, setWatchFolder] = useState("");
     const [exportFolder, setExportFolder] = useState("");
 
     const [profile, setProfile] = useState<string>("digital");
-    
+
     useEffect(() => {
         const unsubProcess = Events.On("process_file", (event: WailsProcessFileEvent) => {
             if (!event?.data) return;
@@ -301,7 +300,7 @@ function App() {
                         temperature: currentSet.temperature || "",
                         time: currentSet.time || ""
                     };
-                    
+
                     renderImageToCanvas(offscreenCanvas, img, exifData, {
                         aspectRatioPreset: currentSet.aspectRatioPreset || "4300:3618",
                         customRatioW: currentSet.customRatioW || 4300,
@@ -325,7 +324,7 @@ function App() {
                     offscreenCanvas.toBlob(async (blob) => {
                         if (!blob) return;
                         try {
-                            const resultSave = await AppAPI.SaveAutoImage(isPng, savePath); 
+                            const resultSave = await AppAPI.SaveAutoImage(isPng, savePath);
                             if (resultSave.saveToken) {
                                 const arrayBuffer = await blob.arrayBuffer();
                                 const resp = await fetch(`/api/save?token=${encodeURIComponent(resultSave.saveToken)}`, {
@@ -358,7 +357,7 @@ function App() {
             unsubProcess();
         };
     }, []);
-    
+
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [imageLoaded, setImageLoaded] = useState(false);
     const [exif, setExif] = useState<ExifData>({
@@ -428,7 +427,7 @@ function App() {
             window.cancelAnimationFrame(toastRafRef.current);
             toastRafRef.current = null;
         }
-        
+
         // Force a re-render by clearing the state first
         setToastMessage(null);
         toastRafRef.current = requestAnimationFrame(() => {
@@ -455,7 +454,7 @@ function App() {
             if (s.profile) {
                 setProfile(['digital', 'film'].includes(s.profile) ? s.profile : 'digital');
             }
-            
+
             setExif(prev => ({
                 ...prev,
                 film: s.film || "",
@@ -475,31 +474,26 @@ function App() {
             }, 100);
         });
 
-        const unsubSettings = Events.On("open_settings", () => {
-            console.log("open_settings event received");
-            setShowSettings(true);
+        const unsubSettings = Events.On("settings_saved", () => {
+            AppAPI.GetSettings().then((s: Settings) => {
+                if (s.watchFolder) setWatchFolder(s.watchFolder);
+                else setWatchFolder("");
+                if (s.exportFolder) setExportFolder(s.exportFolder);
+                else setExportFolder("");
+            }).catch((err: any) => {
+                console.error("Failed to reload settings:", err);
+            });
         });
-        
+
         return () => {
             unsubSettings();
         };
     }, []);
 
-    // Escape key to close settings modal
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                setShowSettings(false);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
-
     // Save settings when aspect ratio etc changes
     useEffect(() => {
         if (isInitialLoad.current) return;
-        
+
         const saveCurrentSettings = async () => {
             const s = new Settings();
             s.watchFolder = watchFolder;
@@ -516,7 +510,7 @@ function App() {
             s.dilution = exif.dilution;
             s.temperature = exif.temperature;
             s.time = exif.time;
-            
+
             applyVisibility(s, visibility);
 
             try {
@@ -689,9 +683,9 @@ function App() {
                     {filePath && <span className="file-path">{filePath.split(/[/\\]/).filter(Boolean).join(' > ')}</span>}
                 </div>
                 <div className="top-bar-actions">
-                    <button 
-                        className="btn btn-secondary btn-icon" 
-                        onClick={() => setShowSettings(true)}
+                    <button
+                        className="btn btn-secondary btn-icon"
+                        onClick={() => Call.ByName("main.App.OpenSettingsWindow")}
                         title="Settings"
                         aria-label="Settings"
                     >
@@ -765,9 +759,9 @@ function App() {
                             <h3>Frame Settings</h3>
                             <div className="input-group">
                                 <label htmlFor="aspect-ratio-preset">Aspect Ratio</label>
-                                <select 
-                                    id="aspect-ratio-preset" 
-                                    value={aspectRatioPreset} 
+                                <select
+                                    id="aspect-ratio-preset"
+                                    value={aspectRatioPreset}
                                     onChange={(e) => setAspectRatioPreset(e.target.value)}
                                 >
                                     <option value="4300:3618">Default (4300:3618)</option>
@@ -782,21 +776,21 @@ function App() {
                                 <div className="input-row">
                                     <div className="input-group">
                                         <label htmlFor="custom-ratio-w">Width</label>
-                                        <input 
-                                            id="custom-ratio-w" 
-                                            type="number" 
-                                            value={customRatioW || ''} 
-                                            onChange={e => setCustomRatioW(Number(e.target.value) || 0)} 
+                                        <input
+                                            id="custom-ratio-w"
+                                            type="number"
+                                            value={customRatioW || ''}
+                                            onChange={e => setCustomRatioW(Number(e.target.value) || 0)}
                                             min="1"
                                         />
                                     </div>
                                     <div className="input-group">
                                         <label htmlFor="custom-ratio-h">Height</label>
-                                        <input 
-                                            id="custom-ratio-h" 
-                                            type="number" 
-                                            value={customRatioH || ''} 
-                                            onChange={e => setCustomRatioH(Number(e.target.value) || 0)} 
+                                        <input
+                                            id="custom-ratio-h"
+                                            type="number"
+                                            value={customRatioH || ''}
+                                            onChange={e => setCustomRatioH(Number(e.target.value) || 0)}
                                             min="1"
                                         />
                                     </div>
@@ -805,7 +799,7 @@ function App() {
                             <div className="input-group">
                                 <label>Orientation</label>
                                 <div className={`segmented-control ${aspectRatioPreset === '1:1' ? 'disabled' : ''}`}>
-                                    <button 
+                                    <button
                                         type="button"
                                         className={`segment ${orientation === 'landscape' ? 'active' : ''}`}
                                         onClick={() => setOrientation('landscape')}
@@ -815,7 +809,7 @@ function App() {
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect></svg>
                                         Landscape
                                     </button>
-                                    <button 
+                                    <button
                                         type="button"
                                         className={`segment ${orientation === 'portrait' ? 'active' : ''}`}
                                         onClick={() => setOrientation('portrait')}
@@ -830,7 +824,7 @@ function App() {
                             <div className="input-group">
                                 <label>Vertical Alignment</label>
                                 <div className="segmented-control">
-                                    <button 
+                                    <button
                                         type="button"
                                         className={`segment ${alignment === 'top' ? 'active' : ''}`}
                                         onClick={() => setAlignment('top')}
@@ -839,7 +833,7 @@ function App() {
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="4" x2="20" y2="4"></line><rect x="8" y="8" width="8" height="8" rx="1" ry="1"></rect></svg>
                                         Top
                                     </button>
-                                    <button 
+                                    <button
                                         type="button"
                                         className={`segment ${alignment === 'center' ? 'active' : ''}`}
                                         onClick={() => setAlignment('center')}
@@ -853,7 +847,7 @@ function App() {
                             <div className="input-group">
                                 <label>Separator Style</label>
                                 <div className="segmented-control">
-                                    <button 
+                                    <button
                                         type="button"
                                         className={`segment ${showPipeSeparator ? 'active' : ''}`}
                                         onClick={() => setShowPipeSeparator(true)}
@@ -861,7 +855,7 @@ function App() {
                                     >
                                         Pipe (|)
                                     </button>
-                                    <button 
+                                    <button
                                         type="button"
                                         className={`segment ${!showPipeSeparator ? 'active' : ''}`}
                                         onClick={() => setShowPipeSeparator(false)}
@@ -872,12 +866,12 @@ function App() {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="sidebar-section metadata-settings-section">
                             <div className="metadata-settings-header">
                                 <h3>Metadata Settings</h3>
                                 <div className="segmented-control">
-                                    <button 
+                                    <button
                                         type="button"
                                         className={`segment ${profile === 'digital' ? 'active' : ''}`}
                                         onClick={() => setProfile('digital')}
@@ -885,7 +879,7 @@ function App() {
                                     >
                                         Digital
                                     </button>
-                                    <button 
+                                    <button
                                         type="button"
                                         className={`segment ${profile === 'film' ? 'active' : ''}`}
                                         onClick={() => setProfile('film')}
@@ -895,107 +889,107 @@ function App() {
                                     </button>
                                 </div>
                             </div>
-                            
-                            <ToggleInput 
-                                label="Camera" 
-                                id="camera-input" 
-                                value={exif.camera} 
-                                onChange={(e) => setExif(prev => ({ ...prev, camera: e.target.value }))} 
+
+                            <ToggleInput
+                                label="Camera"
+                                id="camera-input"
+                                value={exif.camera}
+                                onChange={(e) => setExif(prev => ({ ...prev, camera: e.target.value }))}
                                 visible={visibility.camera}
                                 onToggleVisibility={() => setVisibility(prev => ({ ...prev, camera: !prev.camera }))}
                             />
-                            <ToggleInput 
-                                label="Lens" 
-                                id="lens-input" 
-                                value={exif.lens} 
-                                onChange={(e) => setExif(prev => ({ ...prev, lens: e.target.value }))} 
+                            <ToggleInput
+                                label="Lens"
+                                id="lens-input"
+                                value={exif.lens}
+                                onChange={(e) => setExif(prev => ({ ...prev, lens: e.target.value }))}
                                 visible={visibility.lens}
                                 onToggleVisibility={() => setVisibility(prev => ({ ...prev, lens: !prev.lens }))}
                             />
-                            
+
                             <div className="input-row">
-                                <ToggleInput 
-                                    label="Focal Length" 
-                                    id="focalLength-input" 
-                                    value={exif.focalLength} 
-                                    onChange={(e) => setExif(prev => ({ ...prev, focalLength: e.target.value }))} 
+                                <ToggleInput
+                                    label="Focal Length"
+                                    id="focalLength-input"
+                                    value={exif.focalLength}
+                                    onChange={(e) => setExif(prev => ({ ...prev, focalLength: e.target.value }))}
                                     visible={visibility.focalLength}
                                     onToggleVisibility={() => setVisibility(prev => ({ ...prev, focalLength: !prev.focalLength }))}
                                 />
-                                <ToggleInput 
-                                    label="Aperture" 
-                                    id="aperture-input" 
-                                    value={exif.aperture} 
-                                    onChange={(e) => setExif(prev => ({ ...prev, aperture: e.target.value }))} 
+                                <ToggleInput
+                                    label="Aperture"
+                                    id="aperture-input"
+                                    value={exif.aperture}
+                                    onChange={(e) => setExif(prev => ({ ...prev, aperture: e.target.value }))}
                                     visible={visibility.aperture}
                                     onToggleVisibility={() => setVisibility(prev => ({ ...prev, aperture: !prev.aperture }))}
                                 />
                             </div>
-                            
+
                             <div className="input-row">
-                                <ToggleInput 
-                                    label="Shutter Speed" 
-                                    id="shutterSpeed-input" 
-                                    value={exif.shutterSpeed} 
-                                    onChange={(e) => setExif(prev => ({ ...prev, shutterSpeed: e.target.value }))} 
+                                <ToggleInput
+                                    label="Shutter Speed"
+                                    id="shutterSpeed-input"
+                                    value={exif.shutterSpeed}
+                                    onChange={(e) => setExif(prev => ({ ...prev, shutterSpeed: e.target.value }))}
                                     visible={visibility.shutterSpeed}
                                     onToggleVisibility={() => setVisibility(prev => ({ ...prev, shutterSpeed: !prev.shutterSpeed }))}
                                 />
                                 {profile === 'digital' ? (
-                                    <ToggleInput 
-                                        label="ISO" 
-                                        id="iso-input" 
-                                        value={exif.iso} 
-                                        onChange={(e) => setExif(prev => ({ ...prev, iso: e.target.value }))} 
+                                    <ToggleInput
+                                        label="ISO"
+                                        id="iso-input"
+                                        value={exif.iso}
+                                        onChange={(e) => setExif(prev => ({ ...prev, iso: e.target.value }))}
                                         visible={visibility.iso}
                                         onToggleVisibility={() => setVisibility(prev => ({ ...prev, iso: !prev.iso }))}
                                     />
                                 ) : (
-                                    <ToggleInput 
-                                        label="Film" 
-                                        id="film-input" 
-                                        value={exif.film} 
-                                        onChange={(e) => setExif(prev => ({ ...prev, film: e.target.value }))} 
+                                    <ToggleInput
+                                        label="Film"
+                                        id="film-input"
+                                        value={exif.film}
+                                        onChange={(e) => setExif(prev => ({ ...prev, film: e.target.value }))}
                                         visible={visibility.film}
                                         onToggleVisibility={() => setVisibility(prev => ({ ...prev, film: !prev.film }))}
                                     />
                                 )}
                             </div>
-                            
+
                             {profile === 'film' && (
                                 <>
                                     <div className="input-row">
-                                        <ToggleInput 
-                                            label="Developer" 
-                                            id="developer-input" 
-                                            value={exif.developer} 
-                                            onChange={(e) => setExif(prev => ({ ...prev, developer: e.target.value }))} 
+                                        <ToggleInput
+                                            label="Developer"
+                                            id="developer-input"
+                                            value={exif.developer}
+                                            onChange={(e) => setExif(prev => ({ ...prev, developer: e.target.value }))}
                                             visible={visibility.developer}
                                             onToggleVisibility={() => setVisibility(prev => ({ ...prev, developer: !prev.developer }))}
                                         />
-                                        <ToggleInput 
-                                            label="Dilution" 
-                                            id="dilution-input" 
-                                            value={exif.dilution} 
-                                            onChange={(e) => setExif(prev => ({ ...prev, dilution: e.target.value }))} 
+                                        <ToggleInput
+                                            label="Dilution"
+                                            id="dilution-input"
+                                            value={exif.dilution}
+                                            onChange={(e) => setExif(prev => ({ ...prev, dilution: e.target.value }))}
                                             visible={visibility.dilution}
                                             onToggleVisibility={() => setVisibility(prev => ({ ...prev, dilution: !prev.dilution }))}
                                         />
                                     </div>
                                     <div className="input-row">
-                                        <ToggleInput 
-                                            label="Temperature" 
-                                            id="temperature-input" 
-                                            value={exif.temperature} 
-                                            onChange={(e) => setExif(prev => ({ ...prev, temperature: e.target.value }))} 
+                                        <ToggleInput
+                                            label="Temperature"
+                                            id="temperature-input"
+                                            value={exif.temperature}
+                                            onChange={(e) => setExif(prev => ({ ...prev, temperature: e.target.value }))}
                                             visible={visibility.temperature}
                                             onToggleVisibility={() => setVisibility(prev => ({ ...prev, temperature: !prev.temperature }))}
                                         />
-                                        <ToggleInput 
-                                            label="Time" 
-                                            id="time-input" 
-                                            value={exif.time} 
-                                            onChange={(e) => setExif(prev => ({ ...prev, time: e.target.value }))} 
+                                        <ToggleInput
+                                            label="Time"
+                                            id="time-input"
+                                            value={exif.time}
+                                            onChange={(e) => setExif(prev => ({ ...prev, time: e.target.value }))}
                                             visible={visibility.time}
                                             onToggleVisibility={() => setVisibility(prev => ({ ...prev, time: !prev.time }))}
                                         />
@@ -1013,52 +1007,6 @@ function App() {
                 )}
             </main>
 
-            {showSettings && (
-                <div className="modal-overlay" onClick={() => setShowSettings(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <h2>Preferences</h2>
-                        <div className="input-group">
-                            <label>Watch Folder (Auto-process)</label>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <input 
-                                    type="text" 
-                                    value={watchFolder} 
-                                    readOnly 
-                                    placeholder="/path/to/watch/folder"
-                                    style={{ flex: 1 }}
-                                />
-                                <button onClick={async () => {
-                                    const path = await AppAPI.SelectWatchFolder();
-                                    if (path) setWatchFolder(path);
-                                }} className="btn btn-secondary">Select</button>
-                                <button onClick={() => setWatchFolder("")} className="btn btn-secondary" title="Clear Folder">✕</button>
-                            </div>
-                            <small>Images dropped here will be processed automatically.</small>
-                        </div>
-                        <div className="input-group">
-                            <label>Export Folder (Auto-save)</label>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <input 
-                                    type="text" 
-                                    value={exportFolder} 
-                                    readOnly 
-                                    placeholder="/path/to/export/folder"
-                                    style={{ flex: 1 }}
-                                />
-                                <button onClick={async () => {
-                                    const path = await AppAPI.SelectExportFolder();
-                                    if (path) setExportFolder(path);
-                                }} className="btn btn-secondary">Select</button>
-                                <button onClick={() => setExportFolder("")} className="btn btn-secondary" title="Clear Folder">✕</button>
-                            </div>
-                            <small>Auto-processed images will be saved here.</small>
-                        </div>
-                        <div className="modal-actions">
-                            <button className="btn btn-primary" onClick={() => setShowSettings(false)}>Close</button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
