@@ -78,6 +78,7 @@ func main() {
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",
 		StartState:       application.WindowStateMaximised,
+		EnableFileDrop:   true,
 	})
 
 	err := app.Run()

@@ -113,11 +113,11 @@ func (a *App) OpenImage() ExifResult {
 		return ExifResult{Cancelled: true} // user cancelled
 	}
 
-	return a.processImageFile(filePath)
+	return a.ProcessImageFile(filePath)
 }
 
-// processImageFile reads a file, validates it, and extracts EXIF
-func (a *App) processImageFile(filePath string) ExifResult {
+// ProcessImageFile reads a file, validates it, and extracts EXIF
+func (a *App) ProcessImageFile(filePath string) ExifResult {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return ExifResult{Error: "Failed to open file: " + err.Error()}

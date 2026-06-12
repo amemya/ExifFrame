@@ -222,6 +222,35 @@ body {
     background: #fff;
 }
 
+/* Drag and Drop Overlay */
+.drop-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(74, 144, 226, 0.15);
+    border: 3px dashed var(--accent-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    pointer-events: none;
+    border-radius: 8px;
+    backdrop-filter: blur(2px);
+    transition: all 0.2s ease;
+}
+
+.drop-overlay-text {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent-color);
+    background-color: var(--bg-panel);
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 /* Sidebar */
 .sidebar {
     width: 320px;

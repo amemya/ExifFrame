@@ -123,7 +123,9 @@ func (a *App) processBackgroundFile(filePath string) {
 		return
 	}
 
-	result := a.processImageFile(filePath)
+	time.Sleep(100 * time.Millisecond)
+
+	result := a.ProcessImageFile(filePath)
 	if result.Error != "" {
 		log.Println("Background process error:", result.Error)
 		return

@@ -316,6 +316,7 @@ function App() {
     });
 
     const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
     const [isSelecting, setIsSelecting] = useState(false);
     const isSelectingRef = useRef(false);
     const [filePath, setFilePath] = useState("");
@@ -422,8 +423,35 @@ function App() {
             });
         });
 
+        const offFilesDropped = Events.On(Events.Types.Common.WindowFilesDropped, async (e: any) => {
+            if (e.data && e.data.length > 0) {
+                const filePath = e.data[0];
+                const lower = filePath.toLowerCase();
+                if (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")) {
+                    if (isSelectingRef.current) return;
+                    isSelectingRef.current = true;
+                    setIsSelecting(true);
+                    setIsDragging(false);
+                    try {
+                        const result = await AppAPI.ProcessImageFile(filePath);
+                        await handleExifResult(result);
+                    } catch (err: any) {
+                        console.error("Failed to process dropped file:", err);
+                        showToast("Failed to process file: " + err);
+                    } finally {
+                        setIsSelecting(false);
+                        isSelectingRef.current = false;
+                    }
+                } else {
+                    showToast("Invalid file: only JPG and PNG are supported.");
+                    setIsDragging(false);
+                }
+            }
+        });
+
         return () => {
             unsubSettings();
+            offFilesDropped();
         };
     }, []);
     const handleSaveAutoExportDefault = async () => {
@@ -474,9 +502,47 @@ function App() {
         }
     };
 
-    useEffect(() => {
-        setIsMac(System.IsMac());
-    }, []);
+    const handleExifResult = async (result: any) => {
+        if (result.cancelled) return;
+        if (result.error) {
+            console.error(result.error);
+            showToast(result.error);
+            return;
+        }
+        if (!result.imageURL) {
+            console.error("Server returned an empty image URL");
+            showToast("Server returned an empty image URL");
+            return;
+        }
+
+        await new Promise<void>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                setExif(prev => ({
+                    ...prev,
+                    camera: result.camera || "",
+                    lens: result.lens || "",
+                    focalLength: result.focalLength || "",
+                    aperture: result.aperture || "",
+                    shutterSpeed: result.shutterSpeed || "",
+                    iso: result.iso || ""
+                }));
+                setFilePath(result.filePath || "");
+                setSourceMimeType(result.mimeType || "");
+
+                setImageObj(img);
+                setOrientation(img.height > img.width ? "portrait" : "landscape");
+                setImageLoaded(true);
+                resolve();
+            };
+            img.onerror = () => {
+                console.error("Failed to load image");
+                showToast("Failed to load image preview");
+                reject(new Error("Failed to load image"));
+            };
+            img.src = result.imageURL;
+        });
+    };
 
     const handleSelectImage = async () => {
         if (isSelectingRef.current) return;
@@ -484,50 +550,7 @@ function App() {
         setIsSelecting(true);
         try {
             const result = await AppAPI.OpenImage();
-
-            if (result.cancelled) {
-                return;
-            }
-
-            if (result.error) {
-                console.error(result.error);
-                return;
-            }
-
-            if (!result.imageURL) {
-                console.error("Server returned an empty image URL");
-                return;
-            }
-
-            // Load the image via HTTP URL (served by AssetServer Middleware)
-            await new Promise<void>((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => {
-                    // Update EXIF state (leave empty if not found)
-                    setExif(prev => ({
-                        ...prev,
-                        camera: result.camera || "",
-                        lens: result.lens || "",
-                        focalLength: result.focalLength || "",
-                        aperture: result.aperture || "",
-                        shutterSpeed: result.shutterSpeed || "",
-                        iso: result.iso || ""
-                    }));
-                    setFilePath(result.filePath || "");
-                    setSourceMimeType(result.mimeType || "");
-
-                    setImageObj(img);
-                    setOrientation(img.height > img.width ? "portrait" : "landscape");
-                    setImageLoaded(true);
-                    resolve();
-                };
-                img.onerror = () => {
-                    console.error("Failed to decode or render the selected image");
-                    reject(new Error("Failed to decode image"));
-                };
-                img.src = result.imageURL;
-            });
-
+            await handleExifResult(result);
         } catch (err) {
             console.error("Failed to open image:", err);
         } finally {
@@ -658,7 +681,19 @@ function App() {
             </header>
 
             <main className="workspace">
-                <div className="preview-area">
+                <div 
+                    className="preview-area"
+                    data-file-drop-target="true"
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+                    onDrop={(e) => { e.preventDefault(); setIsDragging(false); }}
+                >
+                    {isDragging && (
+                        <div className="drop-overlay">
+                            <div className="drop-overlay-text">Drop image here</div>
+                        </div>
+                    )}
                     {!imageLoaded ? (
                         <div
                             className={`empty-state ${isSelecting ? 'selecting' : ''}`}
