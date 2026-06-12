@@ -225,13 +225,10 @@ body {
 /* Drag and Drop Overlay */
 .drop-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     background-color: rgba(74, 144, 226, 0.15);
     border: 3px dashed var(--accent-color);
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
     z-index: 100;
@@ -239,6 +236,10 @@ body {
     border-radius: 8px;
     backdrop-filter: blur(2px);
     transition: all 0.2s ease;
+}
+
+.preview-area.file-drop-target-active .drop-overlay {
+    display: flex;
 }
 
 .drop-overlay-text {

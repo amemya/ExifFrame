@@ -316,10 +316,8 @@ function App() {
     });
 
     const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
-    const [isDragging, setIsDragging] = useState(false);
     const [isSelecting, setIsSelecting] = useState(false);
     const isSelectingRef = useRef(false);
-    const dragCounterRef = useRef(0);
     const [filePath, setFilePath] = useState("");
     const isInitialLoad = useRef(true);
     const [isMac, setIsMac] = useState(false);
@@ -480,8 +478,6 @@ function App() {
             if (files.length > 0) {
                 if (files.length > 1) {
                     showToast("Please drop only one file at a time.");
-                    setIsDragging(false);
-                    dragCounterRef.current = 0;
                     return;
                 }
                 const filePath = files[0];
@@ -490,8 +486,6 @@ function App() {
                     if (isSelectingRef.current) return;
                     isSelectingRef.current = true;
                     setIsSelecting(true);
-                    setIsDragging(false);
-                    dragCounterRef.current = 0;
                     try {
                         const result = await AppAPI.ProcessImageFile(filePath);
                         await handleExifResult(result);
@@ -504,7 +498,6 @@ function App() {
                     }
                 } else {
                     showToast("Invalid file: only JPG and PNG are supported.");
-                    setIsDragging(false);
                 }
             }
         });
@@ -706,28 +699,10 @@ function App() {
                 <div 
                     className="preview-area"
                     data-file-drop-target="true"
-                    onDragOver={(e) => { e.preventDefault(); }}
-                    onDragEnter={(e) => { 
-                        e.preventDefault(); 
-                        dragCounterRef.current++;
-                        if (dragCounterRef.current === 1) setIsDragging(true); 
-                    }}
-                    onDragLeave={(e) => { 
-                        e.preventDefault(); 
-                        dragCounterRef.current--;
-                        if (dragCounterRef.current === 0) setIsDragging(false); 
-                    }}
-                    onDrop={(e) => { 
-                        e.preventDefault(); 
-                        dragCounterRef.current = 0;
-                        setIsDragging(false); 
-                    }}
                 >
-                    {isDragging && (
-                        <div className="drop-overlay">
-                            <div className="drop-overlay-text">Drop image here</div>
-                        </div>
-                    )}
+                    <div className="drop-overlay">
+                        <div className="drop-overlay-text">Drop image here</div>
+                    </div>
                     {!imageLoaded ? (
                         <div
                             className={`empty-state ${isSelecting ? 'selecting' : ''}`}
