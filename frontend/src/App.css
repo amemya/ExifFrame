@@ -132,6 +132,23 @@ body {
     color: var(--text-primary);
 }
 
+.btn-update {
+    background-color: rgba(74, 144, 226, 0.15);
+    color: var(--accent-color);
+    border: 1px solid rgba(74, 144, 226, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+.btn-update:hover {
+    background-color: rgba(74, 144, 226, 0.25);
+    border-color: rgba(74, 144, 226, 0.5);
+    color: #fff;
+}
+
 /* Main Workspace */
 .workspace {
     display: flex;
