@@ -540,10 +540,14 @@ func (a *App) CheckForUpdates() UpdateInfo {
 	req.Header.Set("User-Agent", "ExifFrame-App")
 
 	resp, err := client.Do(req)
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return UpdateInfo{}
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return UpdateInfo{}
+	}
 
 	var release struct {
 		TagName string `json:"tag_name"`
@@ -555,6 +559,10 @@ func (a *App) CheckForUpdates() UpdateInfo {
 	}
 
 	if release.TagName != "" && isNewer(release.TagName, Version) {
+		if !strings.HasPrefix(release.HtmlUrl, "https://github.com/amemya/ExifFrame/releases/") {
+			return UpdateInfo{}
+		}
+
 		return UpdateInfo{
 			UpdateAvailable: true,
 			LatestVersion:   release.TagName,

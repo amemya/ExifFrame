@@ -370,11 +370,11 @@ function App() {
 
     useEffect(() => {
         // Check for updates
-        AppAPI.CheckForUpdates().then((info: any) => {
+        AppAPI.CheckForUpdates().then((info: UpdateInfo) => {
             if (info && info.updateAvailable) {
                 setUpdateInfo(info);
             }
-        }).catch((err: any) => console.error("Update check failed:", err));
+        }).catch((err: Error) => console.error("Update check failed:", err));
     }, []);
 
     useEffect(() => {
