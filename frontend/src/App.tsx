@@ -423,9 +423,21 @@ function App() {
             });
         });
 
-        const offFilesDropped = Events.On(Events.Types.Common.WindowFilesDropped, async (e: any) => {
-            if (e.data && e.data.length > 0) {
-                const filePath = e.data[0];
+        const offFilesDropped = Events.On("files-dropped", async (e: any) => {
+            console.log("Files dropped event received:", e);
+            
+            let files: string[] = [];
+            if (Array.isArray(e.data)) {
+                // In Wails v3, emitted arguments might be in e.data array, so check if e.data[0] is the actual files array
+                if (e.data.length > 0 && Array.isArray(e.data[0])) {
+                    files = e.data[0];
+                } else {
+                    files = e.data;
+                }
+            }
+            
+            if (files.length > 0) {
+                const filePath = files[0];
                 const lower = filePath.toLowerCase();
                 if (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")) {
                     if (isSelectingRef.current) return;

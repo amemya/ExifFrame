@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
@@ -65,7 +66,7 @@ func main() {
 	})
 	app.Menu.SetApplicationMenu(buildMenu(appStruct))
 
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
+	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  "ExifFrame",
 		Width:  1024,
 		Height: 768,
@@ -79,6 +80,13 @@ func main() {
 		URL:              "/",
 		StartState:       application.WindowStateMaximised,
 		EnableFileDrop:   true,
+	})
+
+	win.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
+		files := event.Context().DroppedFiles()
+		if len(files) > 0 {
+			application.Get().Event.Emit("files-dropped", files)
+		}
 	})
 
 	err := app.Run()
