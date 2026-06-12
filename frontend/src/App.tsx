@@ -346,7 +346,7 @@ function App() {
     const [alignment, setAlignment] = useState<"top" | "center">("top");
     const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
 
-    const showToast = (message: string) => {
+    const showToast = useCallback((message: string) => {
         if (toastTimerRef.current !== null) {
             window.clearTimeout(toastTimerRef.current);
             toastTimerRef.current = null;
@@ -366,7 +366,8 @@ function App() {
             }, TOAST_DURATION_MS);
             toastRafRef.current = null;
         });
-    };
+    }, []);
+
     const handleExifResult = useCallback(async (result: any) => {
         if (result.cancelled) return;
         if (result.error) {
@@ -407,7 +408,7 @@ function App() {
             };
             img.src = result.imageURL;
         });
-    }, []);
+    }, [showToast]);
 
 
     useEffect(() => {
@@ -696,6 +697,12 @@ function App() {
             </header>
 
             <main className="workspace">
+                {/* 
+                    Note: The data-file-drop-target="true" attribute is required by the Wails runtime 
+                    to detect native drag-and-drop targets. During a drag operation, Wails will automatically 
+                    add the .file-drop-target-active class to this element, which we use in CSS to display 
+                    the .drop-overlay.
+                */}
                 <div 
                     className="preview-area"
                     data-file-drop-target="true"

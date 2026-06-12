@@ -238,6 +238,8 @@ body {
     transition: all 0.2s ease;
 }
 
+/* Note: The .file-drop-target-active class is automatically applied by the Wails runtime 
+   to elements with data-file-drop-target="true" during drag operations. */
 .preview-area.file-drop-target-active .drop-overlay {
     display: flex;
 }
