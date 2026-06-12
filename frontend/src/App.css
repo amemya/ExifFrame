@@ -12,6 +12,7 @@
     --border-color: #3e3e42;
     --input-bg: #1e1e1e;
     --input-border: #3e3e42;
+    --bg-button-hover: rgba(255, 255, 255, 0.05);
 }
 
 body {
@@ -323,19 +324,23 @@ body {
         opacity: 0;
         transform: translateY(10px);
     }
+
     10% {
         opacity: 1;
         transform: translateY(0);
     }
+
     90% {
         opacity: 1;
         transform: translateY(0);
     }
+
     100% {
         opacity: 0;
         transform: translateY(-10px);
     }
 }
+
 /* Segmented Control */
 .segmented-control {
     display: flex;
@@ -496,4 +501,30 @@ body {
 
 .metadata-settings-header .segment {
     padding: 4px 8px;
+}
+
+/* Settings Nav Button */
+.nav-btn {
+    width: 100%;
+    text-align: left;
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.5rem;
+    border: none;
+    border-radius: 6px;
+    background-color: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 400;
+    transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+    background-color: var(--bg-button-hover);
+}
+
+.nav-btn.active {
+    background-color: var(--bg-button-hover);
+    color: var(--text-primary);
+    font-weight: 600;
 }
