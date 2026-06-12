@@ -3,7 +3,6 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
-	"log"
 )
 
 //go:embed data/recipes.json
