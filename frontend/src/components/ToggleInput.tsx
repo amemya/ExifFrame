@@ -1,4 +1,4 @@
-import { ChangeEvent } from 'react';
+import { ChangeEvent, FocusEvent } from 'react';
 
 const EyeIcon = ({ visible }: { visible: boolean }) => (
     visible ? (
@@ -16,9 +16,10 @@ export interface ToggleInputProps {
     visible: boolean;
     onToggleVisibility: () => void;
     hideInput?: boolean;
+    onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
 }
 
-export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility, hideInput }: ToggleInputProps) => (
+export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility, hideInput, onBlur }: ToggleInputProps) => (
     <div className="input-group">
         <div className="toggle-input-header">
             <label htmlFor={id} className="toggle-input-label">{label}</label>
@@ -39,6 +40,7 @@ export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisib
                 type="text"
                 value={value}
                 onChange={onChange}
+                onBlur={onBlur}
                 className={`toggle-input-field ${!visible ? 'hidden' : ''}`}
             />
         )}
