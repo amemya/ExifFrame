@@ -2,8 +2,14 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import './App.css';
 // @ts-expect-error generated bindings does not provide declaration files for JS module
 import { App as AppAPI, Settings } from '../bindings/ExifFrame/index';
-import { Window, Events, System, Call } from '@wailsio/runtime';
+import { Window, Events, System, Call, Browser } from '@wailsio/runtime';
 
+interface UpdateInfo {
+    updateAvailable: boolean;
+    latestVersion: string;
+    releaseNotes: string;
+    url: string;
+}
 import { ExifData, MetadataVisibility, toVisibility, applyVisibility } from './types';
 import { FrameSettingsPanel } from './components/FrameSettingsPanel';
 import { MetadataSettingsPanel } from './components/MetadataSettingsPanel';
@@ -319,6 +325,7 @@ function App() {
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const toastTimerRef = useRef<number | null>(null);
     const toastRafRef = useRef<number | null>(null);
+    const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
     // Toast cleanup
     useEffect(() => {
@@ -360,6 +367,15 @@ function App() {
             toastRafRef.current = null;
         });
     };
+
+    useEffect(() => {
+        // Check for updates
+        AppAPI.CheckForUpdates().then((info: UpdateInfo) => {
+            if (info && info.updateAvailable) {
+                setUpdateInfo(info);
+            }
+        }).catch((err: Error) => console.error("Update check failed:", err));
+    }, []);
 
     useEffect(() => {
         // Load settings on mount
@@ -606,6 +622,19 @@ function App() {
             }}>
                 <div className="top-bar-left">
                     <h1>ExifFrame</h1>
+                    {updateInfo && (
+                        <button 
+                            className="btn btn-update" 
+                            onClick={() => Browser.OpenURL(updateInfo.url).catch((err: Error) => {
+                                console.error("Failed to open URL via Wails:", err);
+                                window.open(updateInfo.url, '_blank');
+                            })}
+                            title="A new version is available!"
+                        >
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Update to {updateInfo.latestVersion}
+                        </button>
+                    )}
                     {filePath && <span className="file-path">{filePath.split(/[/\\]/).filter(Boolean).join(' > ')}</span>}
                 </div>
                 <div className="top-bar-actions">
