@@ -368,6 +368,48 @@ function App() {
             toastRafRef.current = null;
         });
     };
+    const handleExifResult = useCallback(async (result: any) => {
+        if (result.cancelled) return;
+        if (result.error) {
+            console.error(result.error);
+            showToast(result.error);
+            return;
+        }
+        if (!result.imageURL) {
+            console.error("Server returned an empty image URL");
+            showToast("Server returned an empty image URL");
+            return;
+        }
+
+        await new Promise<void>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                setExif(prev => ({
+                    ...prev,
+                    camera: result.camera || "",
+                    lens: result.lens || "",
+                    focalLength: result.focalLength || "",
+                    aperture: result.aperture || "",
+                    shutterSpeed: result.shutterSpeed || "",
+                    iso: result.iso || ""
+                }));
+                setFilePath(result.filePath || "");
+                setSourceMimeType(result.mimeType || "");
+
+                setImageObj(img);
+                setOrientation(img.height > img.width ? "portrait" : "landscape");
+                setImageLoaded(true);
+                resolve();
+            };
+            img.onerror = () => {
+                console.error("Failed to load image");
+                showToast("Failed to load image preview");
+                reject(new Error("Failed to load image"));
+            };
+            img.src = result.imageURL;
+        });
+    }, []);
+
 
     useEffect(() => {
         // Check for updates
@@ -447,7 +489,7 @@ function App() {
                         await handleExifResult(result);
                     } catch (err: any) {
                         console.error("Failed to process dropped file:", err);
-                        showToast("Failed to process file: " + err);
+                        showToast("Failed to process file: " + (err instanceof Error ? err.message : String(err)));
                     } finally {
                         setIsSelecting(false);
                         isSelectingRef.current = false;
@@ -463,7 +505,7 @@ function App() {
             unsubSettings();
             offFilesDropped();
         };
-    }, []);
+    }, [handleExifResult]);
     const handleSaveAutoExportDefault = async () => {
         const s = new Settings();
         s.watchFolder = watchFolder;
@@ -515,48 +557,6 @@ function App() {
     useEffect(() => {
         setIsMac(System.IsMac());
     }, []);
-
-    const handleExifResult = async (result: any) => {
-        if (result.cancelled) return;
-        if (result.error) {
-            console.error(result.error);
-            showToast(result.error);
-            return;
-        }
-        if (!result.imageURL) {
-            console.error("Server returned an empty image URL");
-            showToast("Server returned an empty image URL");
-            return;
-        }
-
-        await new Promise<void>((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => {
-                setExif(prev => ({
-                    ...prev,
-                    camera: result.camera || "",
-                    lens: result.lens || "",
-                    focalLength: result.focalLength || "",
-                    aperture: result.aperture || "",
-                    shutterSpeed: result.shutterSpeed || "",
-                    iso: result.iso || ""
-                }));
-                setFilePath(result.filePath || "");
-                setSourceMimeType(result.mimeType || "");
-
-                setImageObj(img);
-                setOrientation(img.height > img.width ? "portrait" : "landscape");
-                setImageLoaded(true);
-                resolve();
-            };
-            img.onerror = () => {
-                console.error("Failed to load image");
-                showToast("Failed to load image preview");
-                reject(new Error("Failed to load image"));
-            };
-            img.src = result.imageURL;
-        });
-    };
 
     const handleSelectImage = async () => {
         if (isSelectingRef.current) return;
@@ -746,7 +746,7 @@ function App() {
                                         <circle cx="8.5" cy="8.5" r="1.5"></circle>
                                         <polyline points="21 15 16 10 5 21"></polyline>
                                     </svg>
-                                    <p>Click to open a photo</p>
+                                    <p>Click or drag a photo here</p>
                                 </>
                             )}
                         </div>
