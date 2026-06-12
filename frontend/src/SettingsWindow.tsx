@@ -7,7 +7,7 @@ import { FrameSettingsPanel } from './components/FrameSettingsPanel';
 import { MetadataSettingsPanel } from './components/MetadataSettingsPanel';
 import { ExifData, MetadataVisibility, toVisibility, applyVisibility } from './types';
 
-const TOAST_DURATION_MS = 2500;
+const TOAST_DURATION_MS = 3000;
 
 function SettingsWindow() {
     const [activeTab, setActiveTab] = useState<'general' | 'frame' | 'metadata'>('general');
@@ -79,14 +79,14 @@ function SettingsWindow() {
     const loadSettings = (s: Settings) => {
         setWatchFolder(s.watchFolder || "");
         setExportFolder(s.exportFolder || "");
-        
+
         setAspectRatioPreset(s.aspectRatioPreset || "4300:3618");
         setCustomRatioW(s.customRatioW || 4300);
         setCustomRatioH(s.customRatioH || 3618);
         setOrientation(s.orientation || "landscape");
         setAlignment(s.alignment || "center");
         setShowPipeSeparator(s.showPipeSeparator ?? true);
-        
+
         setProfile(s.profile || "digital");
         setOverrideExif(s.overrideExif ?? false);
         setExif({
@@ -123,7 +123,7 @@ function SettingsWindow() {
 
     const handleSave = async () => {
         const s = new Settings();
-        
+
         s.watchFolder = watchFolder;
         s.exportFolder = exportFolder;
         s.aspectRatioPreset = aspectRatioPreset;
@@ -132,7 +132,7 @@ function SettingsWindow() {
         s.orientation = orientation;
         s.alignment = alignment;
         s.showPipeSeparator = showPipeSeparator;
-        
+
         s.profile = profile;
         s.overrideExif = overrideExif;
         s.camera = exif.camera;
@@ -159,7 +159,7 @@ function SettingsWindow() {
 
             // Notify other windows
             Events.Emit("settings_saved");
-            
+
             showToast("Settings saved successfully.");
         } catch (e: any) {
             console.error("Error saving settings", e);
@@ -264,11 +264,11 @@ function SettingsWindow() {
                 </div>
             )}
 
-            <footer style={{ 
-                padding: '1rem 2rem', 
-                borderTop: '1px solid var(--border-color)', 
-                display: 'flex', 
-                justifyContent: 'flex-end', 
+            <footer style={{
+                padding: '1rem 2rem',
+                borderTop: '1px solid var(--border-color)',
+                display: 'flex',
+                justifyContent: 'flex-end',
                 backgroundColor: 'var(--bg-panel)',
                 flexShrink: 0
             }}>
