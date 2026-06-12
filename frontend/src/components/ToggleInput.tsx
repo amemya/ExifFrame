@@ -16,10 +16,11 @@ export interface ToggleInputProps {
     visible: boolean;
     onToggleVisibility: () => void;
     hideInput?: boolean;
+    suggestions?: string[];
     onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
 }
 
-export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility, hideInput, onBlur }: ToggleInputProps) => (
+export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility, hideInput, suggestions, onBlur }: ToggleInputProps) => (
     <div className="input-group">
         <div className="toggle-input-header">
             <label htmlFor={id} className="toggle-input-label">{label}</label>
@@ -35,14 +36,24 @@ export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisib
             </button>
         </div>
         {!hideInput && (
-            <input
-                id={id}
-                type="text"
-                value={value}
-                onChange={onChange}
-                onBlur={onBlur}
-                className={`toggle-input-field ${!visible ? 'hidden' : ''}`}
-            />
+            <>
+                <input
+                    id={id}
+                    type="text"
+                    value={value}
+                    onChange={onChange}
+                    onBlur={onBlur}
+                    className={`toggle-input-field ${!visible ? 'hidden' : ''}`}
+                    list={suggestions && suggestions.length > 0 ? `${id}-datalist` : undefined}
+                />
+                {suggestions && suggestions.length > 0 && (
+                    <datalist id={`${id}-datalist`}>
+                        {suggestions.map((s) => (
+                            <option key={s} value={s} />
+                        ))}
+                    </datalist>
+                )}
+            </>
         )}
     </div>
 );
