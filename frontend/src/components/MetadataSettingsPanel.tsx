@@ -3,7 +3,7 @@ import { ToggleInput } from './ToggleInput';
 
 const formatFocalLength = (val: string): string => {
     const trimmed = val.trim();
-    if (/^[\d.\-]+$/.test(trimmed) && trimmed.length > 0) {
+    if (/^\d+(\.\d+)?(-\d+(\.\d+)?)?$/.test(trimmed)) {
         return `${trimmed}mm`;
     }
     return val;
@@ -37,7 +37,7 @@ const formatISO = (val: string): string => {
 
 const formatTemp = (val: string): string => {
     const trimmed = val.trim();
-    if (/^[\d.\-]+$/.test(trimmed) && trimmed.length > 0) {
+    if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
         return `${trimmed}℃`;
     }
     return val;
@@ -45,8 +45,7 @@ const formatTemp = (val: string): string => {
 
 const formatTime = (val: string): string => {
     const trimmed = val.trim();
-    // Support formats like "5.5", "5:30", "5"
-    if (/^[\d.\-:]+$/.test(trimmed) && trimmed.length > 0) {
+    if (/^\d+(\.\d+)?$/.test(trimmed)) {
         return `${trimmed}min`;
     }
     return val;
