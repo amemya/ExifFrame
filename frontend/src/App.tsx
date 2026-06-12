@@ -346,7 +346,7 @@ function App() {
     const [alignment, setAlignment] = useState<"top" | "center">("top");
     const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
 
-    const showToast = (message: string) => {
+    const showToast = useCallback((message: string) => {
         if (toastTimerRef.current !== null) {
             window.clearTimeout(toastTimerRef.current);
             toastTimerRef.current = null;
@@ -366,7 +366,50 @@ function App() {
             }, TOAST_DURATION_MS);
             toastRafRef.current = null;
         });
-    };
+    }, []);
+
+    const handleExifResult = useCallback(async (result: any) => {
+        if (result.cancelled) return;
+        if (result.error) {
+            console.error(result.error);
+            showToast(result.error);
+            return;
+        }
+        if (!result.imageURL) {
+            console.error("Server returned an empty image URL");
+            showToast("Server returned an empty image URL");
+            return;
+        }
+
+        await new Promise<void>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                setExif(prev => ({
+                    ...prev,
+                    camera: result.camera || "",
+                    lens: result.lens || "",
+                    focalLength: result.focalLength || "",
+                    aperture: result.aperture || "",
+                    shutterSpeed: result.shutterSpeed || "",
+                    iso: result.iso || ""
+                }));
+                setFilePath(result.filePath || "");
+                setSourceMimeType(result.mimeType || "");
+
+                setImageObj(img);
+                setOrientation(img.height > img.width ? "portrait" : "landscape");
+                setImageLoaded(true);
+                resolve();
+            };
+            img.onerror = () => {
+                console.error("Failed to load image");
+                showToast("Failed to load image preview");
+                reject(new Error("Failed to load image"));
+            };
+            img.src = result.imageURL;
+        });
+    }, [showToast]);
+
 
     useEffect(() => {
         // Check for updates
@@ -422,10 +465,49 @@ function App() {
             });
         });
 
+        const offFilesDropped = Events.On("files-dropped", async (e: any) => {
+            let files: string[] = [];
+            if (Array.isArray(e.data)) {
+                // In Wails v3, emitted arguments might be in e.data array, so check if e.data[0] is the actual files array
+                if (e.data.length > 0 && Array.isArray(e.data[0])) {
+                    files = e.data[0];
+                } else {
+                    files = e.data;
+                }
+            }
+            
+            if (files.length > 0) {
+                if (files.length > 1) {
+                    showToast("Please drop only one file at a time.");
+                    return;
+                }
+                const filePath = files[0];
+                const lower = filePath.toLowerCase();
+                if (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")) {
+                    if (isSelectingRef.current) return;
+                    isSelectingRef.current = true;
+                    setIsSelecting(true);
+                    try {
+                        const result = await AppAPI.ProcessImageFile(filePath);
+                        await handleExifResult(result);
+                    } catch (err: any) {
+                        console.error("Failed to process dropped file:", err);
+                        showToast("Failed to process file: " + (err instanceof Error ? err.message : String(err)));
+                    } finally {
+                        setIsSelecting(false);
+                        isSelectingRef.current = false;
+                    }
+                } else {
+                    showToast("Invalid file: only JPG and PNG are supported.");
+                }
+            }
+        });
+
         return () => {
             unsubSettings();
+            offFilesDropped();
         };
-    }, []);
+    }, [handleExifResult]);
     const handleSaveAutoExportDefault = async () => {
         const s = new Settings();
         s.watchFolder = watchFolder;
@@ -484,50 +566,7 @@ function App() {
         setIsSelecting(true);
         try {
             const result = await AppAPI.OpenImage();
-
-            if (result.cancelled) {
-                return;
-            }
-
-            if (result.error) {
-                console.error(result.error);
-                return;
-            }
-
-            if (!result.imageURL) {
-                console.error("Server returned an empty image URL");
-                return;
-            }
-
-            // Load the image via HTTP URL (served by AssetServer Middleware)
-            await new Promise<void>((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => {
-                    // Update EXIF state (leave empty if not found)
-                    setExif(prev => ({
-                        ...prev,
-                        camera: result.camera || "",
-                        lens: result.lens || "",
-                        focalLength: result.focalLength || "",
-                        aperture: result.aperture || "",
-                        shutterSpeed: result.shutterSpeed || "",
-                        iso: result.iso || ""
-                    }));
-                    setFilePath(result.filePath || "");
-                    setSourceMimeType(result.mimeType || "");
-
-                    setImageObj(img);
-                    setOrientation(img.height > img.width ? "portrait" : "landscape");
-                    setImageLoaded(true);
-                    resolve();
-                };
-                img.onerror = () => {
-                    console.error("Failed to decode or render the selected image");
-                    reject(new Error("Failed to decode image"));
-                };
-                img.src = result.imageURL;
-            });
-
+            await handleExifResult(result);
         } catch (err) {
             console.error("Failed to open image:", err);
         } finally {
@@ -658,7 +697,19 @@ function App() {
             </header>
 
             <main className="workspace">
-                <div className="preview-area">
+                {/* 
+                    Note: The data-file-drop-target="true" attribute is required by the Wails runtime 
+                    to detect native drag-and-drop targets. During a drag operation, Wails will automatically 
+                    add the .file-drop-target-active class to this element, which we use in CSS to display 
+                    the .drop-overlay.
+                */}
+                <div 
+                    className="preview-area"
+                    data-file-drop-target="true"
+                >
+                    <div className="drop-overlay">
+                        <div className="drop-overlay-text">Drop image here</div>
+                    </div>
                     {!imageLoaded ? (
                         <div
                             className={`empty-state ${isSelecting ? 'selecting' : ''}`}
@@ -697,7 +748,7 @@ function App() {
                                         <circle cx="8.5" cy="8.5" r="1.5"></circle>
                                         <polyline points="21 15 16 10 5 21"></polyline>
                                     </svg>
-                                    <p>Click to open a photo</p>
+                                    <p>Click or drag a photo here</p>
                                 </>
                             )}
                         </div>
