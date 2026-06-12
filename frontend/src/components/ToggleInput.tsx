@@ -48,8 +48,8 @@ export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisib
                 />
                 {suggestions && suggestions.length > 0 && (
                     <datalist id={`${id}-datalist`}>
-                        {suggestions.map((s, idx) => (
-                            <option key={idx} value={s} />
+                        {suggestions.map((s) => (
+                            <option key={s} value={s} />
                         ))}
                     </datalist>
                 )}

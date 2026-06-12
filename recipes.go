@@ -22,7 +22,7 @@ var allRecipes []Recipe
 
 func init() {
 	if err := json.Unmarshal(recipesJSON, &allRecipes); err != nil {
-		log.Println("Warning: Failed to parse recipes.json:", err)
+		panic("Failed to parse bundled recipes.json: " + err.Error())
 	}
 }
 
