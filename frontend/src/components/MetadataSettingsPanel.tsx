@@ -1,6 +1,57 @@
 import { ExifData, MetadataVisibility } from '../types';
 import { ToggleInput } from './ToggleInput';
 
+const formatFocalLength = (val: string): string => {
+    const trimmed = val.trim();
+    if (/^[\d.\-]+$/.test(trimmed) && trimmed.length > 0) {
+        return `${trimmed}mm`;
+    }
+    return val;
+};
+
+const formatAperture = (val: string): string => {
+    const trimmed = val.trim();
+    const match = trimmed.match(/^([fF]\/?\s*)?(\d+(\.\d+)?)$/);
+    if (match) {
+        return `f/${match[2]}`;
+    }
+    return val;
+};
+
+const formatShutterSpeed = (val: string): string => {
+    const trimmed = val.trim();
+    if (/^\d+(\/\d+)?$/.test(trimmed) || /^\d+\.\d+$/.test(trimmed)) {
+        return `${trimmed}s`;
+    }
+    return val;
+};
+
+const formatISO = (val: string): string => {
+    const trimmed = val.trim();
+    const match = trimmed.match(/^(iso\s*)?(\d+)$/i);
+    if (match) {
+        return `ISO${match[2]}`;
+    }
+    return val;
+};
+
+const formatTemp = (val: string): string => {
+    const trimmed = val.trim();
+    if (/^[\d.\-]+$/.test(trimmed) && trimmed.length > 0) {
+        return `${trimmed}℃`;
+    }
+    return val;
+};
+
+const formatTime = (val: string): string => {
+    const trimmed = val.trim();
+    // Support formats like "5.5", "5:30", "5"
+    if (/^[\d.\-:]+$/.test(trimmed) && trimmed.length > 0) {
+        return `${trimmed}min`;
+    }
+    return val;
+};
+
 export interface MetadataSettingsPanelProps {
     profile: string;
     setProfile: (val: string) => void;
@@ -89,6 +140,7 @@ export const MetadataSettingsPanel = ({
                 id="focalLength-input"
                 value={exif.focalLength}
                 onChange={(e) => setExif(prev => ({ ...prev, focalLength: e.target.value }))}
+                onBlur={() => setExif(prev => ({ ...prev, focalLength: formatFocalLength(prev.focalLength) }))}
                 visible={visibility.focalLength}
                 onToggleVisibility={() => setVisibility(prev => ({ ...prev, focalLength: !prev.focalLength }))}
                 hideInput={hideExifInputs}
@@ -98,6 +150,7 @@ export const MetadataSettingsPanel = ({
                 id="aperture-input"
                 value={exif.aperture}
                 onChange={(e) => setExif(prev => ({ ...prev, aperture: e.target.value }))}
+                onBlur={() => setExif(prev => ({ ...prev, aperture: formatAperture(prev.aperture) }))}
                 visible={visibility.aperture}
                 onToggleVisibility={() => setVisibility(prev => ({ ...prev, aperture: !prev.aperture }))}
                 hideInput={hideExifInputs}
@@ -110,6 +163,7 @@ export const MetadataSettingsPanel = ({
                 id="shutterSpeed-input"
                 value={exif.shutterSpeed}
                 onChange={(e) => setExif(prev => ({ ...prev, shutterSpeed: e.target.value }))}
+                onBlur={() => setExif(prev => ({ ...prev, shutterSpeed: formatShutterSpeed(prev.shutterSpeed) }))}
                 visible={visibility.shutterSpeed}
                 onToggleVisibility={() => setVisibility(prev => ({ ...prev, shutterSpeed: !prev.shutterSpeed }))}
                 hideInput={hideExifInputs}
@@ -120,6 +174,7 @@ export const MetadataSettingsPanel = ({
                     id="iso-input"
                     value={exif.iso}
                     onChange={(e) => setExif(prev => ({ ...prev, iso: e.target.value }))}
+                    onBlur={() => setExif(prev => ({ ...prev, iso: formatISO(prev.iso) }))}
                     visible={visibility.iso}
                     onToggleVisibility={() => setVisibility(prev => ({ ...prev, iso: !prev.iso }))}
                     hideInput={hideExifInputs}
@@ -162,6 +217,7 @@ export const MetadataSettingsPanel = ({
                         id="temperature-input"
                         value={exif.temperature}
                         onChange={(e) => setExif(prev => ({ ...prev, temperature: e.target.value }))}
+                        onBlur={() => setExif(prev => ({ ...prev, temperature: formatTemp(prev.temperature) }))}
                         visible={visibility.temperature}
                         onToggleVisibility={() => setVisibility(prev => ({ ...prev, temperature: !prev.temperature }))}
                     />
@@ -170,6 +226,7 @@ export const MetadataSettingsPanel = ({
                         id="time-input"
                         value={exif.time}
                         onChange={(e) => setExif(prev => ({ ...prev, time: e.target.value }))}
+                        onBlur={() => setExif(prev => ({ ...prev, time: formatTime(prev.time) }))}
                         visible={visibility.time}
                         onToggleVisibility={() => setVisibility(prev => ({ ...prev, time: !prev.time }))}
                     />
