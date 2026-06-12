@@ -1,4 +1,4 @@
-import { ChangeEvent } from 'react';
+import { ChangeEvent, FocusEvent } from 'react';
 
 const EyeIcon = ({ visible }: { visible: boolean }) => (
     visible ? (
@@ -16,7 +16,7 @@ export interface ToggleInputProps {
     visible: boolean;
     onToggleVisibility: () => void;
     hideInput?: boolean;
-    onBlur?: () => void;
+    onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
 }
 
 export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility, hideInput, onBlur }: ToggleInputProps) => (
