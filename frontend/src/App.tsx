@@ -424,8 +424,6 @@ function App() {
         });
 
         const offFilesDropped = Events.On("files-dropped", async (e: any) => {
-            console.log("Files dropped event received:", e);
-            
             let files: string[] = [];
             if (Array.isArray(e.data)) {
                 // In Wails v3, emitted arguments might be in e.data array, so check if e.data[0] is the actual files array
