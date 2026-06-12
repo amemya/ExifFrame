@@ -514,6 +514,10 @@ function App() {
         }
     };
 
+    useEffect(() => {
+        setIsMac(System.IsMac());
+    }, []);
+
     const handleExifResult = async (result: any) => {
         if (result.cancelled) return;
         if (result.error) {
