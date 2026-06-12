@@ -1,0 +1,12 @@
+[
+  { "film": "Kodak Tri-X 400", "developer": "D-76", "dilution": "Stock", "temp": "20", "time": "6:45" },
+  { "film": "Kodak Tri-X 400", "developer": "D-76", "dilution": "1+1", "temp": "20", "time": "9:45" },
+  { "film": "Kodak Tri-X 400", "developer": "HC-110", "dilution": "B", "temp": "20", "time": "4:30" },
+  { "film": "Kodak T-Max 400", "developer": "T-MAX", "dilution": "1+4", "temp": "20", "time": "6:30" },
+  { "film": "Ilford HP5 Plus 400", "developer": "Ilfosol 3", "dilution": "1+9", "temp": "20", "time": "6:30" },
+  { "film": "Ilford HP5 Plus 400", "developer": "D-76", "dilution": "Stock", "temp": "20", "time": "7:30" },
+  { "film": "Ilford HP5 Plus 400", "developer": "D-76", "dilution": "1+1", "temp": "20", "time": "13:00" },
+  { "film": "Kentmere 400", "developer": "Rodinal", "dilution": "1+25", "temp": "20", "time": "8:30" },
+  { "film": "Kentmere 400", "developer": "Rodinal", "dilution": "1+50", "temp": "20", "time": "18:00" },
+  { "film": "Fomapan 400", "developer": "Rodinal", "dilution": "1+50", "temp": "20", "time": "11:00" }
+]

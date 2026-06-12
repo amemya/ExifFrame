@@ -1,5 +1,16 @@
+import { useState, useEffect } from 'react';
 import { ExifData, MetadataVisibility } from '../types';
 import { ToggleInput } from './ToggleInput';
+// @ts-expect-error generated bindings does not provide declaration files for JS module
+import { App as AppAPI } from '../../bindings/ExifFrame/index';
+
+export interface Recipe {
+    film: string;
+    developer: string;
+    dilution: string;
+    temp: string;
+    time: string;
+}
 
 const formatFocalLength = (val: string): string => {
     const trimmed = val.trim();
@@ -73,6 +84,29 @@ export const MetadataSettingsPanel = ({
 }: MetadataSettingsPanelProps) => {
     const hideExifInputs = isDefaultMode && profile === 'digital' && !overrideExif;
     
+    const [recipes, setRecipes] = useState<Recipe[]>([]);
+    useEffect(() => {
+        AppAPI.GetFilmRecipes()
+            .then((res: Recipe[]) => setRecipes(res || []))
+            .catch((err: any) => console.error("Failed to load recipes", err));
+    }, []);
+
+    // Compute suggestion lists based on current inputs
+    const availableFilms = Array.from(new Set(recipes.map(r => r.film))).filter(Boolean).sort();
+    
+    // Filter recipes matching the selected film
+    const matchingRecipes = recipes.filter(r => !exif.film || r.film === exif.film);
+    const availableDevelopers = Array.from(new Set(matchingRecipes.map(r => r.developer))).filter(Boolean).sort();
+    
+    // Filter matching developer
+    const matchingRecipesForDev = matchingRecipes.filter(r => !exif.developer || r.developer === exif.developer);
+    const availableDilutions = Array.from(new Set(matchingRecipesForDev.map(r => r.dilution))).filter(Boolean).sort();
+    
+    // Filter matching dilution
+    const matchingRecipesForDilution = matchingRecipesForDev.filter(r => !exif.dilution || r.dilution === exif.dilution);
+    const availableTemps = Array.from(new Set(matchingRecipesForDilution.map(r => r.temp))).filter(Boolean).sort();
+    const availableTimes = Array.from(new Set(matchingRecipesForDilution.map(r => r.time))).filter(Boolean).sort();
+
     return (
     <div className="sidebar-section metadata-settings-section">
         <div className="metadata-settings-header">
@@ -186,6 +220,7 @@ export const MetadataSettingsPanel = ({
                     onChange={(e) => setExif(prev => ({ ...prev, film: e.target.value }))}
                     visible={visibility.film}
                     onToggleVisibility={() => setVisibility(prev => ({ ...prev, film: !prev.film }))}
+                    suggestions={availableFilms}
                 />
             )}
         </div>
@@ -200,6 +235,7 @@ export const MetadataSettingsPanel = ({
                         onChange={(e) => setExif(prev => ({ ...prev, developer: e.target.value }))}
                         visible={visibility.developer}
                         onToggleVisibility={() => setVisibility(prev => ({ ...prev, developer: !prev.developer }))}
+                        suggestions={availableDevelopers}
                     />
                     <ToggleInput
                         label="Dilution"
@@ -208,6 +244,7 @@ export const MetadataSettingsPanel = ({
                         onChange={(e) => setExif(prev => ({ ...prev, dilution: e.target.value }))}
                         visible={visibility.dilution}
                         onToggleVisibility={() => setVisibility(prev => ({ ...prev, dilution: !prev.dilution }))}
+                        suggestions={availableDilutions}
                     />
                 </div>
                 <div className="input-row">
@@ -219,6 +256,7 @@ export const MetadataSettingsPanel = ({
                         onBlur={() => setExif(prev => ({ ...prev, temperature: formatTemp(prev.temperature) }))}
                         visible={visibility.temperature}
                         onToggleVisibility={() => setVisibility(prev => ({ ...prev, temperature: !prev.temperature }))}
+                        suggestions={availableTemps}
                     />
                     <ToggleInput
                         label="Time"
@@ -228,6 +266,7 @@ export const MetadataSettingsPanel = ({
                         onBlur={() => setExif(prev => ({ ...prev, time: formatTime(prev.time) }))}
                         visible={visibility.time}
                         onToggleVisibility={() => setVisibility(prev => ({ ...prev, time: !prev.time }))}
+                        suggestions={availableTimes}
                     />
                 </div>
             </>

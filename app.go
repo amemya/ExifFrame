@@ -513,3 +513,9 @@ func (a *App) OpenSettingsWindow() {
 		URL:              "/settings",
 	})
 }
+
+// GetFilmRecipes returns the bundled film recipes.
+// Exposed to Wails frontend.
+func (a *App) GetFilmRecipes() []Recipe {
+	return GetFilmRecipes()
+}
