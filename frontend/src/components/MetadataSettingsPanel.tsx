@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ExifData, MetadataVisibility } from '../types';
 import { ToggleInput } from './ToggleInput';
 // @ts-expect-error generated bindings does not provide declaration files for JS module
@@ -92,20 +92,24 @@ export const MetadataSettingsPanel = ({
     }, []);
 
     // Compute suggestion lists based on current inputs
-    const availableFilms = Array.from(new Set(recipes.map(r => r.film))).filter(Boolean).sort();
-    
-    // Filter recipes matching the selected film
-    const matchingRecipes = recipes.filter(r => !exif.film || r.film === exif.film);
-    const availableDevelopers = Array.from(new Set(matchingRecipes.map(r => r.developer))).filter(Boolean).sort();
-    
-    // Filter matching developer
-    const matchingRecipesForDev = matchingRecipes.filter(r => !exif.developer || r.developer === exif.developer);
-    const availableDilutions = Array.from(new Set(matchingRecipesForDev.map(r => r.dilution))).filter(Boolean).sort();
-    
-    // Filter matching dilution
-    const matchingRecipesForDilution = matchingRecipesForDev.filter(r => !exif.dilution || r.dilution === exif.dilution);
-    const availableTemps = Array.from(new Set(matchingRecipesForDilution.map(r => r.temp))).filter(Boolean).sort();
-    const availableTimes = Array.from(new Set(matchingRecipesForDilution.map(r => r.time))).filter(Boolean).sort();
+    const { availableFilms, availableDevelopers, availableDilutions, availableTemps, availableTimes } = useMemo(() => {
+        const availableFilms = Array.from(new Set(recipes.map(r => r.film))).filter(Boolean).sort();
+        
+        // Filter recipes matching the selected film
+        const matchingRecipes = recipes.filter(r => !exif.film || r.film === exif.film);
+        const availableDevelopers = Array.from(new Set(matchingRecipes.map(r => r.developer))).filter(Boolean).sort();
+        
+        // Filter matching developer
+        const matchingRecipesForDev = matchingRecipes.filter(r => !exif.developer || r.developer === exif.developer);
+        const availableDilutions = Array.from(new Set(matchingRecipesForDev.map(r => r.dilution))).filter(Boolean).sort();
+        
+        // Filter matching dilution
+        const matchingRecipesForDilution = matchingRecipesForDev.filter(r => !exif.dilution || r.dilution === exif.dilution);
+        const availableTemps = Array.from(new Set(matchingRecipesForDilution.map(r => r.temp))).filter(Boolean).sort();
+        const availableTimes = Array.from(new Set(matchingRecipesForDilution.map(r => r.time))).filter(Boolean).sort();
+        
+        return { availableFilms, availableDevelopers, availableDilutions, availableTemps, availableTimes };
+    }, [recipes, exif.film, exif.developer, exif.dilution]);
 
     return (
     <div className="sidebar-section metadata-settings-section">

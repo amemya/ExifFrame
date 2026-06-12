@@ -28,5 +28,7 @@ func init() {
 
 // GetFilmRecipes returns all loaded recipes.
 func GetFilmRecipes() []Recipe {
-	return allRecipes
+	result := make([]Recipe, len(allRecipes))
+	copy(result, allRecipes)
+	return result
 }
