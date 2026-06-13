@@ -149,6 +149,65 @@ body {
     color: #fff;
 }
 
+/* Button Groups & Dropdowns */
+.btn-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.btn-group .btn:not(:last-child),
+.btn-group .dropdown:not(:last-child) .btn {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-group .btn:not(:first-child),
+.btn-group .dropdown:not(:first-child) .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.dropdown {
+    position: relative;
+    display: flex;
+}
+
+.dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 0.25rem;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    z-index: 1000;
+    min-width: 140px;
+    padding: 0.25rem 0;
+}
+
+.dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.dropdown-item:hover, .dropdown-item:focus {
+    background-color: var(--accent-color);
+    color: white;
+    outline: none;
+}
+
 /* Main Workspace */
 .workspace {
     display: flex;
@@ -160,6 +219,7 @@ body {
 .preview-area {
     flex: 1;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     background-color: var(--bg-workspace);
@@ -211,7 +271,8 @@ body {
     justify-content: center;
     align-items: center;
     width: 100%;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
 }
 
 .preview-canvas {
@@ -220,6 +281,42 @@ body {
     object-fit: contain;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     background: #fff;
+    opacity: 1;
+    transition: opacity 0.1s ease; /* fast restore */
+}
+
+.preview-canvas.loading {
+    opacity: 0.6;
+    transition: opacity 0.2s ease 0.1s; /* wait 100ms before dimming */
+}
+
+.hidden-canvas {
+    opacity: 0 !important;
+    box-shadow: none !important;
+    visibility: hidden;
+}
+
+/* Delayed Spinner Overlay */
+.loading-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease 0.15s; /* wait 150ms before showing spinner */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-primary);
+    background-color: rgba(0,0,0,0.5);
+    padding: 1.5rem;
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+}
+
+.loading-overlay.visible {
+    opacity: 1;
 }
 
 /* Drag and Drop Overlay */
@@ -252,6 +349,64 @@ body {
     padding: 1rem 2rem;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.filmstrip-area {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1.5rem 0 1rem 0; /* Added bottom padding to prevent scrollbar overlap */
+    margin-top: 1.5rem;
+    width: 100%;
+    overflow-x: auto;
+    background-color: transparent;
+    border-top: 1px solid var(--border-color);
+    box-sizing: border-box;
+}
+
+/* Custom thin scrollbar for filmstrip */
+.filmstrip-area::-webkit-scrollbar {
+    height: 8px;
+}
+.filmstrip-area::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+.filmstrip-area::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.filmstrip-item {
+    height: 60px;
+    width: 80px;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s ease, opacity 0.2s ease;
+    opacity: 0.6;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.filmstrip-item:hover {
+    opacity: 0.8;
+}
+
+.filmstrip-item.selected {
+    border-color: var(--accent-color);
+    opacity: 1;
+}
+
+.filmstrip-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    -webkit-user-drag: none;
+    user-select: none;
 }
 
 /* Sidebar */

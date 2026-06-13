@@ -10,7 +10,7 @@ interface UpdateInfo {
     releaseNotes: string;
     url: string;
 }
-import { ExifData, MetadataVisibility, toVisibility, applyVisibility } from './types';
+import { ExifData, MetadataVisibility, toVisibility, applyVisibility, ImportedImage, ExifResult } from './types';
 import { FrameSettingsPanel } from './components/FrameSettingsPanel';
 import { MetadataSettingsPanel } from './components/MetadataSettingsPanel';
 
@@ -286,20 +286,31 @@ function App() {
     }, []);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [imageLoaded, setImageLoaded] = useState(false);
-    const [exif, setExif] = useState<ExifData>({
-        camera: "",
-        lens: "",
-        focalLength: "",
-        aperture: "",
-        shutterSpeed: "",
-        iso: "",
-        film: "",
-        developer: "",
-        dilution: "",
-        temperature: "",
-        time: ""
-    });
+    const [importedImages, setImportedImages] = useState<ImportedImage[]>([]);
+    const [selectedIndex, setSelectedIndex] = useState<number>(0);
+
+    const currentImage = importedImages[selectedIndex];
+    const hasImages = importedImages.length > 0;
+    const isCurrentImageLoaded = currentImage?.imageObj !== null;
+    const imageLoaded = hasImages && isCurrentImageLoaded;
+    const imageObj = currentImage?.imageObj || null;
+    const filePath = currentImage?.filePath || "";
+    const sourceMimeType = currentImage?.sourceMimeType || "";
+    const exif = currentImage?.exif || {
+        camera: "", lens: "", focalLength: "", aperture: "", shutterSpeed: "", iso: "", film: "", developer: "", dilution: "", temperature: "", time: ""
+    };
+
+    const setExif: React.Dispatch<React.SetStateAction<ExifData>> = useCallback((action) => {
+        setImportedImages(prev => {
+            if (prev.length === 0) return prev;
+            const newImages = [...prev];
+            const current = newImages[selectedIndex];
+            if (!current) return prev;
+            const updatedExif = typeof action === 'function' ? action(current.exif) : action;
+            newImages[selectedIndex] = { ...current, exif: updatedExif };
+            return newImages;
+        });
+    }, [selectedIndex]);
 
     const [visibility, setVisibility] = useState<MetadataVisibility>({
         camera: true,
@@ -315,17 +326,20 @@ function App() {
         time: true
     });
 
-    const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
     const [isSelecting, setIsSelecting] = useState(false);
     const isSelectingRef = useRef(false);
-    const [filePath, setFilePath] = useState("");
     const isInitialLoad = useRef(true);
     const [isMac, setIsMac] = useState(false);
-    const [sourceMimeType, setSourceMimeType] = useState("");
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const toastTimerRef = useRef<number | null>(null);
     const toastRafRef = useRef<number | null>(null);
     const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+    
+    // Dropdown states
+    const [exportMenuVisible, setExportMenuVisible] = useState(false);
+
+    // Canvas state
+    const [isCanvasReady, setIsCanvasReady] = useState(false);
 
     // Toast cleanup
     useEffect(() => {
@@ -368,48 +382,85 @@ function App() {
         });
     }, []);
 
-    const handleExifResult = useCallback(async (result: any) => {
-        if (result.cancelled) return;
-        if (result.error) {
-            console.error(result.error);
-            showToast(result.error);
-            return;
-        }
-        if (!result.imageURL) {
-            console.error("Server returned an empty image URL");
-            showToast("Server returned an empty image URL");
-            return;
-        }
-
-        await new Promise<void>((resolve, reject) => {
+    useEffect(() => {
+        const current = importedImages[selectedIndex];
+        if (current && !current.imageObj && !current.loadError) {
             const img = new Image();
             img.onload = () => {
-                setExif(prev => ({
-                    ...prev,
-                    camera: result.camera || "",
-                    lens: result.lens || "",
-                    focalLength: result.focalLength || "",
-                    aperture: result.aperture || "",
-                    shutterSpeed: result.shutterSpeed || "",
-                    iso: result.iso || ""
-                }));
-                setFilePath(result.filePath || "");
-                setSourceMimeType(result.mimeType || "");
-
-                setImageObj(img);
+                setImportedImages(prev => {
+                    const newImages = [...prev];
+                    // Make sure the image we loaded is still at this index (or find by url if order changed, but we only append for now)
+                    if (newImages[selectedIndex] && newImages[selectedIndex].imageURL === current.imageURL) {
+                        newImages[selectedIndex] = { ...current, imageObj: img };
+                    } else {
+                        // Fallback: find it
+                        const idx = newImages.findIndex(item => item.imageURL === current.imageURL);
+                        if (idx !== -1) newImages[idx] = { ...current, imageObj: img };
+                    }
+                    return newImages;
+                });
                 setOrientation(img.height > img.width ? "portrait" : "landscape");
-                setImageLoaded(true);
-                resolve();
             };
             img.onerror = () => {
-                console.error("Failed to load image");
                 showToast("Failed to load image preview");
-                reject(new Error("Failed to load image"));
+                setImportedImages(prev => {
+                    const newImages = [...prev];
+                    const idx = newImages.findIndex(item => item.imageURL === current.imageURL);
+                    if (idx !== -1) newImages[idx] = { ...current, loadError: true };
+                    return newImages;
+                });
             };
-            img.src = result.imageURL;
+            img.src = current.imageURL;
+        } else if (current && current.imageObj) {
+            setOrientation(current.imageObj.height > current.imageObj.width ? "portrait" : "landscape");
+        }
+    }, [selectedIndex, importedImages, showToast]);
+
+    const handleExifResults = useCallback((results: ExifResult[]) => {
+        const validResults = results.filter(r => !r.cancelled && !r.error && r.imageURL);
+        if (validResults.length === 0) {
+            const firstError = results.find(r => r.error);
+            if (firstError && firstError.error) {
+                console.error(firstError.error);
+                showToast(firstError.error);
+            }
+            return;
+        }
+
+        setImportedImages(() => {
+            const newImages: ImportedImage[] = validResults.map(r => ({
+                filePath: r.filePath || "",
+                imageURL: r.imageURL!,
+                sourceMimeType: (r.mimeType as 'image/jpeg' | 'image/png') || 'image/jpeg',
+                imageObj: null,
+                exif: {
+                    camera: r.camera || "",
+                    lens: r.lens || "",
+                    focalLength: r.focalLength || "",
+                    aperture: r.aperture || "",
+                    shutterSpeed: r.shutterSpeed || "",
+                    iso: r.iso || "",
+                    film: "",
+                    developer: "",
+                    dilution: "",
+                    temperature: "",
+                    time: "",
+                }
+            }));
+            return newImages;
         });
+        setSelectedIndex(0);
+        setIsCanvasReady(false);
     }, [showToast]);
 
+    const handleApplyToAll = useCallback(() => {
+        if (importedImages.length === 0) return;
+        setImportedImages(prev => prev.map(img => ({
+            ...img,
+            exif: { ...exif } // copy
+        })));
+        showToast("Applied metadata to all images");
+    }, [exif, importedImages.length, showToast]);
 
     useEffect(() => {
         // Check for updates
@@ -477,28 +528,18 @@ function App() {
             }
             
             if (files.length > 0) {
-                if (files.length > 1) {
-                    showToast("Please drop only one file at a time.");
-                    return;
-                }
-                const filePath = files[0];
-                const lower = filePath.toLowerCase();
-                if (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")) {
-                    if (isSelectingRef.current) return;
-                    isSelectingRef.current = true;
-                    setIsSelecting(true);
-                    try {
-                        const result = await AppAPI.ProcessImageFile(filePath);
-                        await handleExifResult(result);
-                    } catch (err: any) {
-                        console.error("Failed to process dropped file:", err);
-                        showToast("Failed to process file: " + (err instanceof Error ? err.message : String(err)));
-                    } finally {
-                        setIsSelecting(false);
-                        isSelectingRef.current = false;
-                    }
-                } else {
-                    showToast("Invalid file: only JPG and PNG are supported.");
+                if (isSelectingRef.current) return;
+                isSelectingRef.current = true;
+                setIsSelecting(true);
+                try {
+                    const results = await AppAPI.ProcessPaths(files);
+                    handleExifResults(results);
+                } catch (err: any) {
+                    console.error("Failed to process dropped files:", err);
+                    showToast("Failed to process files: " + (err instanceof Error ? err.message : String(err)));
+                } finally {
+                    setIsSelecting(false);
+                    isSelectingRef.current = false;
                 }
             }
         });
@@ -507,7 +548,7 @@ function App() {
             unsubSettings();
             offFilesDropped();
         };
-    }, [handleExifResult]);
+    }, [handleExifResults]);
     const handleSaveAutoExportDefault = async () => {
         const s = new Settings();
         s.watchFolder = watchFolder;
@@ -556,24 +597,42 @@ function App() {
         }
     };
 
-    useEffect(() => {
-        setIsMac(System.IsMac());
-    }, []);
-
-    const handleSelectImage = async () => {
+    const handleAddFiles = async () => {
         if (isSelectingRef.current) return;
         isSelectingRef.current = true;
         setIsSelecting(true);
         try {
-            const result = await AppAPI.OpenImage();
-            await handleExifResult(result);
-        } catch (err) {
-            console.error("Failed to open image:", err);
+            const results = await AppAPI.OpenImages();
+            handleExifResults(results);
+        } catch (err: any) {
+            console.error("Failed to open images:", err);
+            showToast("Failed to open images: " + (err instanceof Error ? err.message : String(err)));
         } finally {
-            isSelectingRef.current = false;
             setIsSelecting(false);
+            isSelectingRef.current = false;
         }
     };
+
+    const handleAddFolder = async () => {
+        if (isSelectingRef.current) return;
+        isSelectingRef.current = true;
+        setIsSelecting(true);
+        try {
+            const results = await AppAPI.OpenFolder();
+            handleExifResults(results);
+        } catch (err: any) {
+            console.error("Failed to open folder:", err);
+            showToast("Failed to open folder: " + (err instanceof Error ? err.message : String(err)));
+        } finally {
+            setIsSelecting(false);
+            isSelectingRef.current = false;
+        }
+    };
+
+    useEffect(() => {
+        setIsMac(System.IsMac());
+    }, []);
+
 
     const drawCanvas = useCallback((img: HTMLImageElement) => {
         const canvas = canvasRef.current;
@@ -588,12 +647,17 @@ function App() {
             profile,
             visibility
         });
+        setIsCanvasReady(true);
     }, [exif, aspectRatioPreset, customRatioW, customRatioH, orientation, alignment, showPipeSeparator, profile, visibility]);
 
     useEffect(() => {
-        if (!imageObj || !canvasRef.current) return;
+        if (!canvasRef.current) return;
 
-        drawCanvas(imageObj);
+        if (imageObj) {
+            drawCanvas(imageObj);
+        }
+        // If imageObj is null, we do NOTHING. 
+        // The canvas natively holds its previous pixels, acting as a seamless placeholder.
     }, [imageObj, drawCanvas]);
 
     const downloadImage = async () => {
@@ -622,34 +686,129 @@ function App() {
                 return;
             }
 
-            // Step 2: Convert canvas to binary Blob (no Base64 intermediate)
             const blob = await new Promise<Blob>((resolve, reject) => {
                 canvasRef.current!.toBlob(
                     (b) => b ? resolve(b) : reject(new Error("toBlob returned null")),
                     targetMime,
-                    1.0 // For JPEG: highest quality. PNG ignores this.
+                    1.0
                 );
             });
 
-            // Step 3: Send binary directly to Go HTTP handler with save token.
-            // WARNING: On macOS WebKit, using a Blob body with a custom URL scheme (wails://) 
-            // often results in an empty payload (0kb file). We MUST convert it to an ArrayBuffer first.
-            const arrayBuffer = await blob.arrayBuffer();
-            const response = await fetch(`/api/save?token=${encodeURIComponent(result.saveToken)}`, {
+            const response = await fetch(`/api/save?token=${result.saveToken}`, {
                 method: 'POST',
-                headers: { 'Content-Type': targetMime },
-                body: arrayBuffer,
+                body: blob,
+                headers: { 'Content-Type': targetMime }
             });
 
             if (!response.ok) {
-                const errText = await response.text();
-                console.error("Save failed:", errText);
-                alert("Failed to save image: " + errText);
-            } else {
-                showToast("Image saved successfully");
+                const text = await response.text();
+                console.error("HTTP POST failed for", exportName, text);
+                alert("Failed to save image via HTTP POST: " + text);
             }
+            showToast("Export complete!");
         } catch (err) {
             console.error("Failed to execute SaveImage:", err);
+            showToast("Failed to save image");
+        }
+    };
+
+    const downloadAllImages = async () => {
+        if (importedImages.length === 0) return;
+        isSelectingRef.current = true;
+        let successCount = 0;
+        let failCount = 0;
+
+        try {
+            const exportDir = await AppAPI.SelectExportFolder();
+            if (!exportDir) {
+                setIsSelecting(false);
+                isSelectingRef.current = false;
+                return; // Cancelled
+            }
+
+            showToast("Exporting images...");
+            setIsSelecting(true);
+
+            for (let i = 0; i < importedImages.length; i++) {
+                const imgState = importedImages[i];
+                let imgToDraw = imgState.imageObj;
+                
+                if (!imgToDraw) {
+                    try {
+                        imgToDraw = await new Promise<HTMLImageElement>((resolve, reject) => {
+                            const tempImg = new Image();
+                            tempImg.onload = () => resolve(tempImg);
+                            tempImg.onerror = () => reject(new Error("Failed to load image"));
+                            tempImg.src = imgState.imageURL;
+                        });
+                    } catch (e) {
+                        console.error("Failed to load image for export:", e);
+                        failCount++;
+                        continue;
+                    }
+                }
+
+                const offCanvas = document.createElement("canvas");
+                renderImageToCanvas(offCanvas, imgToDraw, imgState.exif, {
+                    aspectRatioPreset,
+                    customRatioW,
+                    customRatioH,
+                    orientation: imgToDraw.height > imgToDraw.width ? "portrait" : "landscape",
+                    alignment,
+                    showPipeSeparator,
+                    profile,
+                    visibility
+                });
+
+                const isPng = imgState.sourceMimeType === 'image/png';
+                const targetMime = isPng ? 'image/png' : 'image/jpeg';
+                
+                const filenameMatch = imgState.filePath ? imgState.filePath.split(/[/\\]/).pop() : "";
+                const baseName = (filenameMatch ? filenameMatch.replace(/\.[^/.]+$/, "") : "") || `exif-frame-${i}`;
+                const exportName = `${baseName}_ExifFrame`;
+                
+                const result = await AppAPI.SaveBatchImage(isPng, exportDir, exportName);
+                if (result.error) {
+                    console.error("Export failed for", exportName, result.error);
+                    failCount++;
+                    continue;
+                }
+
+                const blob = await new Promise<Blob>((resolve, reject) => {
+                    offCanvas.toBlob(
+                        (b) => b ? resolve(b) : reject(new Error("toBlob returned null")),
+                        targetMime,
+                        1.0
+                    );
+                });
+
+                const response = await fetch(`/api/save?token=${result.saveToken}`, {
+                    method: 'POST',
+                    body: blob,
+                    headers: { 'Content-Type': targetMime }
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error("Save failed:", text);
+                    failCount++;
+                    continue;
+                }
+                
+                successCount++;
+            }
+            
+            if (failCount > 0) {
+                showToast(`Export complete: ${successCount} succeeded, ${failCount} failed.`);
+            } else {
+                showToast(`Successfully exported all ${successCount} images.`);
+            }
+        } catch (err: any) {
+            console.error("Failed to export all:", err);
+            showToast("Failed to export all: " + err.message);
+        } finally {
+            setIsSelecting(false);
+            isSelectingRef.current = false;
         }
     };
 
@@ -685,24 +844,45 @@ function App() {
                     >
                         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     </button>
-                    <button className="btn btn-secondary" onClick={handleSelectImage} disabled={isSelecting}>
-                        {imageLoaded ? 'Change Photo' : 'Open Photo'}
+                    <button className="btn btn-secondary" onClick={handleAddFiles} disabled={isSelecting}>
+                        Open
                     </button>
-                    {imageLoaded && (
-                        <button className="btn btn-primary" onClick={downloadImage} disabled={isSelecting}>
-                            Export
-                        </button>
+                    {hasImages && (
+                        <div className="btn-group">
+                            <button className="btn btn-primary" onClick={downloadImage} disabled={isSelecting || !isCurrentImageLoaded}>
+                                Export
+                            </button>
+                            {importedImages.length > 1 && (
+                                <div 
+                                    className="dropdown"
+                                    tabIndex={-1}
+                                    onBlur={(e) => {
+                                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                                            setExportMenuVisible(false);
+                                        }
+                                    }}
+                                >
+                                    <button 
+                                        className="btn btn-primary dropdown-toggle" 
+                                        aria-label="More export options" 
+                                        disabled={isSelecting}
+                                        onClick={() => setExportMenuVisible(v => !v)}
+                                    >
+                                        ▼
+                                    </button>
+                                    {exportMenuVisible && (
+                                        <div className="dropdown-menu">
+                                            <button className="dropdown-item" onClick={() => { setExportMenuVisible(false); downloadAllImages(); }}>Export All</button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             </header>
 
             <main className="workspace">
-                {/* 
-                    Note: The data-file-drop-target="true" attribute is required by the Wails runtime 
-                    to detect native drag-and-drop targets. During a drag operation, Wails will automatically 
-                    add the .file-drop-target-active class to this element, which we use in CSS to display 
-                    the .drop-overlay.
-                */}
                 <div 
                     className="preview-area"
                     data-file-drop-target="true"
@@ -710,56 +890,73 @@ function App() {
                     <div className="drop-overlay">
                         <div className="drop-overlay-text">Drop image here</div>
                     </div>
-                    {!imageLoaded ? (
+                    {!hasImages ? (
                         <div
                             className={`empty-state ${isSelecting ? 'selecting' : ''}`}
-                            onClick={isSelecting ? undefined : handleSelectImage}
+                            onClick={isSelecting ? undefined : handleAddFiles}
                             role="button"
                             tabIndex={isSelecting ? -1 : 0}
-                            aria-label={isSelecting ? "Opening photo..." : "Click or press Enter to open a photo"}
+                            aria-label={isSelecting ? "Opening..." : "Click or press Enter to open"}
                             aria-busy={isSelecting}
                             aria-disabled={isSelecting}
                             onKeyDown={(e) => {
                                 if (isSelecting) return;
                                 if (e.key === 'Enter' || e.key === ' ') {
                                     e.preventDefault(); // Prevent page scroll for Space
-                                    handleSelectImage();
+                                    handleAddFiles();
                                 }
                             }}
                         >
                             {isSelecting ? (
                                 <>
                                     <svg className="spinner" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }} aria-hidden="true">
-                                        <line x1="12" y1="2" x2="12" y2="6"></line>
-                                        <line x1="12" y1="18" x2="12" y2="22"></line>
-                                        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-                                        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-                                        <line x1="2" y1="12" x2="6" y2="12"></line>
-                                        <line x1="18" y1="12" x2="22" y2="12"></line>
-                                        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
-                                        <line x1="16.24" y1="4.93" x2="19.07" y2="7.76"></line>
+                                        <line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
                                     </svg>
-                                    <p>Opening photo...</p>
+                                    <p>Processing images...</p>
                                 </>
                             ) : (
                                 <>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }} aria-hidden="true">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem', color: 'var(--text-tertiary)' }} aria-hidden="true">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline>
                                     </svg>
-                                    <p>Click or drag a photo here</p>
+                                    <p>Drop files/folders here or click to open</p>
                                 </>
                             )}
                         </div>
                     ) : (
-                        <div className="canvas-wrapper">
-                            <canvas ref={canvasRef} className="preview-canvas" />
+                        <div className="canvas-wrapper" style={{ position: 'relative' }}>
+                            <canvas 
+                                ref={canvasRef} 
+                                className={`preview-canvas ${!isCanvasReady ? 'hidden-canvas' : ''} ${!isCurrentImageLoaded ? 'loading' : ''}`}
+                                style={{ 
+                                    pointerEvents: isCurrentImageLoaded ? 'auto' : 'none'
+                                }} 
+                            />
+                            <div className={`loading-overlay ${!isCurrentImageLoaded && isCanvasReady ? 'visible' : ''}`}>
+                                <svg className="spinner" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '0.5rem' }} aria-hidden="true">
+                                    <line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+                                </svg>
+                                <span>Loading...</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {importedImages.length > 0 && (
+                        <div className="filmstrip-area">
+                            {importedImages.map((img, idx) => (
+                                <div 
+                                    key={idx} 
+                                    className={`filmstrip-item ${selectedIndex === idx ? 'selected' : ''}`}
+                                    onClick={() => setSelectedIndex(idx)}
+                                >
+                                    <img id={`thumb-${idx}`} src={img.imageURL} alt={`Thumbnail ${idx}`} loading="lazy" draggable={false} />
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
 
-                {imageLoaded && (
+                {hasImages && (
                     <aside className="sidebar">
                         <FrameSettingsPanel
                             aspectRatioPreset={aspectRatioPreset} setAspectRatioPreset={setAspectRatioPreset}
@@ -774,6 +971,7 @@ function App() {
                             profile={profile} setProfile={setProfile}
                             exif={exif} setExif={setExif}
                             visibility={visibility} setVisibility={setVisibility}
+                            onApplyToAll={importedImages.length > 1 ? handleApplyToAll : undefined}
                         />
 
                         <div className="sidebar-section default-settings-section" style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
