@@ -79,6 +79,8 @@ func init() {
 		Orientation:       "landscape",
 		Alignment:         "top",
 		ShowPipeSeparator: true,
+		FrameColor:        "#ffffff",
+		TextColor:         "#000000",
 		Profile:           "digital",
 		VisibilityCamera:       true,
 		VisibilityLens:         true,

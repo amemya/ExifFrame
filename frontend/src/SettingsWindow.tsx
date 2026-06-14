@@ -136,6 +136,8 @@ function SettingsWindow() {
         s.orientation = orientation;
         s.alignment = alignment;
         s.showPipeSeparator = showPipeSeparator;
+        s.frameColor = frameColor;
+        s.textColor = textColor;
 
         s.profile = profile;
         s.overrideExif = overrideExif;

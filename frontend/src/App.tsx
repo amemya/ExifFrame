@@ -816,8 +816,8 @@ function App() {
                         showPipeSeparator,
                         profile,
                         visibility,
-                        frameColor,
-                        textColor
+                        frameColor: imgState.frameColor ?? globalFrameColor,
+                        textColor: imgState.textColor ?? globalTextColor
                     });
 
                     const isPng = imgState.sourceMimeType === 'image/png';
