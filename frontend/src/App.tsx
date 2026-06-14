@@ -29,6 +29,8 @@ function renderImageToCanvas(
         showPipeSeparator: boolean;
         profile: string;
         visibility: MetadataVisibility;
+        frameColor: string;
+        textColor: string;
     }
 ) {
     // 好みの左右・上の枠の最小太さ（例：幅の2.5%）
@@ -92,7 +94,7 @@ function renderImageToCanvas(
     if (!ctx) return;
 
     // Fill background
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = settings.frameColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw image
@@ -110,7 +112,7 @@ function renderImageToCanvas(
     const baseScale = Math.min(img.width, img.height);
 
     // Settings for text
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = settings.textColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -147,17 +149,21 @@ function renderImageToCanvas(
     if (bottomText) {
         const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
         ctx.font = `normal ${descFontSize}px "Gill Sans", sans-serif`;
-        ctx.fillStyle = '#555555';
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = settings.textColor;
         ctx.fillText(bottomText, canvas.width / 2, textY + (descFontSize * 0.8));
+        ctx.globalAlpha = 1.0;
     }
 
     // Draw a subtle line separator (just above the text)
     ctx.beginPath();
     ctx.moveTo(canvas.width * 0.2, imgBottomY);
     ctx.lineTo(canvas.width * 0.8, imgBottomY);
-    ctx.strokeStyle = '#e0e0e0';
+    ctx.globalAlpha = 0.2;
+    ctx.strokeStyle = settings.textColor;
     ctx.lineWidth = Math.max(1, Math.floor(baseScale * 0.0015));
     ctx.stroke();
+    ctx.globalAlpha = 1.0;
 }
 interface ProcessFileResult {
     imageURL?: string;
@@ -236,7 +242,9 @@ function App() {
                         alignment: (currentSet.alignment as any) || "top",
                         showPipeSeparator: currentSet.showPipeSeparator ?? true,
                         profile: currentSet.profile || "digital",
-                        visibility: toVisibility(currentSet)
+                        visibility: toVisibility(currentSet),
+                        frameColor: currentSet.frameColor || "#ffffff",
+                        textColor: currentSet.textColor || "#000000"
                     });
 
                     const isPng = result.mimeType === 'image/png';
@@ -341,6 +349,16 @@ function App() {
     // Canvas state
     const [isCanvasReady, setIsCanvasReady] = useState(false);
 
+    // Frame styling state
+    const [aspectRatioPreset, setAspectRatioPreset] = useState<string>("4300:3618");
+    const [customRatioW, setCustomRatioW] = useState<number>(4300);
+    const [customRatioH, setCustomRatioH] = useState<number>(3618);
+    const [orientation, setOrientation] = useState<"landscape" | "portrait">("landscape");
+    const [alignment, setAlignment] = useState<"top" | "center">("top");
+    const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
+    const [frameColor, setFrameColor] = useState<string>("#ffffff");
+    const [textColor, setTextColor] = useState<string>("#000000");
+
     // Toast cleanup
     useEffect(() => {
         return () => {
@@ -352,13 +370,6 @@ function App() {
             }
         };
     }, []);
-
-    const [aspectRatioPreset, setAspectRatioPreset] = useState<string>("4300:3618");
-    const [customRatioW, setCustomRatioW] = useState<number>(4300);
-    const [customRatioH, setCustomRatioH] = useState<number>(3618);
-    const [orientation, setOrientation] = useState<"landscape" | "portrait">("landscape");
-    const [alignment, setAlignment] = useState<"top" | "center">("top");
-    const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
 
     const showToast = useCallback((message: string) => {
         if (toastTimerRef.current !== null) {
@@ -481,6 +492,8 @@ function App() {
             if (s.orientation) setOrientation(s.orientation as any);
             if (s.alignment) setAlignment(s.alignment as any);
             if (s.showPipeSeparator !== undefined) setShowPipeSeparator(s.showPipeSeparator);
+            if (s.frameColor) setFrameColor(s.frameColor);
+            if (s.textColor) setTextColor(s.textColor);
             if (s.profile) {
                 setProfile(['digital', 'film'].includes(s.profile) ? s.profile : 'digital');
             }
@@ -559,6 +572,8 @@ function App() {
         s.alignment = alignment;
         s.showPipeSeparator = showPipeSeparator;
         s.profile = profile;
+        s.frameColor = frameColor;
+        s.textColor = textColor;
         // In App.tsx (manual view), we don't have an overrideExif toggle. 
         // We probably shouldn't overwrite overrideExif if we don't have it in state,
         // so let's preserve it from the current global settings before saving.
@@ -644,10 +659,12 @@ function App() {
             alignment,
             showPipeSeparator,
             profile,
-            visibility
+            visibility,
+            frameColor,
+            textColor
         });
         setIsCanvasReady(true);
-    }, [exif, aspectRatioPreset, customRatioW, customRatioH, orientation, alignment, showPipeSeparator, profile, visibility]);
+    }, [exif, aspectRatioPreset, customRatioW, customRatioH, orientation, alignment, showPipeSeparator, profile, visibility, frameColor, textColor]);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -757,7 +774,9 @@ function App() {
                         alignment,
                         showPipeSeparator,
                         profile,
-                        visibility
+                        visibility,
+                        frameColor,
+                        textColor
                     });
 
                     const isPng = imgState.sourceMimeType === 'image/png';
@@ -970,6 +989,8 @@ function App() {
                             orientation={orientation} setOrientation={setOrientation}
                             alignment={alignment} setAlignment={setAlignment}
                             showPipeSeparator={showPipeSeparator} setShowPipeSeparator={setShowPipeSeparator}
+                            frameColor={frameColor} setFrameColor={setFrameColor}
+                            textColor={textColor} setTextColor={setTextColor}
                         />
 
                         <MetadataSettingsPanel

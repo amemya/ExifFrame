@@ -20,6 +20,8 @@ type Settings struct {
 	Orientation       string `json:"orientation"`
 	Alignment         string `json:"alignment"`
 	ShowPipeSeparator bool   `json:"showPipeSeparator"`
+	FrameColor        string `json:"frameColor"`
+	TextColor         string `json:"textColor"`
 
 	// New fields for Profiles and Film metadata
 	Profile      string `json:"profile"`

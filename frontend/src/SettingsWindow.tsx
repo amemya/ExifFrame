@@ -63,6 +63,8 @@ function SettingsWindow() {
     const [orientation, setOrientation] = useState<"landscape" | "portrait">("landscape");
     const [alignment, setAlignment] = useState<"top" | "center">("center");
     const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
+    const [frameColor, setFrameColor] = useState<string>("#ffffff");
+    const [textColor, setTextColor] = useState<string>("#000000");
 
     // Metadata Settings
     const [profile, setProfile] = useState<string>("digital");
@@ -86,6 +88,8 @@ function SettingsWindow() {
         setOrientation(s.orientation || "landscape");
         setAlignment(s.alignment || "center");
         setShowPipeSeparator(s.showPipeSeparator ?? true);
+        setFrameColor(s.frameColor || "#ffffff");
+        setTextColor(s.textColor || "#000000");
 
         setProfile(s.profile || "digital");
         setOverrideExif(s.overrideExif ?? false);
@@ -239,6 +243,8 @@ function SettingsWindow() {
                                 orientation={orientation} setOrientation={setOrientation}
                                 alignment={alignment} setAlignment={setAlignment}
                                 showPipeSeparator={showPipeSeparator} setShowPipeSeparator={setShowPipeSeparator}
+                                frameColor={frameColor} setFrameColor={setFrameColor}
+                                textColor={textColor} setTextColor={setTextColor}
                             />
                         </div>
                     )}
