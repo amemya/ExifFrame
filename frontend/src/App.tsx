@@ -751,16 +751,19 @@ function App() {
                 );
             });
 
+            const arrayBuffer = await blob.arrayBuffer();
+
             const response = await fetch(`/api/save?token=${result.saveToken}`, {
                 method: 'POST',
-                body: blob,
+                body: arrayBuffer,
                 headers: { 'Content-Type': targetMime }
             });
 
             if (!response.ok) {
                 const text = await response.text();
                 console.error("HTTP POST failed for", exportName, text);
-                alert("Failed to save image via HTTP POST: " + text);
+                showToast("Save failed: " + text);
+                return;
             }
             showToast("Export complete!");
         } catch (err) {
@@ -842,9 +845,11 @@ function App() {
                         );
                     });
 
+                    const arrayBuffer = await blob.arrayBuffer();
+
                     const response = await fetch(`/api/save?token=${result.saveToken}`, {
                         method: 'POST',
-                        body: blob,
+                        body: arrayBuffer,
                         headers: { 'Content-Type': targetMime }
                     });
 
