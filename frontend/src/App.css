@@ -523,6 +523,11 @@ body {
     border-left: 4px solid #2e7d32;
 }
 
+.toast.error {
+    border-left: 4px solid #d32f2f;
+    background-color: rgba(211, 47, 47, 0.1);
+}
+
 @keyframes toast-fade-in-out {
     0% {
         opacity: 0;

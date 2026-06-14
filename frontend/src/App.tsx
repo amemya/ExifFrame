@@ -339,6 +339,7 @@ function App() {
     const isInitialLoad = useRef(true);
     const [isMac, setIsMac] = useState(false);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [toastIsError, setToastIsError] = useState(false);
     const toastTimerRef = useRef<number | null>(null);
     const toastRafRef = useRef<number | null>(null);
     const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
@@ -402,7 +403,7 @@ function App() {
         };
     }, []);
 
-    const showToast = useCallback((message: string) => {
+    const showToast = useCallback((message: string, isError: boolean = false) => {
         if (toastTimerRef.current !== null) {
             window.clearTimeout(toastTimerRef.current);
             toastTimerRef.current = null;
@@ -415,6 +416,7 @@ function App() {
         // Force a re-render by clearing the state first
         setToastMessage(null);
         toastRafRef.current = requestAnimationFrame(() => {
+            setToastIsError(isError);
             setToastMessage(message);
             toastTimerRef.current = window.setTimeout(() => {
                 setToastMessage(null);
@@ -441,7 +443,7 @@ function App() {
                 setOrientation(img.height > img.width ? "portrait" : "landscape");
             };
             img.onerror = () => {
-                showToast("Failed to load image preview");
+                showToast("Failed to load image preview", true);
                 setImportedImages(prev => {
                     const newImages = [...prev];
                     const idx = newImages.findIndex(item => item.imageURL === current.imageURL);
@@ -463,7 +465,7 @@ function App() {
             const firstError = results.find(r => r.error);
             if (firstError && firstError.error) {
                 console.error(firstError.error);
-                showToast(firstError.error);
+                showToast(firstError.error, true);
             }
             return;
         }
@@ -589,7 +591,7 @@ function App() {
                     handleExifResults(results);
                 } catch (err: any) {
                     console.error("Failed to process dropped files:", err);
-                    showToast("Failed to process files: " + (err instanceof Error ? err.message : String(err)));
+                    showToast("Failed to process files: " + (err instanceof Error ? err.message : String(err)), true);
                 } finally {
                     setIsSelecting(false);
                     isSelectingRef.current = false;
@@ -643,12 +645,12 @@ function App() {
         try {
             const errStr = await AppAPI.SaveSettings(s);
             if (errStr && errStr !== "") {
-                showToast(errStr);
+                showToast(errStr, true);
             } else {
                 showToast("Auto-export default saved");
             }
         } catch (e: any) {
-            showToast("Error saving settings");
+            showToast("Error saving settings", true);
         }
     };
 
@@ -661,7 +663,7 @@ function App() {
             handleExifResults(results);
         } catch (err: any) {
             console.error("Failed to open images:", err);
-            showToast("Failed to open images: " + (err instanceof Error ? err.message : String(err)));
+            showToast("Failed to open images: " + (err instanceof Error ? err.message : String(err)), true);
         } finally {
             setIsSelecting(false);
             isSelectingRef.current = false;
@@ -677,7 +679,7 @@ function App() {
             handleExifResults(results);
         } catch (err: any) {
             console.error("Failed to open folder:", err);
-            showToast("Failed to open folder: " + (err instanceof Error ? err.message : String(err)));
+            showToast("Failed to open folder: " + (err instanceof Error ? err.message : String(err)), true);
         } finally {
             setIsSelecting(false);
             isSelectingRef.current = false;
@@ -739,7 +741,7 @@ function App() {
             }
             if (result.error) {
                 console.error("Export failed:", result.error);
-                alert("Failed to save image: " + result.error);
+                showToast("Failed to save image: " + result.error, true);
                 return;
             }
 
@@ -751,21 +753,24 @@ function App() {
                 );
             });
 
+            const arrayBuffer = await blob.arrayBuffer();
+
             const response = await fetch(`/api/save?token=${result.saveToken}`, {
                 method: 'POST',
-                body: blob,
+                body: arrayBuffer,
                 headers: { 'Content-Type': targetMime }
             });
 
             if (!response.ok) {
                 const text = await response.text();
                 console.error("HTTP POST failed for", exportName, text);
-                alert("Failed to save image via HTTP POST: " + text);
+                showToast("Save failed: " + text, true);
+                return;
             }
             showToast("Export complete!");
         } catch (err) {
             console.error("Failed to execute SaveImage:", err);
-            showToast("Failed to save image");
+            showToast("Failed to save image", true);
         }
     };
 
@@ -842,9 +847,11 @@ function App() {
                         );
                     });
 
+                    const arrayBuffer = await blob.arrayBuffer();
+
                     const response = await fetch(`/api/save?token=${result.saveToken}`, {
                         method: 'POST',
-                        body: blob,
+                        body: arrayBuffer,
                         headers: { 'Content-Type': targetMime }
                     });
 
@@ -863,13 +870,14 @@ function App() {
             }
             
             if (failCount > 0) {
-                showToast(`Export complete: ${successCount} succeeded, ${failCount} failed.`);
+                showToast(`Export complete: ${successCount} succeeded, ${failCount} failed.`, true);
             } else {
                 showToast(`Successfully exported all ${successCount} images.`);
             }
         } catch (err: any) {
-            console.error("Failed to export all:", err);
-            showToast("Failed to export all: " + err.message);
+            const errStr = err instanceof Error ? err.message : String(err);
+            console.error("Failed to export all:", errStr);
+            showToast("Failed to export all: " + errStr, true);
         } finally {
             setIsSelecting(false);
             isSelectingRef.current = false;
@@ -1057,8 +1065,8 @@ function App() {
                 )}
 
                 {toastMessage && (
-                    <div className="toast-container" aria-live="polite" aria-atomic="true" role="status">
-                        <div className="toast success" style={{ animationDuration: `${TOAST_DURATION_MS}ms` }}>{toastMessage}</div>
+                    <div className="toast-container" aria-live={toastIsError ? 'assertive' : 'polite'} aria-atomic="true" role={toastIsError ? 'alert' : 'status'}>
+                        <div className={`toast ${toastIsError ? 'error' : 'success'}`} style={{ animationDuration: `${TOAST_DURATION_MS}ms` }}>{toastMessage}</div>
                     </div>
                 )}
             </main>
