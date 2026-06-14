@@ -356,8 +356,39 @@ function App() {
     const [orientation, setOrientation] = useState<"landscape" | "portrait">("landscape");
     const [alignment, setAlignment] = useState<"top" | "center">("top");
     const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
-    const [frameColor, setFrameColor] = useState<string>("#ffffff");
-    const [textColor, setTextColor] = useState<string>("#000000");
+    const [globalFrameColor, setGlobalFrameColor] = useState<string>("#ffffff");
+    const [globalTextColor, setGlobalTextColor] = useState<string>("#000000");
+
+    const frameColor = currentImage?.frameColor ?? globalFrameColor;
+    const textColor = currentImage?.textColor ?? globalTextColor;
+
+    const setFrameColor = useCallback((color: string) => {
+        setImportedImages(prev => {
+            if (prev.length === 0) {
+                setGlobalFrameColor(color);
+                return prev;
+            }
+            const newImages = [...prev];
+            const current = newImages[selectedIndex];
+            if (!current) return prev;
+            newImages[selectedIndex] = { ...current, frameColor: color };
+            return newImages;
+        });
+    }, [selectedIndex]);
+
+    const setTextColor = useCallback((color: string) => {
+        setImportedImages(prev => {
+            if (prev.length === 0) {
+                setGlobalTextColor(color);
+                return prev;
+            }
+            const newImages = [...prev];
+            const current = newImages[selectedIndex];
+            if (!current) return prev;
+            newImages[selectedIndex] = { ...current, textColor: color };
+            return newImages;
+        });
+    }, [selectedIndex]);
 
     // Toast cleanup
     useEffect(() => {
@@ -472,6 +503,16 @@ function App() {
         showToast("Applied metadata to all images");
     }, [exif, importedImages.length, showToast]);
 
+    const handleApplyColorsToAll = useCallback(() => {
+        if (importedImages.length === 0) return;
+        setImportedImages(prev => prev.map(img => ({
+            ...img,
+            frameColor,
+            textColor
+        })));
+        showToast("Applied colors to all images");
+    }, [frameColor, textColor, importedImages.length, showToast]);
+
     useEffect(() => {
         // Check for updates
         AppAPI.CheckForUpdates().then((info: UpdateInfo) => {
@@ -492,8 +533,8 @@ function App() {
             if (s.orientation) setOrientation(s.orientation as any);
             if (s.alignment) setAlignment(s.alignment as any);
             if (s.showPipeSeparator !== undefined) setShowPipeSeparator(s.showPipeSeparator);
-            if (s.frameColor) setFrameColor(s.frameColor);
-            if (s.textColor) setTextColor(s.textColor);
+            if (s.frameColor) setGlobalFrameColor(s.frameColor);
+            if (s.textColor) setGlobalTextColor(s.textColor);
             if (s.profile) {
                 setProfile(['digital', 'film'].includes(s.profile) ? s.profile : 'digital');
             }
@@ -991,6 +1032,7 @@ function App() {
                             showPipeSeparator={showPipeSeparator} setShowPipeSeparator={setShowPipeSeparator}
                             frameColor={frameColor} setFrameColor={setFrameColor}
                             textColor={textColor} setTextColor={setTextColor}
+                            onApplyToAllColors={importedImages.length > 1 ? handleApplyColorsToAll : undefined}
                         />
 
                         <MetadataSettingsPanel

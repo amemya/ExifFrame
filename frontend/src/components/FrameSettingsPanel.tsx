@@ -15,6 +15,7 @@ export interface FrameSettingsPanelProps {
     setFrameColor: (val: string) => void;
     textColor: string;
     setTextColor: (val: string) => void;
+    onApplyToAllColors?: () => void;
 }
 
 export const FrameSettingsPanel = ({
@@ -25,7 +26,8 @@ export const FrameSettingsPanel = ({
     alignment, setAlignment,
     showPipeSeparator, setShowPipeSeparator,
     frameColor, setFrameColor,
-    textColor, setTextColor
+    textColor, setTextColor,
+    onApplyToAllColors
 }: FrameSettingsPanelProps) => (
     <div className="sidebar-section frame-settings-section">
         <h3>Frame Settings</h3>
@@ -164,5 +166,18 @@ export const FrameSettingsPanel = ({
                 </div>
             </div>
         </div>
+
+        {onApplyToAllColors && (
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
+                <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ width: '100%', fontSize: '0.85rem' }}
+                    onClick={onApplyToAllColors}
+                >
+                    Apply Colors to All
+                </button>
+            </div>
+        )}
     </div>
 );
