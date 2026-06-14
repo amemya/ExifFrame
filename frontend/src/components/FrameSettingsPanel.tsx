@@ -11,6 +11,11 @@ export interface FrameSettingsPanelProps {
     setAlignment: (val: "top" | "center") => void;
     showPipeSeparator: boolean;
     setShowPipeSeparator: (val: boolean) => void;
+    frameColor: string;
+    setFrameColor: (val: string) => void;
+    textColor: string;
+    setTextColor: (val: string) => void;
+    onApplyToAllColors?: () => void;
 }
 
 export const FrameSettingsPanel = ({
@@ -19,7 +24,10 @@ export const FrameSettingsPanel = ({
     customRatioH, setCustomRatioH,
     orientation, setOrientation,
     alignment, setAlignment,
-    showPipeSeparator, setShowPipeSeparator
+    showPipeSeparator, setShowPipeSeparator,
+    frameColor, setFrameColor,
+    textColor, setTextColor,
+    onApplyToAllColors
 }: FrameSettingsPanelProps) => (
     <div className="sidebar-section frame-settings-section">
         <h3>Frame Settings</h3>
@@ -131,5 +139,45 @@ export const FrameSettingsPanel = ({
                 </button>
             </div>
         </div>
+        
+        <div className="input-row" style={{ marginTop: '1rem' }}>
+            <div className="input-group">
+                <label htmlFor="frame-color">Frame Color</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                        id="frame-color"
+                        type="color"
+                        value={frameColor}
+                        onChange={(e) => setFrameColor(e.target.value)}
+                        style={{ width: '100%', height: '36px', padding: '0', cursor: 'pointer', border: '1px solid var(--border-color)', borderRadius: '4px', background: 'transparent' }}
+                    />
+                </div>
+            </div>
+            <div className="input-group">
+                <label htmlFor="text-color">Text Color</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                        id="text-color"
+                        type="color"
+                        value={textColor}
+                        onChange={(e) => setTextColor(e.target.value)}
+                        style={{ width: '100%', height: '36px', padding: '0', cursor: 'pointer', border: '1px solid var(--border-color)', borderRadius: '4px', background: 'transparent' }}
+                    />
+                </div>
+            </div>
+        </div>
+
+        {onApplyToAllColors && (
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
+                <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ width: '100%', fontSize: '0.85rem' }}
+                    onClick={onApplyToAllColors}
+                >
+                    Apply Colors to All
+                </button>
+            </div>
+        )}
     </div>
 );

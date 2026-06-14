@@ -58,6 +58,8 @@ export interface ImportedImage {
     sourceMimeType: 'image/jpeg' | 'image/png';
     
     exif: ExifData;
+    frameColor?: string;
+    textColor?: string;
     
     /** The decoded image object loaded into memory. Lazily initialized on demand. */
     imageObj: HTMLImageElement | null;
