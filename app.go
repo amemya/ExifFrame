@@ -116,6 +116,92 @@ func (a *App) OpenImage() ExifResult {
 	return a.ProcessImageFile(filePath)
 }
 
+// OpenImages opens a native file dialog for multiple files or directories, reads EXIF metadata, and returns
+// a list of HTTP URLs and metadata for the frontend.
+func (a *App) OpenImages() []ExifResult {
+	filePaths, err := application.Get().Dialog.OpenFile().
+		SetTitle("Select Photos or Folders").
+		AddFilter("Images", "*.jpg;*.jpeg;*.png").
+		CanChooseDirectories(true).
+		CanChooseFiles(true).
+		PromptForMultipleSelection()
+	if err != nil {
+		return []ExifResult{{Error: err.Error()}}
+	}
+	if len(filePaths) == 0 {
+		return []ExifResult{{Cancelled: true}}
+	}
+
+	return a.ProcessPaths(filePaths)
+}
+
+// OpenFolder opens a native directory dialog and processes all valid images within.
+func (a *App) OpenFolder() []ExifResult {
+	folderPath, err := application.Get().Dialog.OpenFile().
+		SetTitle("Select Folder").
+		CanChooseDirectories(true).
+		CanChooseFiles(false).
+		PromptForSingleSelection()
+	if err != nil {
+		return []ExifResult{{Error: err.Error()}}
+	}
+	if folderPath == "" {
+		return []ExifResult{{Cancelled: true}} // user cancelled
+	}
+
+	return a.ProcessPaths([]string{folderPath})
+}
+
+// ProcessPaths recursively walks provided paths (or single files) and processes valid images.
+func (a *App) ProcessPaths(paths []string) []ExifResult {
+	var results []ExifResult
+	var validPaths []string
+
+	for _, p := range paths {
+		info, err := os.Stat(p)
+		if err != nil {
+			results = append(results, ExifResult{Error: "Failed to access path: " + err.Error(), FilePath: p})
+			continue
+		}
+
+		if info.IsDir() {
+			err = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					log.Printf("Error accessing path %s: %v", path, err)
+					return nil // Skip this file/folder but continue walking
+				}
+				if !info.IsDir() {
+					lower := strings.ToLower(path)
+					if strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") || strings.HasSuffix(lower, ".png") {
+						validPaths = append(validPaths, path)
+					}
+				}
+				return nil
+			})
+			if err != nil {
+				results = append(results, ExifResult{Error: "Failed to read directory: " + err.Error(), FilePath: p})
+			}
+		} else {
+			validPaths = append(validPaths, p)
+		}
+	}
+
+	for _, path := range validPaths {
+		res := a.ProcessImageFile(path)
+		if res.Error != "" {
+			log.Printf("Skipped file %s: %v", path, res.Error)
+			continue
+		}
+		results = append(results, res)
+	}
+
+	if len(results) == 0 {
+		return []ExifResult{{Error: "No valid images found in the selected paths."}}
+	}
+
+	return results
+}
+
 // ProcessImageFile reads a file, validates it, and extracts EXIF
 func (a *App) ProcessImageFile(filePath string) ExifResult {
 	f, err := os.Open(filePath)
@@ -332,21 +418,9 @@ func (a *App) SaveImage(isPng bool, defaultName string) SaveResult {
 		return SaveResult{Cancelled: true}
 	}
 
-	ext := strings.ToLower(filepath.Ext(savePath))
-	if ext == "" {
-		// User omitted extension, append the correct one
-		if isPng {
-			savePath += ".png"
-		} else {
-			savePath += ".jpg"
-		}
-	} else {
-		// User provided an extension, make sure it matches the output format
-		if isPng && ext != ".png" {
-			return SaveResult{Error: "Invalid extension. Please save as .png"}
-		} else if !isPng && ext != ".jpg" && ext != ".jpeg" {
-			return SaveResult{Error: "Invalid extension. Please save as .jpg or .jpeg"}
-		}
+	savePath, err = ensureValidExtension(savePath, isPng)
+	if err != nil {
+		return SaveResult{Error: err.Error()}
 	}
 
 	// Signal the HTTP handler that a save path is ready.
@@ -413,6 +487,25 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 	return SaveResult{SaveToken: token}
 }
 
+// SaveBatchImage bypasses ExportFolder validation for explicit batch exports.
+func (a *App) SaveBatchImage(isPng bool, exportDir string, exportName string) SaveResult {
+	savePath := filepath.Join(exportDir, exportName)
+	savePath, err := ensureValidExtension(savePath, isPng)
+	if err != nil {
+		return SaveResult{Error: err.Error()}
+	}
+
+	expectedMime := "image/jpeg"
+	if isPng {
+		expectedMime = "image/png"
+	}
+	if a.handler == nil {
+		return SaveResult{Error: "Internal error: image handler not initialized"}
+	}
+	token := a.handler.prepareSave(savePath, expectedMime)
+	return SaveResult{SaveToken: token}
+}
+
 // SelectWatchFolder opens a directory dialog to pick a watch folder
 func (a *App) SelectWatchFolder() string {
 	path, err := application.Get().Dialog.OpenFile().
@@ -455,6 +548,24 @@ func formatAperture(num, den int64) string {
 	}
 	val := float64(num) / float64(den)
 	return fmt.Sprintf("f/%.1f", val)
+}
+
+// ensureValidExtension checks the file path and appends or validates the required extension.
+func ensureValidExtension(savePath string, isPng bool) (string, error) {
+	ext := strings.ToLower(filepath.Ext(savePath))
+	if ext == "" {
+		if isPng {
+			return savePath + ".png", nil
+		}
+		return savePath + ".jpg", nil
+	}
+
+	if isPng && ext != ".png" {
+		return "", fmt.Errorf("Invalid extension. Please save as .png")
+	} else if !isPng && ext != ".jpg" && ext != ".jpeg" {
+		return "", fmt.Errorf("Invalid extension. Please save as .jpg or .jpeg")
+	}
+	return savePath, nil
 }
 
 func gcd(a, b int64) int64 {
