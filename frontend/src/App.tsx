@@ -465,7 +465,7 @@ function App() {
             const firstError = results.find(r => r.error);
             if (firstError && firstError.error) {
                 console.error(firstError.error);
-                showToast(firstError.error);
+                showToast(firstError.error, true);
             }
             return;
         }
@@ -645,7 +645,7 @@ function App() {
         try {
             const errStr = await AppAPI.SaveSettings(s);
             if (errStr && errStr !== "") {
-                showToast(errStr);
+                showToast(errStr, true);
             } else {
                 showToast("Auto-export default saved");
             }
@@ -741,7 +741,7 @@ function App() {
             }
             if (result.error) {
                 console.error("Export failed:", result.error);
-                alert("Failed to save image: " + result.error);
+                showToast("Failed to save image: " + result.error, true);
                 return;
             }
 
@@ -870,13 +870,14 @@ function App() {
             }
             
             if (failCount > 0) {
-                showToast(`Export complete: ${successCount} succeeded, ${failCount} failed.`);
+                showToast(`Export complete: ${successCount} succeeded, ${failCount} failed.`, true);
             } else {
                 showToast(`Successfully exported all ${successCount} images.`);
             }
         } catch (err: any) {
-            console.error("Failed to export all:", err);
-            showToast("Failed to export all: " + err.message, true);
+            const errStr = err instanceof Error ? err.message : String(err);
+            console.error("Failed to export all:", errStr);
+            showToast("Failed to export all: " + errStr, true);
         } finally {
             setIsSelecting(false);
             isSelectingRef.current = false;
@@ -1064,7 +1065,7 @@ function App() {
                 )}
 
                 {toastMessage && (
-                    <div className="toast-container" aria-live="polite" aria-atomic="true" role="status">
+                    <div className="toast-container" aria-live={toastIsError ? 'assertive' : 'polite'} aria-atomic="true" role={toastIsError ? 'alert' : 'status'}>
                         <div className={`toast ${toastIsError ? 'error' : 'success'}`} style={{ animationDuration: `${TOAST_DURATION_MS}ms` }}>{toastMessage}</div>
                     </div>
                 )}
