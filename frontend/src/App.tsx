@@ -390,12 +390,9 @@ function App() {
                 setImportedImages(prev => {
                     const newImages = [...prev];
                     // Make sure the image we loaded is still at this index (or find by url if order changed, but we only append for now)
-                    if (newImages[selectedIndex] && newImages[selectedIndex].imageURL === current.imageURL) {
-                        newImages[selectedIndex] = { ...current, imageObj: img };
-                    } else {
-                        // Fallback: find it
-                        const idx = newImages.findIndex(item => item.imageURL === current.imageURL);
-                        if (idx !== -1) newImages[idx] = { ...current, imageObj: img };
+                    const idx = newImages.findIndex(item => item.imageURL === current.imageURL);
+                    if (idx !== -1) {
+                        newImages[idx] = { ...newImages[idx], imageObj: img };
                     }
                     return newImages;
                 });
@@ -406,7 +403,9 @@ function App() {
                 setImportedImages(prev => {
                     const newImages = [...prev];
                     const idx = newImages.findIndex(item => item.imageURL === current.imageURL);
-                    if (idx !== -1) newImages[idx] = { ...current, loadError: true };
+                    if (idx !== -1) {
+                        newImages[idx] = { ...newImages[idx], loadError: true };
+                    }
                     return newImages;
                 });
             };
@@ -730,72 +729,77 @@ function App() {
             setIsSelecting(true);
 
             for (let i = 0; i < importedImages.length; i++) {
-                const imgState = importedImages[i];
-                let imgToDraw = imgState.imageObj;
-                
-                if (!imgToDraw) {
-                    try {
-                        imgToDraw = await new Promise<HTMLImageElement>((resolve, reject) => {
-                            const tempImg = new Image();
-                            tempImg.onload = () => resolve(tempImg);
-                            tempImg.onerror = () => reject(new Error("Failed to load image"));
-                            tempImg.src = imgState.imageURL;
-                        });
-                    } catch (e) {
-                        console.error("Failed to load image for export:", e);
+                try {
+                    const imgState = importedImages[i];
+                    let imgToDraw = imgState.imageObj;
+                    
+                    if (!imgToDraw) {
+                        try {
+                            imgToDraw = await new Promise<HTMLImageElement>((resolve, reject) => {
+                                const tempImg = new Image();
+                                tempImg.onload = () => resolve(tempImg);
+                                tempImg.onerror = () => reject(new Error("Failed to load image"));
+                                tempImg.src = imgState.imageURL;
+                            });
+                        } catch (e) {
+                            console.error("Failed to load image for export:", e);
+                            failCount++;
+                            continue;
+                        }
+                    }
+
+                    const offCanvas = document.createElement("canvas");
+                    renderImageToCanvas(offCanvas, imgToDraw, imgState.exif, {
+                        aspectRatioPreset,
+                        customRatioW,
+                        customRatioH,
+                        orientation: imgToDraw.height > imgToDraw.width ? "portrait" : "landscape",
+                        alignment,
+                        showPipeSeparator,
+                        profile,
+                        visibility
+                    });
+
+                    const isPng = imgState.sourceMimeType === 'image/png';
+                    const targetMime = isPng ? 'image/png' : 'image/jpeg';
+                    
+                    const filenameMatch = imgState.filePath ? imgState.filePath.split(/[/\\]/).pop() : "";
+                    const baseName = (filenameMatch ? filenameMatch.replace(/\.[^/.]+$/, "") : "") || `exif-frame-${i}`;
+                    const exportName = `${baseName}_ExifFrame`;
+                    
+                    const result = await AppAPI.SaveBatchImage(isPng, exportDir, exportName);
+                    if (result.error) {
+                        console.error("Export failed for", exportName, result.error);
                         failCount++;
                         continue;
                     }
-                }
 
-                const offCanvas = document.createElement("canvas");
-                renderImageToCanvas(offCanvas, imgToDraw, imgState.exif, {
-                    aspectRatioPreset,
-                    customRatioW,
-                    customRatioH,
-                    orientation: imgToDraw.height > imgToDraw.width ? "portrait" : "landscape",
-                    alignment,
-                    showPipeSeparator,
-                    profile,
-                    visibility
-                });
+                    const blob = await new Promise<Blob>((resolve, reject) => {
+                        offCanvas.toBlob(
+                            (b) => b ? resolve(b) : reject(new Error("toBlob returned null")),
+                            targetMime,
+                            1.0
+                        );
+                    });
 
-                const isPng = imgState.sourceMimeType === 'image/png';
-                const targetMime = isPng ? 'image/png' : 'image/jpeg';
-                
-                const filenameMatch = imgState.filePath ? imgState.filePath.split(/[/\\]/).pop() : "";
-                const baseName = (filenameMatch ? filenameMatch.replace(/\.[^/.]+$/, "") : "") || `exif-frame-${i}`;
-                const exportName = `${baseName}_ExifFrame`;
-                
-                const result = await AppAPI.SaveBatchImage(isPng, exportDir, exportName);
-                if (result.error) {
-                    console.error("Export failed for", exportName, result.error);
+                    const response = await fetch(`/api/save?token=${result.saveToken}`, {
+                        method: 'POST',
+                        body: blob,
+                        headers: { 'Content-Type': targetMime }
+                    });
+
+                    if (!response.ok) {
+                        const text = await response.text();
+                        console.error("Save failed:", text);
+                        failCount++;
+                        continue;
+                    }
+                    
+                    successCount++;
+                } catch (e) {
+                    console.error("Unexpected error processing image", i, e);
                     failCount++;
-                    continue;
                 }
-
-                const blob = await new Promise<Blob>((resolve, reject) => {
-                    offCanvas.toBlob(
-                        (b) => b ? resolve(b) : reject(new Error("toBlob returned null")),
-                        targetMime,
-                        1.0
-                    );
-                });
-
-                const response = await fetch(`/api/save?token=${result.saveToken}`, {
-                    method: 'POST',
-                    body: blob,
-                    headers: { 'Content-Type': targetMime }
-                });
-
-                if (!response.ok) {
-                    const text = await response.text();
-                    console.error("Save failed:", text);
-                    failCount++;
-                    continue;
-                }
-                
-                successCount++;
             }
             
             if (failCount > 0) {
@@ -944,13 +948,14 @@ function App() {
                     {importedImages.length > 0 && (
                         <div className="filmstrip-area">
                             {importedImages.map((img, idx) => (
-                                <div 
+                                <button 
                                     key={idx} 
+                                    type="button"
                                     className={`filmstrip-item ${selectedIndex === idx ? 'selected' : ''}`}
                                     onClick={() => setSelectedIndex(idx)}
                                 >
                                     <img id={`thumb-${idx}`} src={img.imageURL} alt={`Thumbnail ${idx}`} loading="lazy" draggable={false} />
-                                </div>
+                                </button>
                             ))}
                         </div>
                     )}
