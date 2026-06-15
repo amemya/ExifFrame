@@ -5,6 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"log"
 	"math"
@@ -93,9 +96,10 @@ type ExifResult struct {
 	Aperture     string `json:"aperture"`
 	ShutterSpeed string `json:"shutterSpeed"`
 	ISO          string `json:"iso"`
-	Error        string `json:"error"`
-	Cancelled    bool   `json:"cancelled"`
-	FilePath     string `json:"filePath"`
+	Error        string  `json:"error"`
+	Cancelled    bool    `json:"cancelled"`
+	FilePath     string  `json:"filePath"`
+	OriginalBPP  float64 `json:"originalBPP"`
 }
 
 // OpenImage opens a native file dialog, reads EXIF metadata, and returns
@@ -240,10 +244,23 @@ func (a *App) doOpenImage(filePath string, f *os.File, mimeType string) ExifResu
 		url = fmt.Sprintf("/api/image?t=%d", time.Now().UnixNano())
 	}
 
+	var originalBPP float64
+	if stat, err := f.Stat(); err == nil {
+		fileSize := stat.Size()
+		if _, err := f.Seek(0, io.SeekStart); err == nil {
+			if config, _, err := image.DecodeConfig(f); err == nil {
+				if config.Width > 0 && config.Height > 0 {
+					originalBPP = float64(fileSize) / float64(config.Width*config.Height)
+				}
+			}
+		}
+	}
+
 	result := ExifResult{
-		ImageURL: url,
-		MimeType: mimeType,
-		FilePath: filePath,
+		ImageURL:    url,
+		MimeType:    mimeType,
+		FilePath:    filePath,
+		OriginalBPP: originalBPP,
 	}
 
 	// Parse EXIF

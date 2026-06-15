@@ -60,6 +60,7 @@ export interface ImportedImage {
     exif: ExifData;
     frameColor?: string;
     textColor?: string;
+    originalBPP?: number;
     
     /** The decoded image object loaded into memory. Lazily initialized on demand. */
     imageObj: HTMLImageElement | null;
@@ -80,4 +81,5 @@ export interface ExifResult {
     aperture?: string;
     shutterSpeed?: string;
     iso?: string;
+    originalBPP?: number;
 }
