@@ -16,6 +16,18 @@ import { MetadataSettingsPanel } from './components/MetadataSettingsPanel';
 
 const TOAST_DURATION_MS = 3000;
 
+export const getQualityFromBPP = (bpp: number | undefined, setting: string): number => {
+    if (setting !== "auto") {
+        const parsed = parseFloat(setting);
+        if (!isNaN(parsed)) return parsed;
+    }
+    if (bpp === undefined || bpp <= 0) return 0.92;
+
+    if (bpp < 0.15) return 0.85;
+    if (bpp < 0.30) return 0.90;
+    return 0.95;
+};
+
 function renderImageToCanvas(
     canvas: HTMLCanvasElement,
     img: HTMLImageElement,
@@ -175,6 +187,7 @@ interface ProcessFileResult {
     iso?: string;
     mimeType?: string;
     filePath?: string;
+    originalBPP?: number;
 }
 
 interface ProcessFileData {
@@ -256,6 +269,7 @@ function App() {
 
                     const savePath = exportFolderStr + "/" + exportName;
 
+                    const quality = getQualityFromBPP(result.originalBPP, currentSet.jpegQuality || "auto");
                     offscreenCanvas.toBlob(async (blob) => {
                         if (!blob) return;
                         try {
@@ -279,7 +293,7 @@ function App() {
                         } catch (e) {
                             console.error(e);
                         }
-                    }, targetMime, 1.0);
+                    }, targetMime, quality);
                 };
                 img.onerror = () => {
                     console.error("Background image load failed:", imageUrl);
@@ -359,6 +373,7 @@ function App() {
     const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
     const [globalFrameColor, setGlobalFrameColor] = useState<string>("#ffffff");
     const [globalTextColor, setGlobalTextColor] = useState<string>("#000000");
+    const [globalJpegQuality, setGlobalJpegQuality] = useState<string>("auto");
 
     const frameColor = currentImage?.frameColor ?? globalFrameColor;
     const textColor = currentImage?.textColor ?? globalTextColor;
@@ -537,6 +552,7 @@ function App() {
             if (s.showPipeSeparator !== undefined) setShowPipeSeparator(s.showPipeSeparator);
             if (s.frameColor) setGlobalFrameColor(s.frameColor);
             if (s.textColor) setGlobalTextColor(s.textColor);
+            if (s.jpegQuality) setGlobalJpegQuality(s.jpegQuality);
             if (s.profile) {
                 setProfile(['digital', 'film'].includes(s.profile) ? s.profile : 'digital');
             }
@@ -745,11 +761,12 @@ function App() {
                 return;
             }
 
+            const quality = getQualityFromBPP(currentImage.originalBPP, globalJpegQuality);
             const blob = await new Promise<Blob>((resolve, reject) => {
                 canvasRef.current!.toBlob(
                     (b) => b ? resolve(b) : reject(new Error("toBlob returned null")),
                     targetMime,
-                    1.0
+                    quality
                 );
             });
 
@@ -840,10 +857,11 @@ function App() {
                     }
 
                     const blob = await new Promise<Blob>((resolve, reject) => {
+                        const quality = getQualityFromBPP(imgState.originalBPP, globalJpegQuality);
                         offCanvas.toBlob(
                             (b) => b ? resolve(b) : reject(new Error("toBlob returned null")),
                             targetMime,
-                            1.0
+                            quality
                         );
                     });
 

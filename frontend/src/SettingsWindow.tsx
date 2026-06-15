@@ -55,6 +55,7 @@ function SettingsWindow() {
     // General
     const [watchFolder, setWatchFolder] = useState("");
     const [exportFolder, setExportFolder] = useState("");
+    const [jpegQuality, setJpegQuality] = useState("auto");
 
     // Frame Settings
     const [aspectRatioPreset, setAspectRatioPreset] = useState<string>("4300:3618");
@@ -81,6 +82,7 @@ function SettingsWindow() {
     const loadSettings = (s: Settings) => {
         setWatchFolder(s.watchFolder || "");
         setExportFolder(s.exportFolder || "");
+        setJpegQuality(s.jpegQuality || "auto");
 
         setAspectRatioPreset(s.aspectRatioPreset || "4300:3618");
         setCustomRatioW(s.customRatioW || 4300);
@@ -130,6 +132,7 @@ function SettingsWindow() {
 
         s.watchFolder = watchFolder;
         s.exportFolder = exportFolder;
+        s.jpegQuality = jpegQuality;
         s.aspectRatioPreset = aspectRatioPreset;
         s.customRatioW = customRatioW;
         s.customRatioH = customRatioH;
@@ -232,6 +235,22 @@ function SettingsWindow() {
                                     <button onClick={() => setExportFolder("")} className="btn btn-secondary" title="Clear Folder">✕</button>
                                 </div>
                                 <small style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-secondary)', textAlign: 'left' }}>Auto-processed images will be saved here.</small>
+                            </div>
+                            <div className="input-group">
+                                <label>JPEG Export Quality</label>
+                                <select 
+                                    value={jpegQuality} 
+                                    onChange={(e) => setJpegQuality(e.target.value)}
+                                    className="select-input"
+                                >
+                                    <option value="auto">Auto (Smart Adjust based on source)</option>
+                                    <option value="1.0">Maximum (100% - Huge file size)</option>
+                                    <option value="0.95">Very High (95%)</option>
+                                    <option value="0.9">High (90%)</option>
+                                    <option value="0.85">Medium (85% - Recommended for SNS)</option>
+                                    <option value="0.8">Low (80%)</option>
+                                </select>
+                                <small style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-secondary)', textAlign: 'left' }}>Auto calculates the optimal quality based on the original image compression to prevent file size bloat.</small>
                             </div>
                         </div>
                     )}

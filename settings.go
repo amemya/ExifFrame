@@ -22,6 +22,7 @@ type Settings struct {
 	ShowPipeSeparator bool   `json:"showPipeSeparator"`
 	FrameColor        string `json:"frameColor"`
 	TextColor         string `json:"textColor"`
+	JpegQuality       string `json:"jpegQuality"`
 
 	// New fields for Profiles and Film metadata
 	Profile      string `json:"profile"`
@@ -81,6 +82,7 @@ func init() {
 		ShowPipeSeparator: true,
 		FrameColor:        "#ffffff",
 		TextColor:         "#000000",
+		JpegQuality:       "auto",
 		Profile:           "digital",
 		VisibilityCamera:       true,
 		VisibilityLens:         true,
