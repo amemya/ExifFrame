@@ -23,9 +23,18 @@ export const getQualityFromBPP = (bpp: number | undefined, setting: string): num
     }
     if (bpp === undefined || bpp <= 0) return 0.92;
 
-    if (bpp < 0.15) return 0.85;
-    if (bpp < 0.30) return 0.90;
-    return 0.95;
+    // Continuous interpolation for smoother scaling
+    // Map BPP 0.05 -> Quality 0.70 (Aggressive compression for huge/noisy files)
+    // Map BPP 0.30 -> Quality 0.92 (High quality for standard files)
+    const minBPP = 0.05;
+    const maxBPP = 0.30;
+    const minQ = 0.70;
+    const maxQ = 0.92;
+
+    let quality = minQ + ((bpp - minBPP) * (maxQ - minQ)) / (maxBPP - minBPP);
+    
+    // Clamp between 0.65 and 0.95 to avoid extreme degradation or bloat
+    return Math.min(0.95, Math.max(0.65, quality));
 };
 
 function renderImageToCanvas(
