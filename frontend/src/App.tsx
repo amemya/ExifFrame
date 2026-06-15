@@ -592,6 +592,8 @@ function App() {
                 else setWatchFolder("");
                 if (s.exportFolder) setExportFolder(s.exportFolder);
                 else setExportFolder("");
+                if (s.jpegQuality) setGlobalJpegQuality(s.jpegQuality);
+                else setGlobalJpegQuality("auto");
             }).catch((err: any) => {
                 console.error("Failed to reload settings:", err);
             });
@@ -650,8 +652,10 @@ function App() {
         try {
             const currentSettings = await AppAPI.GetSettings();
             s.overrideExif = currentSettings.overrideExif;
+            s.jpegQuality = currentSettings.jpegQuality || "auto";
         } catch (e) {
             s.overrideExif = false;
+            s.jpegQuality = "auto";
         }
 
         s.camera = exif.camera;
