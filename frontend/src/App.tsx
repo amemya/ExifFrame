@@ -499,6 +499,7 @@ function App() {
                 filePath: r.filePath || "",
                 imageURL: r.imageURL!,
                 sourceMimeType: (r.mimeType as 'image/jpeg' | 'image/png') || 'image/jpeg',
+                originalBPP: r.originalBPP,
                 imageObj: null,
                 exif: {
                     camera: r.camera || "",
