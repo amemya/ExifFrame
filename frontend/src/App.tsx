@@ -13,179 +13,14 @@ interface UpdateInfo {
 import { ExifData, MetadataVisibility, toVisibility, applyVisibility, ImportedImage, ExifResult } from './types';
 import { FrameSettingsPanel } from './components/FrameSettingsPanel';
 import { MetadataSettingsPanel } from './components/MetadataSettingsPanel';
+import { useToast } from './hooks/useToast';
+import { getQualityFromBPP, getExportInfo } from './utils';
+import { renderImageToCanvas } from './canvas';
 
-const TOAST_DURATION_MS = 3000;
+// Re-export for backward compatibility
+export { getQualityFromBPP } from './utils';
 
-export const getQualityFromBPP = (bpp: number | undefined, setting: string): number => {
-    if (setting !== "auto") {
-        const parsed = parseFloat(setting);
-        if (!isNaN(parsed)) return parsed;
-    }
-    if (bpp === undefined || bpp <= 0) return 0.92;
 
-    // Continuous interpolation for smoother scaling
-    // Map BPP 0.05 -> Quality 0.70 (Aggressive compression for huge/noisy files)
-    // Map BPP 0.30 -> Quality 0.92 (High quality for standard files)
-    const minBPP = 0.05;
-    const maxBPP = 0.30;
-    const minQ = 0.70;
-    const maxQ = 0.92;
-
-    let quality = minQ + ((bpp - minBPP) * (maxQ - minQ)) / (maxBPP - minBPP);
-    
-    // Clamp between 0.65 and 0.95 to avoid extreme degradation or bloat
-    return Math.min(0.95, Math.max(0.65, quality));
-};
-
-function renderImageToCanvas(
-    canvas: HTMLCanvasElement,
-    img: HTMLImageElement,
-    exif: ExifData,
-    settings: {
-        aspectRatioPreset: string;
-        customRatioW: number;
-        customRatioH: number;
-        orientation: "landscape" | "portrait";
-        alignment: "top" | "center";
-        showPipeSeparator: boolean;
-        profile: string;
-        visibility: MetadataVisibility;
-        frameColor: string;
-        textColor: string;
-    }
-) {
-    // 好みの左右・上の枠の最小太さ（例：幅の2.5%）
-    const minFramePadding = Math.floor(img.width * 0.025);
-    // 下部のテキスト領域に必要な最小スペース
-    const minBottomSpace = Math.floor(minFramePadding * 4.5);
-
-    let targetRatio = 4300 / 3618;
-    if (settings.aspectRatioPreset === "custom") {
-        if (settings.customRatioW > 0 && settings.customRatioH > 0) {
-            targetRatio = settings.customRatioW / settings.customRatioH;
-        } else {
-            targetRatio = img.width / img.height;
-        }
-    } else {
-        const [w, h] = settings.aspectRatioPreset.split(':').map(Number);
-        if (w && h) targetRatio = w / h;
-    }
-
-    // Apply orientation flip
-    if (settings.orientation === "portrait" && targetRatio > 1) {
-        targetRatio = 1 / targetRatio;
-    } else if (settings.orientation === "landscape" && targetRatio < 1) {
-        targetRatio = 1 / targetRatio;
-    }
-
-    const minCanvasWidth = img.width + (minFramePadding * 2);
-    const minCanvasHeight = img.height + minFramePadding + minBottomSpace;
-
-    // まず幅を基準に高さを計算
-    let finalCanvasWidth = minCanvasWidth;
-    let finalCanvasHeight = Math.floor(finalCanvasWidth / targetRatio);
-
-    if (finalCanvasHeight < minCanvasHeight) {
-        // 高さが足りない場合は、最小の高さを基準にして幅を拡張
-        finalCanvasHeight = minCanvasHeight;
-        finalCanvasWidth = Math.floor(finalCanvasHeight * targetRatio);
-    }
-
-    // ⚠️ CRITICAL: Must be set BEFORE getContext, otherwise context properties (colorSpace) are reset!
-    canvas.width = finalCanvasWidth;
-    canvas.height = finalCanvasHeight;
-
-    // 余分な高さを計算
-    const extraHeight = finalCanvasHeight - minCanvasHeight;
-
-    // 画像の配置位置を計算 (左右中央、上固定または上下中央)
-    const drawX = Math.floor((finalCanvasWidth - img.width) / 2);
-    const drawY = settings.alignment === "center" ? minFramePadding + Math.floor(extraHeight / 2) : minFramePadding;
-
-    // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
-    let ctx: CanvasRenderingContext2D | null = null;
-    try {
-        ctx = canvas.getContext('2d', { colorSpace: 'display-p3' } as CanvasRenderingContext2DSettings);
-    } catch (e) {
-        // Context with colorSpace might throw in unsupported environments
-    }
-    if (!ctx) {
-        ctx = canvas.getContext('2d');
-    }
-    if (!ctx) return;
-
-    // Fill background
-    ctx.fillStyle = settings.frameColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw image
-    ctx.drawImage(img, drawX, drawY);
-
-    // 画像の下端座標
-    const imgBottomY = drawY + img.height;
-    // 写真の下端からキャンバスの下端までの余白
-    const bottomSpaceHeight = canvas.height - imgBottomY;
-
-    // テキストの配置Y座標は、画像の下端とキャンバス下端の中央
-    const textY = imgBottomY + (bottomSpaceHeight / 2);
-
-    // テキストのサイズを（marginではなく）画像自体のサイズを基準にする
-    const baseScale = Math.min(img.width, img.height);
-
-    // Settings for text
-    ctx.fillStyle = settings.textColor;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    const separator = settings.showPipeSeparator ? " | " : "   ";
-
-    // Camera and Lens
-    const topElements: string[] = [];
-    if (settings.visibility.camera && exif.camera) topElements.push(exif.camera);
-    if (settings.visibility.lens && exif.lens) topElements.push(exif.lens);
-    const topText = topElements.join(separator);
-
-    if (topText) {
-        const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
-        ctx.font = `normal ${titleFontSize}px "Gill Sans", sans-serif`;
-        ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
-    }
-
-    const bottomElements: string[] = [];
-    if (settings.visibility.focalLength && exif.focalLength) bottomElements.push(exif.focalLength);
-    if (settings.visibility.aperture && exif.aperture) bottomElements.push(exif.aperture);
-    if (settings.visibility.shutterSpeed && exif.shutterSpeed) bottomElements.push(exif.shutterSpeed);
-
-    if (settings.profile === "film") {
-        if (settings.visibility.film && exif.film) bottomElements.push(exif.film);
-        if (settings.visibility.developer && exif.developer) bottomElements.push(exif.developer);
-        if (settings.visibility.dilution && exif.dilution) bottomElements.push(exif.dilution);
-        if (settings.visibility.temperature && exif.temperature) bottomElements.push(exif.temperature);
-        if (settings.visibility.time && exif.time) bottomElements.push(exif.time);
-    } else {
-        if (settings.visibility.iso && exif.iso) bottomElements.push(exif.iso);
-    }
-    const bottomText = bottomElements.join(separator);
-
-    if (bottomText) {
-        const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
-        ctx.font = `normal ${descFontSize}px "Gill Sans", sans-serif`;
-        ctx.globalAlpha = 0.6;
-        ctx.fillStyle = settings.textColor;
-        ctx.fillText(bottomText, canvas.width / 2, textY + (descFontSize * 0.8));
-        ctx.globalAlpha = 1.0;
-    }
-
-    // Draw a subtle line separator (just above the text)
-    ctx.beginPath();
-    ctx.moveTo(canvas.width * 0.2, imgBottomY);
-    ctx.lineTo(canvas.width * 0.8, imgBottomY);
-    ctx.globalAlpha = 0.2;
-    ctx.strokeStyle = settings.textColor;
-    ctx.lineWidth = Math.max(1, Math.floor(baseScale * 0.0015));
-    ctx.stroke();
-    ctx.globalAlpha = 1.0;
-}
 interface ProcessFileResult {
     imageURL?: string;
     camera?: string;
@@ -269,12 +104,7 @@ function App() {
                         textColor: currentSet.textColor || "#000000"
                     });
 
-                    const isPng = result.mimeType === 'image/png';
-                    const targetMime = isPng ? 'image/png' : 'image/jpeg';
-                    const filenameMatch = result.filePath ? result.filePath.split(/[/\\]/).pop() : "";
-                    const baseName = (filenameMatch ? filenameMatch.replace(/\.[^/.]+$/, "") : "") || "exif-frame";
-                    let exportName = `${baseName}_ExifFrame`;
-                    if (isPng) exportName += ".png"; else exportName += ".jpg";
+                    const { isPng, targetMime, exportName } = getExportInfo(result.filePath || "", result.mimeType || "");
 
                     const savePath = exportFolderStr + "/" + exportName;
 
@@ -361,10 +191,7 @@ function App() {
     const isSelectingRef = useRef(false);
     const isInitialLoad = useRef(true);
     const [isMac, setIsMac] = useState(false);
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
-    const [toastIsError, setToastIsError] = useState(false);
-    const toastTimerRef = useRef<number | null>(null);
-    const toastRafRef = useRef<number | null>(null);
+    const toast = useToast();
     const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
     
     // Dropdown states
@@ -387,77 +214,43 @@ function App() {
     const frameColor = currentImage?.frameColor ?? globalFrameColor;
     const textColor = currentImage?.textColor ?? globalTextColor;
 
-    const setFrameColor = useCallback((color: string) => {
+    const setPerImageColor = useCallback((key: 'frameColor' | 'textColor', globalSetter: (v: string) => void, color: string) => {
         setImportedImages(prev => {
             if (prev.length === 0) {
-                setGlobalFrameColor(color);
+                globalSetter(color);
                 return prev;
             }
             const newImages = [...prev];
             const current = newImages[selectedIndex];
             if (!current) return prev;
-            newImages[selectedIndex] = { ...current, frameColor: color };
+            newImages[selectedIndex] = { ...current, [key]: color };
             return newImages;
         });
     }, [selectedIndex]);
 
-    const setTextColor = useCallback((color: string) => {
-        setImportedImages(prev => {
-            if (prev.length === 0) {
-                setGlobalTextColor(color);
-                return prev;
-            }
-            const newImages = [...prev];
-            const current = newImages[selectedIndex];
-            if (!current) return prev;
-            newImages[selectedIndex] = { ...current, textColor: color };
-            return newImages;
-        });
-    }, [selectedIndex]);
+    const setFrameColor = useCallback((color: string) => setPerImageColor('frameColor', setGlobalFrameColor, color), [setPerImageColor]);
+    const setTextColor = useCallback((color: string) => setPerImageColor('textColor', setGlobalTextColor, color), [setPerImageColor]);
 
-    // Toast cleanup
-    useEffect(() => {
-        return () => {
-            if (toastTimerRef.current !== null) {
-                window.clearTimeout(toastTimerRef.current);
-            }
-            if (toastRafRef.current !== null) {
-                window.cancelAnimationFrame(toastRafRef.current);
-            }
-        };
-    }, []);
+    const showToast = toast.show;
 
-    const showToast = useCallback((message: string, isError: boolean = false) => {
-        if (toastTimerRef.current !== null) {
-            window.clearTimeout(toastTimerRef.current);
-            toastTimerRef.current = null;
-        }
-        if (toastRafRef.current !== null) {
-            window.cancelAnimationFrame(toastRafRef.current);
-            toastRafRef.current = null;
-        }
+    // Use a ref to access importedImages without adding it to the dependency array.
+    // This prevents the effect from re-running when any image finishes loading.
+    const importedImagesRef = useRef(importedImages);
+    importedImagesRef.current = importedImages;
 
-        // Force a re-render by clearing the state first
-        setToastMessage(null);
-        toastRafRef.current = requestAnimationFrame(() => {
-            setToastIsError(isError);
-            setToastMessage(message);
-            toastTimerRef.current = window.setTimeout(() => {
-                setToastMessage(null);
-                toastTimerRef.current = null;
-            }, TOAST_DURATION_MS);
-            toastRafRef.current = null;
-        });
-    }, []);
+    // Derive the current image URL to use as a stable dependency
+    const currentImageURL = importedImages[selectedIndex]?.imageURL;
+    const currentImageLoaded = importedImages[selectedIndex]?.imageObj !== null;
+    const currentImageError = importedImages[selectedIndex]?.loadError;
 
     useEffect(() => {
-        const current = importedImages[selectedIndex];
+        const images = importedImagesRef.current;
+        const current = images[selectedIndex];
         if (current && !current.imageObj && !current.loadError) {
             const img = new Image();
             img.onload = () => {
                 setImportedImages(prev => {
                     const newImages = [...prev];
-                    // Make sure the image we loaded is still at this index (or find by url if order changed, but we only append for now)
                     const idx = newImages.findIndex(item => item.imageURL === current.imageURL);
                     if (idx !== -1) {
                         newImages[idx] = { ...newImages[idx], imageObj: img };
@@ -481,7 +274,7 @@ function App() {
         } else if (current && current.imageObj) {
             setOrientation(current.imageObj.height > current.imageObj.width ? "portrait" : "landscape");
         }
-    }, [selectedIndex, importedImages, showToast]);
+    }, [selectedIndex, currentImageURL, currentImageLoaded, currentImageError, showToast]);
 
     const handleExifResults = useCallback((results: ExifResult[]) => {
         const validResults = results.filter(r => !r.cancelled && !r.error && r.imageURL);
@@ -684,37 +477,29 @@ function App() {
         }
     };
 
-    const handleAddFiles = async () => {
+    const handleOpenImages = useCallback(async (
+        openFn: () => Promise<ExifResult[]>,
+        errorLabel: string
+    ) => {
         if (isSelectingRef.current) return;
         isSelectingRef.current = true;
         setIsSelecting(true);
         try {
-            const results = await AppAPI.OpenImages();
+            const results = await openFn();
             handleExifResults(results);
         } catch (err: any) {
-            console.error("Failed to open images:", err);
-            showToast("Failed to open images: " + (err instanceof Error ? err.message : String(err)), true);
+            console.error(`Failed to ${errorLabel}:`, err);
+            showToast(`Failed to ${errorLabel}: ` + (err instanceof Error ? err.message : String(err)), true);
         } finally {
             setIsSelecting(false);
             isSelectingRef.current = false;
         }
-    };
+    }, [handleExifResults, showToast]);
 
-    const handleAddFolder = async () => {
-        if (isSelectingRef.current) return;
-        isSelectingRef.current = true;
-        setIsSelecting(true);
-        try {
-            const results = await AppAPI.OpenFolder();
-            handleExifResults(results);
-        } catch (err: any) {
-            console.error("Failed to open folder:", err);
-            showToast("Failed to open folder: " + (err instanceof Error ? err.message : String(err)), true);
-        } finally {
-            setIsSelecting(false);
-            isSelectingRef.current = false;
-        }
-    };
+    const handleAddFiles = useCallback(
+        () => handleOpenImages(() => AppAPI.OpenImages(), "open images"),
+        [handleOpenImages]
+    );
 
     useEffect(() => {
         setIsMac(System.IsMac());
@@ -755,12 +540,7 @@ function App() {
         try {
             // Determine format from the actual MIME type detected by Go.
             // If the source was a PNG, maintain lossless export.
-            const isPng = sourceMimeType === 'image/png';
-            const targetMime = isPng ? 'image/png' : 'image/jpeg';
-
-            // Determine export filename from original path
-            const filenameMatch = filePath ? filePath.split(/[/\\]/).pop() : "";
-            const baseName = (filenameMatch ? filenameMatch.replace(/\.[^/.]+$/, "") : "") || "exif-frame";
+            const { isPng, targetMime, baseName } = getExportInfo(filePath, sourceMimeType);
             const exportName = `${baseName}_ExifFrame`;
 
             // Step 1: Open native save dialog via IPC (no binary data transferred)
@@ -856,11 +636,7 @@ function App() {
                         textColor: imgState.textColor ?? globalTextColor
                     });
 
-                    const isPng = imgState.sourceMimeType === 'image/png';
-                    const targetMime = isPng ? 'image/png' : 'image/jpeg';
-                    
-                    const filenameMatch = imgState.filePath ? imgState.filePath.split(/[/\\]/).pop() : "";
-                    const baseName = (filenameMatch ? filenameMatch.replace(/\.[^/.]+$/, "") : "") || `exif-frame-${i}`;
+                    const { isPng, targetMime, baseName } = getExportInfo(imgState.filePath || `exif-frame-${i}`, imgState.sourceMimeType);
                     const exportName = `${baseName}_ExifFrame`;
                     
                     const result = await AppAPI.SaveBatchImage(isPng, exportDir, exportName);
@@ -1096,11 +872,7 @@ function App() {
                     </aside>
                 )}
 
-                {toastMessage && (
-                    <div className="toast-container" aria-live={toastIsError ? 'assertive' : 'polite'} aria-atomic="true" role={toastIsError ? 'alert' : 'status'}>
-                        <div className={`toast ${toastIsError ? 'error' : 'success'}`} style={{ animationDuration: `${TOAST_DURATION_MS}ms` }}>{toastMessage}</div>
-                    </div>
-                )}
+                    {toast.element}
             </main>
 
         </div>

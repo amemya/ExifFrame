@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -190,13 +191,36 @@ func (a *App) ProcessPaths(paths []string) []ExifResult {
 		}
 	}
 
-	for _, path := range validPaths {
-		res := a.ProcessImageFile(path)
-		if res.Error != "" {
-			log.Printf("Skipped file %s: %v", path, res.Error)
+	// Process files concurrently with bounded parallelism.
+	// ProcessImageFile is thread-safe: doOpenImage uses a.mu for currentImagePath
+	// and registerImageToken uses imgMu for token management.
+	type indexedResult struct {
+		idx int
+		res ExifResult
+	}
+	ch := make(chan indexedResult, len(validPaths))
+	sem := make(chan struct{}, goruntime.NumCPU())
+
+	for i, path := range validPaths {
+		sem <- struct{}{}
+		go func(idx int, p string) {
+			defer func() { <-sem }()
+			ch <- indexedResult{idx, a.ProcessImageFile(p)}
+		}(i, path)
+	}
+
+	// Collect results preserving original order
+	indexed := make([]ExifResult, len(validPaths))
+	for range validPaths {
+		ir := <-ch
+		indexed[ir.idx] = ir.res
+	}
+	for _, r := range indexed {
+		if r.Error != "" {
+			log.Printf("Skipped file: %v", r.Error)
 			continue
 		}
-		results = append(results, res)
+		results = append(results, r)
 	}
 
 	if len(results) == 0 {

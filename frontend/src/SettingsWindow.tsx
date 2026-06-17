@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 // @ts-expect-error generated bindings does not provide declaration files for JS module
 import { App as AppAPI, Settings } from '../bindings/ExifFrame/index';
@@ -6,51 +6,13 @@ import { Events, System } from '@wailsio/runtime';
 import { FrameSettingsPanel } from './components/FrameSettingsPanel';
 import { MetadataSettingsPanel } from './components/MetadataSettingsPanel';
 import { ExifData, MetadataVisibility, toVisibility, applyVisibility } from './types';
-
-const TOAST_DURATION_MS = 3000;
+import { useToast } from './hooks/useToast';
 
 function SettingsWindow() {
     const [activeTab, setActiveTab] = useState<'general' | 'frame' | 'metadata'>('general');
     const [isMac, setIsMac] = useState(false);
-
-    // Toast State
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
-    const toastTimerRef = useRef<number | null>(null);
-    const toastRafRef = useRef<number | null>(null);
-
-    // Toast cleanup
-    useEffect(() => {
-        return () => {
-            if (toastTimerRef.current !== null) {
-                window.clearTimeout(toastTimerRef.current);
-            }
-            if (toastRafRef.current !== null) {
-                window.cancelAnimationFrame(toastRafRef.current);
-            }
-        };
-    }, []);
-
-    const showToast = (message: string) => {
-        if (toastTimerRef.current !== null) {
-            window.clearTimeout(toastTimerRef.current);
-            toastTimerRef.current = null;
-        }
-        if (toastRafRef.current !== null) {
-            window.cancelAnimationFrame(toastRafRef.current);
-            toastRafRef.current = null;
-        }
-
-        // Force a re-render by clearing the state first
-        setToastMessage(null);
-        toastRafRef.current = requestAnimationFrame(() => {
-            setToastMessage(message);
-            toastTimerRef.current = window.setTimeout(() => {
-                setToastMessage(null);
-                toastTimerRef.current = null;
-            }, TOAST_DURATION_MS);
-            toastRafRef.current = null;
-        });
-    };
+    const toast = useToast();
+    const showToast = toast.show;
 
     // General
     const [watchFolder, setWatchFolder] = useState("");
@@ -285,11 +247,7 @@ function SettingsWindow() {
                 </main>
             </div>
 
-            {toastMessage && (
-                <div className="toast-container" aria-live="polite" aria-atomic="true" role="status">
-                    <div className="toast success" style={{ animationDuration: `${TOAST_DURATION_MS}ms` }}>{toastMessage}</div>
-                </div>
-            )}
+            {toast.element}
 
             <footer style={{
                 padding: '1rem 2rem',
