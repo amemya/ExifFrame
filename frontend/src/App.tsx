@@ -240,7 +240,7 @@ function App() {
 
     // Derive the current image URL to use as a stable dependency
     const currentImageURL = importedImages[selectedIndex]?.imageURL;
-    const currentImageLoaded = importedImages[selectedIndex]?.imageObj !== null;
+    const currentImageLoaded = Boolean(importedImages[selectedIndex]?.imageObj);
     const currentImageError = importedImages[selectedIndex]?.loadError;
 
     useEffect(() => {
