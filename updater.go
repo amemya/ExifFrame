@@ -28,6 +28,7 @@ func InitUpdater(app *application.App) {
 	if err != nil {
 		// Non-fatal: if the provider can't be constructed the app still works,
 		// just without auto-update.
+		log.Printf("GitHub provider creation failed: %v", err)
 		return
 	}
 
@@ -42,6 +43,7 @@ func InitUpdater(app *application.App) {
 	if err != nil {
 		// Init can fail if called twice or if validation fails.
 		// Either way the app should still function normally.
+		log.Printf("Updater init failed: %v", err)
 		return
 	}
 }
@@ -69,13 +71,13 @@ func (a *App) CheckForUpdate() UpdateStatus {
 		return UpdateStatus{State: "idle"}
 	}
 
-	rel, err := app.Updater.Check(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	rel, err := app.Updater.Check(ctx)
 	if err != nil {
-		// Check failures (network errors, missing assets, etc.) are non-critical.
-		// Log them but don't surface to the user — showing "Update failed" on
-		// every launch when there's simply no matching asset is bad UX.
-		log.Printf("Update check failed (non-critical): %v", err)
-		return UpdateStatus{State: "idle"}
+		log.Printf("Update check failed: %v", err)
+		return UpdateStatus{State: "error", ErrorMessage: err.Error()}
 	}
 	if rel == nil {
 		return UpdateStatus{State: "up-to-date"}
@@ -96,7 +98,10 @@ func (a *App) TriggerUpdate() UpdateStatus {
 		return UpdateStatus{State: "error", ErrorMessage: "Updater not initialised"}
 	}
 
-	err := app.Updater.DownloadAndInstall(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	err := app.Updater.DownloadAndInstall(ctx)
 	if err != nil {
 		return UpdateStatus{State: "error", ErrorMessage: err.Error()}
 	}
@@ -111,7 +116,10 @@ func (a *App) RestartApp() UpdateStatus {
 		return UpdateStatus{State: "error", ErrorMessage: "Updater not initialised"}
 	}
 
-	err := app.Updater.Restart(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := app.Updater.Restart(ctx)
 	if err != nil {
 		return UpdateStatus{State: "error", ErrorMessage: err.Error()}
 	}

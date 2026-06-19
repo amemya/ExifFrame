@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './App.css';
 // @ts-expect-error generated bindings does not provide declaration files for JS module
-import { App as AppAPI, Settings } from '../bindings/ExifFrame/index';
+import { App as AppAPI, Settings, UpdateStatus } from '../bindings/ExifFrame/index';
 import { Window, Events, System, Call, Browser } from '@wailsio/runtime';
 
 // Update flow states driven by the Wails v3 updater events.
@@ -341,7 +341,8 @@ function App() {
 
     useEffect(() => {
         // Check for updates using the new Wails v3 updater
-        AppAPI.CheckForUpdate().then((status: any) => {
+        setUpdateState(prev => ({ ...prev, stage: 'checking' }));
+        AppAPI.CheckForUpdate().then((status: UpdateStatus) => {
             if (status && status.state === 'available') {
                 setUpdateState(prev => ({
                     ...prev,
@@ -349,14 +350,21 @@ function App() {
                     version: status.version || '',
                     releaseNotes: status.releaseNotes || ''
                 }));
+            } else if (status && status.state === 'error') {
+                setUpdateState(prev => ({ ...prev, stage: 'error', errorMessage: status.errorMessage || 'Update check failed' }));
+            } else {
+                setUpdateState(prev => ({ ...prev, stage: 'idle' }));
             }
-        }).catch((err: Error) => console.error("Update check failed:", err));
+        }).catch((err: Error) => {
+            console.error("Update check failed:", err);
+            setUpdateState(prev => ({ ...prev, stage: 'idle' }));
+        });
 
         // Subscribe to updater progress events from the Wails v3 event system
         const offProgress = Events.On('wails:updater:download-progress', (e: any) => {
             const data = Array.isArray(e?.data) ? e.data[0] : e?.data;
             if (data && data.total > 0) {
-                const pct = Math.round((data.written / data.total) * 100);
+                const pct = Math.round(((data.written || 0) / data.total) * 100);
                 setUpdateState(prev => ({ ...prev, stage: 'downloading', downloadPct: pct }));
             }
         });
@@ -745,8 +753,16 @@ function App() {
             }}>
                 <div className="top-bar-left">
                     <h1>ExifFrame</h1>
-                    {updateState.stage !== 'idle' && updateState.stage !== 'checking' && (() => {
-                        const { stage, version, downloadPct, errorMessage } = updateState;
+                    {updateState.stage !== 'idle' && (() => {
+                        const { stage, version, downloadPct, errorMessage, releaseNotes } = updateState;
+                        if (stage === 'checking') {
+                            return (
+                                <button className="btn btn-update" disabled title="Checking for updates...">
+                                    <svg className="spinner" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line></svg>
+                                    Checking...
+                                </button>
+                            );
+                        }
                         if (stage === 'available') {
                             return (
                                 <button
@@ -758,7 +774,7 @@ function App() {
                                             setUpdateState(prev => ({ ...prev, stage: 'error', errorMessage: err.message }));
                                         });
                                     }}
-                                    title="Click to download and install the update"
+                                    title={releaseNotes ? `Click to download and install the update\n\nRelease Notes:\n${releaseNotes}` : "Click to download and install the update"}
                                 >
                                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                                     Update to {version}

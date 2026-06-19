@@ -65,12 +65,12 @@ jobs:
       - name: Build Application (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
-        run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o bin/ExifFrame
+        run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -X 'main.Version=${GITHUB_REF_NAME}'" -o bin/ExifFrame
 
       - name: Build Application (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui" -o bin/ExifFrame
+        run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui -X 'main.Version=${GITHUB_REF_NAME}'" -o bin/ExifFrame
 
       - name: Update Assets (macOS)
         if: runner.os == 'macOS'
@@ -111,6 +111,7 @@ jobs:
             "bin/ExifFrame.app" || true
           # create-dmg returns non-zero when signing is skipped; check the file exists
           test -f bin/ExifFrame-macos-arm64.dmg
+          hdiutil verify bin/ExifFrame-macos-arm64.dmg
 
       - name: Copy macOS bare binary for auto-update
         if: runner.os == 'macOS'
@@ -165,7 +166,7 @@ jobs:
             !endif
           !macroend
           !macro wails.setShellContext
-            SetShellVarContext all
+            SetShellVarContext current
           !macroend
           !macro wails.files
             File /oname=${PRODUCT_EXECUTABLE} "..\..\bin\ExifFrame-windows-amd64.exe"
@@ -210,12 +211,11 @@ jobs:
         with:
           name: build-${{ matrix.os }}
           path: |
-            bin/ExifFrame-macos-arm64.zip
-            bin/ExifFrame-macos-arm64.dmg
-            bin/ExifFrame-darwin-arm64
-            bin/ExifFrame-windows-amd64.exe
-            bin/ExifFrame-amd64-installer.exe
-            bin/ExifFrame-linux-amd64.tar.gz
+            bin/*.zip
+            bin/*.dmg
+            bin/*-darwin-arm64
+            bin/*.exe
+            bin/*.tar.gz
           if-no-files-found: warn
 
   release:
@@ -237,7 +237,7 @@ jobs:
         shell: bash
         run: |
           cd artifacts
-          sha256sum * > SHA256SUMS 2>/dev/null || shasum -a 256 * > SHA256SUMS
+          find . -type f ! -name "SHA256SUMS" -exec sha256sum {} + > SHA256SUMS
           cat SHA256SUMS
 
       - name: Create Release
