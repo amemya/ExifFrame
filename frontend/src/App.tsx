@@ -357,7 +357,7 @@ function App() {
             }
         }).catch((err: Error) => {
             console.error("Update check failed:", err);
-            setUpdateState(prev => ({ ...prev, stage: 'idle' }));
+            setUpdateState(prev => ({ ...prev, stage: 'error', errorMessage: err.message }));
         });
 
         // Subscribe to updater progress events from the Wails v3 event system
@@ -769,7 +769,11 @@ function App() {
                                     className="btn btn-update"
                                     onClick={() => {
                                         setUpdateState(prev => ({ ...prev, stage: 'downloading', downloadPct: 0 }));
-                                        AppAPI.TriggerUpdate().catch((err: Error) => {
+                                        AppAPI.TriggerUpdate().then((status: UpdateStatus) => {
+                                            if (status && status.state === 'error') {
+                                                setUpdateState(prev => ({ ...prev, stage: 'error', errorMessage: status.errorMessage || 'Update failed' }));
+                                            }
+                                        }).catch((err: Error) => {
                                             console.error('Update failed:', err);
                                             setUpdateState(prev => ({ ...prev, stage: 'error', errorMessage: err.message }));
                                         });
@@ -803,7 +807,11 @@ function App() {
                                     className="btn btn-update btn-update--restart"
                                     onClick={() => {
                                         setUpdateState(prev => ({ ...prev, stage: 'restarting' }));
-                                        AppAPI.RestartApp().catch((err: Error) => {
+                                        AppAPI.RestartApp().then((status: UpdateStatus) => {
+                                            if (status && status.state === 'error') {
+                                                setUpdateState(prev => ({ ...prev, stage: 'error', errorMessage: status.errorMessage || 'Restart failed' }));
+                                            }
+                                        }).catch((err: Error) => {
                                             console.error('Restart failed:', err);
                                             setUpdateState(prev => ({ ...prev, stage: 'error', errorMessage: err.message }));
                                         });
