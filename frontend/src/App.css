@@ -149,6 +149,60 @@ body {
     color: #fff;
 }
 
+/* Update button: downloading state with progress bar */
+.btn-update--progress {
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+}
+
+.update-progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(74, 144, 226, 0.25);
+    transition: width 0.3s ease;
+    border-radius: 4px;
+}
+
+.update-progress-text {
+    position: relative;
+    z-index: 1;
+}
+
+/* Update button: restart state (green) */
+.btn-update--restart {
+    background-color: rgba(46, 125, 50, 0.15);
+    color: #4caf50;
+    border-color: rgba(46, 125, 50, 0.3);
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.btn-update--restart:hover {
+    background-color: rgba(46, 125, 50, 0.3);
+    border-color: rgba(46, 125, 50, 0.5);
+    color: #fff;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+    50% { box-shadow: 0 0 8px 2px rgba(76, 175, 80, 0.25); }
+}
+
+/* Update button: error state (red) */
+.btn-update--error {
+    background-color: rgba(211, 47, 47, 0.15);
+    color: #ef5350;
+    border-color: rgba(211, 47, 47, 0.3);
+}
+
+.btn-update--error:hover {
+    background-color: rgba(211, 47, 47, 0.25);
+    border-color: rgba(211, 47, 47, 0.5);
+    color: #fff;
+}
+
 /* Button Groups & Dropdowns */
 .btn-group {
     display: flex;
