@@ -24,6 +24,7 @@ import (
 	"github.com/adrg/sysfont"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"golang.org/x/image/font/sfnt"
 )
 
 var (
@@ -679,6 +680,26 @@ var (
 	fontsMu     sync.Mutex
 )
 
+// getFontFamilyName parses a font file (TTF/OTF) to extract its family name.
+func getFontFamilyName(filename string) string {
+	f, err := os.Open(filename)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+
+	font, err := sfnt.ParseReaderAt(f)
+	if err != nil {
+		return ""
+	}
+
+	name, err := font.Name(nil, sfnt.NameIDFamily)
+	if err != nil {
+		return ""
+	}
+	return name
+}
+
 // GetSystemFonts returns a list of installed system fonts (Family names).
 func (a *App) GetSystemFonts() []string {
 	fontsMu.Lock()
@@ -695,9 +716,14 @@ func (a *App) GetSystemFonts() []string {
 	var uniqueFonts []string
 
 	for _, f := range fonts {
-		if f.Family != "" && !fontMap[f.Family] {
-			fontMap[f.Family] = true
-			uniqueFonts = append(uniqueFonts, f.Family)
+		family := f.Family
+		if family == "" && f.Filename != "" {
+			family = getFontFamilyName(f.Filename)
+		}
+		
+		if family != "" && !fontMap[family] {
+			fontMap[family] = true
+			uniqueFonts = append(uniqueFonts, family)
 		}
 	}
 
