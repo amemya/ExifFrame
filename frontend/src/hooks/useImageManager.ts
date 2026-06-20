@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ImportedImage, ExifData, ExifResult } from '../types';
 /**
  * Manages images and EXIF data.
@@ -129,29 +129,26 @@ export function useImageManager(
             return;
         }
 
-        setImportedImages(() => {
-            const newImages: ImportedImage[] = validResults.map(r => ({
-                filePath: r.filePath || "",
-                imageURL: r.imageURL!,
-                sourceMimeType: r.mimeType?.toLowerCase().includes('png') ? 'image/png' : 'image/jpeg',
-                originalBPP: r.originalBPP,
-                imageObj: null,
-                exif: {
-                    camera: r.camera || "",
-                    lens: r.lens || "",
-                    focalLength: r.focalLength || "",
-                    aperture: r.aperture || "",
-                    shutterSpeed: r.shutterSpeed || "",
-                    iso: r.iso || "",
-                    film,
-                    developer,
-                    dilution,
-                    temperature,
-                    time,
-                }
-            }));
-            return newImages;
-        });
+        setImportedImages(validResults.map(r => ({
+            filePath: r.filePath || "",
+            imageURL: r.imageURL!,
+            sourceMimeType: r.mimeType?.toLowerCase().includes('png') ? 'image/png' : 'image/jpeg',
+            originalBPP: r.originalBPP,
+            imageObj: null,
+            exif: {
+                camera: r.camera || "",
+                lens: r.lens || "",
+                focalLength: r.focalLength || "",
+                aperture: r.aperture || "",
+                shutterSpeed: r.shutterSpeed || "",
+                iso: r.iso || "",
+                film,
+                developer,
+                dilution,
+                temperature,
+                time,
+            }
+        })));
         setSelectedIndex(0);
         setIsCanvasReady(false);
     }, [showToast, film, developer, dilution, temperature, time]);

@@ -1,4 +1,4 @@
-import { RefObject, MutableRefObject } from 'react';
+import { RefObject, MutableRefObject, useEffect, useRef } from 'react';
 // @ts-expect-error generated bindings
 import { App as AppAPI } from '../../bindings/ExifFrame/index';
 import { ImportedImage, MetadataVisibility } from '../types';
@@ -72,6 +72,14 @@ export function useExport({
     globalFrameColor, globalTextColor, globalJpegQuality
 }: UseExportProps) {
     
+    const isMounted = useRef(true);
+    useEffect(() => {
+        isMounted.current = true;
+        return () => {
+            isMounted.current = false;
+        };
+    }, []);
+
     const downloadImage = async () => {
         if (!canvasRef.current || !imageObj) return;
 
@@ -94,14 +102,14 @@ export function useExport({
             
             try {
                 await uploadCanvasBlob(canvasRef.current, targetMime, quality, result.saveToken);
-                showToast("Export complete!");
+                if (isMounted.current) showToast("Export complete!");
             } catch (err: any) {
                 console.error("HTTP POST failed for", exportName, err);
-                showToast("Save failed: " + (err instanceof Error ? err.message : String(err)), true);
+                if (isMounted.current) showToast("Save failed: " + (err instanceof Error ? err.message : String(err)), true);
             }
         } catch (err) {
             console.error("Failed to execute SaveImage:", err);
-            showToast("Failed to save image", true);
+            if (isMounted.current) showToast("Failed to save image", true);
         }
     };
 
@@ -128,9 +136,10 @@ export function useExport({
         let failCount = 0;
 
         try {
-            showToast("Exporting images...");
+            if (isMounted.current) showToast("Exporting images...");
 
             for (let i = 0; i < importedImages.length; i++) {
+                if (!isMounted.current) break;
                 let imgToDraw: HTMLImageElement | null = null;
                 let offCanvas: HTMLCanvasElement | null = null;
                 try {
@@ -198,17 +207,19 @@ export function useExport({
                 }
             }
             
-            if (failCount > 0) {
-                showToast(`Export complete: ${successCount} succeeded, ${failCount} failed.`, true);
-            } else {
-                showToast(`Successfully exported all ${successCount} images.`);
+            if (isMounted.current) {
+                if (failCount > 0) {
+                    showToast(`Export complete: ${successCount} succeeded, ${failCount} failed.`, true);
+                } else {
+                    showToast(`Successfully exported all ${successCount} images.`);
+                }
             }
         } catch (err: any) {
             const errStr = err instanceof Error ? err.message : String(err);
             console.error("Failed to export all:", errStr);
-            showToast("Failed to export all: " + errStr, true);
+            if (isMounted.current) showToast("Failed to export all: " + errStr, true);
         } finally {
-            setIsSelecting(false);
+            if (isMounted.current) setIsSelecting(false);
             isSelectingRef.current = false;
         }
     };
