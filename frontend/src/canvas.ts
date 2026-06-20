@@ -113,7 +113,7 @@ export function renderImageToCanvas(
 
     if (topText) {
         const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
-        ctx.font = `normal ${titleFontSize}px "${settings.fontFamily}"`;
+        ctx.font = `normal ${titleFontSize}px ${settings.fontFamily}`;
         ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
     }
 
@@ -135,7 +135,7 @@ export function renderImageToCanvas(
 
     if (bottomText) {
         const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
-        ctx.font = `normal ${descFontSize}px "${settings.fontFamily}"`;
+        ctx.font = `normal ${descFontSize}px ${settings.fontFamily}`;
         ctx.globalAlpha = 0.6;
         ctx.fillStyle = settings.textColor;
         ctx.fillText(bottomText, canvas.width / 2, textY + (descFontSize * 0.8));
