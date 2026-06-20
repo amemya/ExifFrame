@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"image"
 	_ "image/jpeg"
@@ -673,81 +672,3 @@ func (a *App) GetFilmRecipes() []Recipe {
 	return GetFilmRecipes()
 }
 
-type UpdateInfo struct {
-	UpdateAvailable bool   `json:"updateAvailable"`
-	LatestVersion   string `json:"latestVersion"`
-	ReleaseNotes    string `json:"releaseNotes"`
-	URL             string `json:"url"`
-}
-
-// CheckForUpdates checks GitHub releases for a newer version.
-// Exposed to Wails frontend.
-func (a *App) CheckForUpdates() UpdateInfo {
-	client := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequest("GET", "https://api.github.com/repos/amemya/ExifFrame/releases/latest", nil)
-	if err != nil {
-		return UpdateInfo{}
-	}
-	// GitHub API recommends setting User-Agent
-	req.Header.Set("User-Agent", "ExifFrame-App")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return UpdateInfo{}
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return UpdateInfo{}
-	}
-
-	var release struct {
-		TagName string `json:"tag_name"`
-		HtmlUrl string `json:"html_url"`
-		Body    string `json:"body"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return UpdateInfo{}
-	}
-
-	if release.TagName != "" && isNewer(release.TagName, Version) {
-		if !strings.HasPrefix(release.HtmlUrl, "https://github.com/amemya/ExifFrame/releases/") {
-			return UpdateInfo{}
-		}
-
-		return UpdateInfo{
-			UpdateAvailable: true,
-			LatestVersion:   release.TagName,
-			ReleaseNotes:    release.Body,
-			URL:             release.HtmlUrl,
-		}
-	}
-	return UpdateInfo{}
-}
-
-func parseSemver(v string) (int, int, int) {
-	v = strings.TrimPrefix(v, "v")
-	parts := strings.Split(v, ".")
-	if len(parts) != 3 {
-		return 0, 0, 0
-	}
-	major, _ := strconv.Atoi(parts[0])
-	minor, _ := strconv.Atoi(parts[1])
-	patch, _ := strconv.Atoi(parts[2])
-	return major, minor, patch
-}
-
-func isNewer(latest, current string) bool {
-	lMaj, lMin, lPat := parseSemver(latest)
-	cMaj, cMin, cPat := parseSemver(current)
-	if lMaj > cMaj {
-		return true
-	}
-	if lMaj == cMaj && lMin > cMin {
-		return true
-	}
-	if lMaj == cMaj && lMin == cMin && lPat > cPat {
-		return true
-	}
-	return false
-}

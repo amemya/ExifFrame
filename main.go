@@ -66,6 +66,9 @@ func main() {
 	})
 	app.Menu.SetApplicationMenu(buildMenu(appStruct))
 
+	// Initialise the in-app updater (GitHub-backed, with periodic checks).
+	InitUpdater(app)
+
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  "ExifFrame",
 		Width:  1024,

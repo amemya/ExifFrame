@@ -5,8 +5,12 @@ on:
     tags:
       - 'v*'
 
+permissions: {}
+
 jobs:
   build:
+    permissions:
+      contents: read
     strategy:
       matrix:
         include:
@@ -65,12 +69,12 @@ jobs:
       - name: Build Application (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
-        run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o bin/ExifFrame
+        run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -X 'main.Version=${GITHUB_REF_NAME}'" -o bin/ExifFrame
 
       - name: Build Application (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui" -o bin/ExifFrame
+        run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui -X 'main.Version=${GITHUB_REF_NAME}'" -o bin/ExifFrame
 
       - name: Update Assets (macOS)
         if: runner.os == 'macOS'
@@ -93,6 +97,32 @@ jobs:
           cd bin
           ditto -c -k --keepParent ExifFrame.app ExifFrame-macos-arm64.zip
 
+      - name: Create macOS DMG Installer
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          brew install create-dmg
+          create-dmg \
+            --volname "ExifFrame" \
+            --volicon "build/darwin/icons.icns" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "ExifFrame.app" 175 190 \
+            --app-drop-link 425 190 \
+            --no-internet-enable \
+            "bin/ExifFrame-macos-arm64.dmg" \
+            "bin/ExifFrame.app" || true
+          # create-dmg returns non-zero when signing is skipped; check the file exists
+          test -f bin/ExifFrame-macos-arm64.dmg
+          hdiutil verify bin/ExifFrame-macos-arm64.dmg
+
+      - name: Copy macOS bare binary for auto-update
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cp bin/ExifFrame bin/ExifFrame-darwin-arm64
+
       - name: Package Windows App
         if: runner.os == 'Windows'
         shell: bash
@@ -100,18 +130,97 @@ jobs:
           cd bin
           mv ExifFrame ExifFrame-windows-amd64.exe || mv ExifFrame.exe ExifFrame-windows-amd64.exe
 
+      - name: Create Windows NSIS Installer
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # Generate the wails_tools.nsh needed by the NSIS script
+          VERSION=${GITHUB_REF_NAME#v}
+          cat > build/windows/installer/wails_tools.nsh << 'WAILSNSH'
+          !ifndef INFO_PROJECTNAME
+            !define INFO_PROJECTNAME "ExifFrame"
+          !endif
+          !ifndef INFO_COMPANYNAME
+            !define INFO_COMPANYNAME "amemya"
+          !endif
+          !ifndef INFO_PRODUCTNAME
+            !define INFO_PRODUCTNAME "ExifFrame"
+          !endif
+          !ifndef INFO_PRODUCTVERSION
+            !define INFO_PRODUCTVERSION "${VERSION}"
+          !endif
+          !ifndef INFO_COPYRIGHT
+            !define INFO_COPYRIGHT "Copyright (c) 2024 amemya"
+          !endif
+          !ifndef PRODUCT_EXECUTABLE
+            !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"
+          !endif
+          !ifndef UNINST_KEY_NAME
+            !define UNINST_KEY_NAME "${INFO_COMPANYNAME}${INFO_PRODUCTNAME}"
+          !endif
+          !define ARCH "amd64"
+          !macro wails.checkArchitecture
+            !ifdef ARCH
+              ${If} ${RunningX64}
+                ; OK
+              ${Else}
+                MessageBox MB_ICONSTOP "This installer requires a 64-bit version of Windows."
+                Abort
+              ${EndIf}
+            !endif
+          !macroend
+          !macro wails.setShellContext
+            SetShellVarContext current
+          !macroend
+          !macro wails.files
+            File /oname=${PRODUCT_EXECUTABLE} "..\..\bin\ExifFrame-windows-amd64.exe"
+          !macroend
+          !macro wails.writeUninstaller
+            WriteUninstaller "$INSTDIR\uninstall.exe"
+            WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINST_KEY_NAME}" "DisplayName" "${INFO_PRODUCTNAME}"
+            WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINST_KEY_NAME}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
+            WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINST_KEY_NAME}" "DisplayVersion" "${INFO_PRODUCTVERSION}"
+            WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINST_KEY_NAME}" "Publisher" "${INFO_COMPANYNAME}"
+            WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINST_KEY_NAME}" "DisplayIcon" "$\"$INSTDIR\${PRODUCT_EXECUTABLE}$\""
+          !macroend
+          !macro wails.deleteUninstaller
+            Delete "$INSTDIR\uninstall.exe"
+            DeleteRegKey SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINST_KEY_NAME}"
+          !macroend
+          !macro wails.webview2runtime
+            ; WebView2 runtime will be installed by the OS on modern Windows
+          !macroend
+          !macro wails.associateFiles
+          !macroend
+          !macro wails.unassociateFiles
+          !macroend
+          !macro wails.associateCustomProtocols
+          !macroend
+          !macro wails.unassociateCustomProtocols
+          !macroend
+          WAILSNSH
+          # Replace ${VERSION} placeholder in the generated nsh
+          sed -i "s/\${VERSION}/$VERSION/g" build/windows/installer/wails_tools.nsh
+          # Build the NSIS installer
+          makensis build/windows/installer/project.nsi
+
       - name: Package Linux App
         if: runner.os == 'Linux'
         run: |
           cd bin
           tar czf ExifFrame-linux-amd64.tar.gz ExifFrame
 
-      - name: Upload Build Artifact
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: bin/${{ matrix.artifact }}
-          if-no-files-found: error
+          name: build-${{ matrix.os }}
+          path: |
+            bin/*.zip
+            bin/*.dmg
+            bin/*-darwin-arm64
+            bin/*.exe
+            bin/*.tar.gz
+          if-no-files-found: warn
 
   release:
     needs: build
@@ -127,6 +236,13 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: Generate SHA256SUMS
+        shell: bash
+        run: |
+          cd artifacts
+          find . -type f ! -name "SHA256SUMS" -exec sha256sum {} + | sed 's| \./| |' > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
