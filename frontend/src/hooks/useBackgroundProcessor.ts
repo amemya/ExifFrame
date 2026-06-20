@@ -100,6 +100,12 @@ export function useBackgroundProcessor() {
                         try {
                             const resultSave = await AppAPI.SaveAutoImage(isPng, savePath);
                             if (!isMounted) return;
+
+                            if (resultSave.error) {
+                                console.error(`Auto save failed for ${savePath}:`, resultSave.error);
+                                return;
+                            }
+
                             if (resultSave.saveToken) {
                                 const arrayBuffer = await blob.arrayBuffer();
                                 const controller = new AbortController();
@@ -113,15 +119,14 @@ export function useBackgroundProcessor() {
                                 clearTimeout(timeoutId);
                                 if (!resp.ok) {
                                     const errText = await resp.text();
-                                    console.error("Background save failed:", resp.status, errText);
+                                    console.error("Background save HTTP failed:", resp.status, errText);
                                 } else {
                                     console.log("Background save complete:", savePath);
                                 }
-                            } else {
-                                console.error("Auto save failed:", resultSave.error);
                             }
-                        } catch (e) {
-                            console.error(e);
+                        } catch (e: any) {
+                            const errMsg = e instanceof Error ? e.message : String(e);
+                            console.error(`Unexpected error during auto save for ${savePath}:`, errMsg);
                         }
                     }, targetMime, quality);
                 };

@@ -23,7 +23,7 @@ export function useImageManager(
 
     const currentImage = importedImages[selectedIndex];
     const hasImages = importedImages.length > 0;
-    const isCurrentImageLoaded = currentImage?.imageObj !== null;
+    const isCurrentImageLoaded = Boolean(currentImage?.imageObj);
     const imageObj = currentImage?.imageObj || null;
     const filePath = currentImage?.filePath || "";
     const sourceMimeType = currentImage?.sourceMimeType || "";
@@ -79,15 +79,16 @@ export function useImageManager(
     const importedImagesRef = useRef(importedImages);
     importedImagesRef.current = importedImages;
     const currentImageURL = importedImages[selectedIndex]?.imageURL;
-    const currentImageLoaded = Boolean(importedImages[selectedIndex]?.imageObj);
     const currentImageError = importedImages[selectedIndex]?.loadError;
 
     useEffect(() => {
+        let isActive = true;
         const images = importedImagesRef.current;
         const current = images[selectedIndex];
         if (current && !current.imageObj && !current.loadError) {
             const img = new Image();
             img.onload = () => {
+                if (!isActive) return;
                 setImportedImages(prev => {
                     const newImages = [...prev];
                     const idx = newImages.findIndex(item => item.imageURL === current.imageURL);
@@ -98,6 +99,7 @@ export function useImageManager(
                 });
             };
             img.onerror = () => {
+                if (!isActive) return;
                 showToast("Failed to load image preview", true);
                 setImportedImages(prev => {
                     const newImages = [...prev];
@@ -110,7 +112,11 @@ export function useImageManager(
             };
             img.src = current.imageURL;
         }
-    }, [selectedIndex, currentImageURL, currentImageLoaded, currentImageError, showToast]);
+
+        return () => {
+            isActive = false;
+        };
+    }, [selectedIndex, currentImageURL, isCurrentImageLoaded, currentImageError, showToast]);
 
     const handleExifResults = useCallback((results: ExifResult[]) => {
         const validResults = results.filter(r => !r.cancelled && !r.error && r.imageURL);
@@ -127,7 +133,7 @@ export function useImageManager(
             const newImages: ImportedImage[] = validResults.map(r => ({
                 filePath: r.filePath || "",
                 imageURL: r.imageURL!,
-                sourceMimeType: r.mimeType && r.mimeType.includes('png') ? 'image/png' : 'image/jpeg',
+                sourceMimeType: r.mimeType?.toLowerCase().includes('png') ? 'image/png' : 'image/jpeg',
                 originalBPP: r.originalBPP,
                 imageObj: null,
                 exif: {
