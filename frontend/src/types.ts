@@ -60,6 +60,7 @@ export interface ImportedImage {
     exif: ExifData;
     frameColor?: string;
     textColor?: string;
+    orientation?: "landscape" | "portrait";
     originalBPP?: number;
     
     /** The decoded image object loaded into memory. Lazily initialized on demand. */
