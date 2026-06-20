@@ -131,10 +131,10 @@ export function useExport({
             showToast("Exporting images...");
 
             for (let i = 0; i < importedImages.length; i++) {
+                const imgState = importedImages[i];
                 let imgToDraw: HTMLImageElement | null = null;
                 let offCanvas: HTMLCanvasElement | null = null;
                 try {
-                    const imgState = importedImages[i];
                     imgToDraw = imgState.imageObj;
                     
                     if (!imgToDraw) {
@@ -192,7 +192,7 @@ export function useExport({
                         offCanvas.width = 0;
                         offCanvas.height = 0;
                     }
-                    if (imgToDraw && !importedImages[i].imageObj) {
+                    if (imgToDraw && !imgState.imageObj) {
                         imgToDraw.src = "";
                     }
                 }

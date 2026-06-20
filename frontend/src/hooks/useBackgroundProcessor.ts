@@ -89,6 +89,8 @@ export function useBackgroundProcessor() {
                         });
                     } catch (e) {
                         console.error("Failed to render background canvas:", e);
+                        offscreenCanvas.width = 0;
+                        offscreenCanvas.height = 0;
                         return;
                     }
 

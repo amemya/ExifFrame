@@ -118,8 +118,10 @@ export function useSettingsSync({
         try {
             const currentSettings = await AppAPI.GetSettings();
             s.overrideExif = currentSettings.overrideExif;
-        } catch (e) {
-            s.overrideExif = false;
+        } catch (e: any) {
+            console.error("Failed to fetch current settings to preserve overrideExif:", e);
+            showToast("Failed to preserve overrideExif setting, aborting save.", true);
+            return;
         }
         s.jpegQuality = globalJpegQuality;
 
