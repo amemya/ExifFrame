@@ -5,15 +5,13 @@ import { ImportedImage, ExifData, ExifResult } from '../types';
  * @param showToast Must be a stable function (e.g. wrapped in useCallback).
  * @param setGlobalFrameColor Must be a stable function.
  * @param setGlobalTextColor Must be a stable function.
- * @param setOrientation Must be a stable function.
  */
 export function useImageManager(
     showToast: (msg: string, isError?: boolean) => void,
     globalFrameColor: string,
     globalTextColor: string,
     setGlobalFrameColor: (v: string) => void,
-    setGlobalTextColor: (v: string) => void,
-    setOrientation: (v: "landscape" | "portrait") => void
+    setGlobalTextColor: (v: string) => void
 ) {
     const [importedImages, setImportedImages] = useState<ImportedImage[]>([]);
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -33,6 +31,18 @@ export function useImageManager(
 
     const frameColor = currentImage?.frameColor ?? globalFrameColor;
     const textColor = currentImage?.textColor ?? globalTextColor;
+    const currentOrientation = currentImage?.orientation ?? (imageObj && imageObj.height > imageObj.width ? "portrait" : "landscape");
+
+    const setPerImageOrientation = useCallback((orientation: "landscape" | "portrait") => {
+        setImportedImages(prev => {
+            if (prev.length === 0) return prev;
+            const newImages = [...prev];
+            const current = newImages[selectedIndex];
+            if (!current) return prev;
+            newImages[selectedIndex] = { ...current, orientation };
+            return newImages;
+        });
+    }, [selectedIndex]);
 
     const setExif: React.Dispatch<React.SetStateAction<ExifData>> = useCallback((action) => {
         setImportedImages(prev => {
@@ -86,7 +96,6 @@ export function useImageManager(
                     }
                     return newImages;
                 });
-                setOrientation(img.height > img.width ? "portrait" : "landscape");
             };
             img.onerror = () => {
                 showToast("Failed to load image preview", true);
@@ -100,10 +109,8 @@ export function useImageManager(
                 });
             };
             img.src = current.imageURL;
-        } else if (current && current.imageObj) {
-            setOrientation(current.imageObj.height > current.imageObj.width ? "portrait" : "landscape");
         }
-    }, [selectedIndex, currentImageURL, currentImageLoaded, currentImageError, showToast, setOrientation]);
+    }, [selectedIndex, currentImageURL, currentImageLoaded, currentImageError, showToast]);
 
     const handleExifResults = useCallback((results: ExifResult[]) => {
         const validResults = results.filter(r => !r.cancelled && !r.error && r.imageURL);
@@ -167,6 +174,7 @@ export function useImageManager(
         selectedIndex, setSelectedIndex,
         currentImage, hasImages, isCurrentImageLoaded, imageObj, filePath, sourceMimeType, exif, setExif,
         frameColor, textColor, setFrameColor, setTextColor,
+        currentOrientation, setPerImageOrientation,
         handleExifResults, handleApplyToAll, handleApplyColorsToAll,
         isCanvasReady, setIsCanvasReady
     };

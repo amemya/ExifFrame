@@ -13,6 +13,8 @@ export interface UpdateState {
     errorMessage: string;
 }
 
+const getEventData = (e: any) => Array.isArray(e?.data) ? e.data[0] : e?.data;
+
 export function useUpdater() {
     const [updateState, setUpdateState] = useState<UpdateState>({
         stage: 'idle', version: '', releaseNotes: '', downloadPct: 0, errorMessage: ''
@@ -39,7 +41,7 @@ export function useUpdater() {
         });
 
         const offProgress = Events.On('wails:updater:download-progress', (e: any) => {
-            const data = Array.isArray(e?.data) ? e.data[0] : e?.data;
+            const data = getEventData(e);
             if (data && data.total > 0) {
                 const pct = Math.round(((data.written || 0) / data.total) * 100);
                 setUpdateState(prev => {
@@ -54,7 +56,7 @@ export function useUpdater() {
             setUpdateState(prev => ({ ...prev, stage: 'ready' }));
         });
         const offError = Events.On('wails:updater:error', (e: any) => {
-            const data = Array.isArray(e?.data) ? e.data[0] : e?.data;
+            const data = getEventData(e);
             setUpdateState(prev => ({
                 ...prev,
                 stage: 'error',
@@ -101,5 +103,9 @@ export function useUpdater() {
         });
     };
 
-    return { updateState, setUpdateState, triggerUpdate, restartApp };
+    const dismissUpdateError = () => {
+        setUpdateState(prev => ({ ...prev, stage: 'idle' }));
+    };
+
+    return { updateState, triggerUpdate, restartApp, dismissUpdateError };
 }

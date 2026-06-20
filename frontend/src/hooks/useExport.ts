@@ -39,7 +39,7 @@ export function useExport({
         if (!canvasRef.current || !imageObj) return;
 
         try {
-            const { isPng, targetMime, baseName } = getExportInfo(currentImage.filePath, currentImage.sourceMimeType);
+            const { isPng, targetMime, baseName } = getExportInfo(currentImage.filePath || "exif-frame-export", currentImage.sourceMimeType);
             const exportName = `${baseName}_ExifFrame`;
 
             const result = await AppAPI.SaveImage(isPng, exportName);
@@ -126,7 +126,7 @@ export function useExport({
                         aspectRatioPreset,
                         customRatioW,
                         customRatioH,
-                        orientation: imgToDraw.height > imgToDraw.width ? "portrait" : "landscape",
+                        orientation: imgState.orientation || (imgToDraw.height > imgToDraw.width ? "portrait" : "landscape"),
                         alignment,
                         showPipeSeparator,
                         profile,

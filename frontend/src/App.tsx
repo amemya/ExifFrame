@@ -31,12 +31,12 @@ function App() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useBackgroundProcessor();
-    const { updateState, setUpdateState, triggerUpdate, restartApp } = useUpdater();
+    const { updateState, dismissUpdateError, triggerUpdate, restartApp } = useUpdater();
 
-    const imageManagerRef = useRef<ReturnType<typeof useImageManager> | null>(null);
+    const setExifRef = useRef<React.Dispatch<React.SetStateAction<ExifData>> | null>(null);
 
     const settings = useSettingsSync({
-        setExif: (action) => imageManagerRef.current?.setExif(action),
+        setExif: (action) => setExifRef.current?.(action),
         showToast
     });
 
@@ -46,12 +46,9 @@ function App() {
         settings.globalTextColor,
         settings.setGlobalFrameColor,
         settings.setGlobalTextColor,
-        settings.setOrientation
     );
 
-    useEffect(() => {
-        imageManagerRef.current = imageManager;
-    }, [imageManager]);
+    setExifRef.current = imageManager.setExif;
 
     const { downloadImage, downloadAllImages } = useExport({
         canvasRef,
@@ -148,7 +145,7 @@ function App() {
             textColor: imageManager.textColor
         });
         imageManager.setIsCanvasReady(true);
-    }, [imageManager.exif, settings.aspectRatioPreset, settings.customRatioW, settings.customRatioH, settings.orientation, settings.alignment, settings.showPipeSeparator, settings.profile, settings.visibility, imageManager.frameColor, imageManager.textColor, imageManager]);
+    }, [imageManager.exif, settings.aspectRatioPreset, settings.customRatioW, settings.customRatioH, imageManager.currentOrientation, settings.alignment, settings.showPipeSeparator, settings.profile, settings.visibility, imageManager.frameColor, imageManager.textColor, imageManager.setIsCanvasReady]);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -219,7 +216,7 @@ function App() {
                             return (
                                 <button
                                     className="btn btn-update btn-update--error"
-                                    onClick={() => setUpdateState(prev => ({ ...prev, stage: 'idle' }))}
+                                    onClick={dismissUpdateError}
                                     title={errorMessage}
                                 >
                                     Update failed
@@ -365,7 +362,7 @@ function App() {
                             aspectRatioPreset={settings.aspectRatioPreset} setAspectRatioPreset={settings.setAspectRatioPreset}
                             customRatioW={settings.customRatioW} setCustomRatioW={settings.setCustomRatioW}
                             customRatioH={settings.customRatioH} setCustomRatioH={settings.setCustomRatioH}
-                            orientation={settings.orientation} setOrientation={settings.setOrientation}
+                            orientation={imageManager.currentOrientation} setOrientation={imageManager.setPerImageOrientation}
                             alignment={settings.alignment} setAlignment={settings.setAlignment}
                             showPipeSeparator={settings.showPipeSeparator} setShowPipeSeparator={settings.setShowPipeSeparator}
                             frameColor={imageManager.frameColor} setFrameColor={imageManager.setFrameColor}
@@ -384,7 +381,7 @@ function App() {
                             <button
                                 className="btn btn-primary"
                                 style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-                                onClick={() => settings.handleSaveAutoExportDefault(imageManager.exif, imageManager.frameColor, imageManager.textColor)}
+                                onClick={() => settings.handleSaveAutoExportDefault(imageManager.exif, imageManager.frameColor, imageManager.textColor, imageManager.currentOrientation)}
                                 title="Save current settings as default for auto-processing"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>

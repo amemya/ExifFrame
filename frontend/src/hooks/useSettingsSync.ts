@@ -42,12 +42,17 @@ export function useSettingsSync({
             if (s.aspectRatioPreset) setAspectRatioPreset(s.aspectRatioPreset);
             if (s.customRatioW) setCustomRatioW(s.customRatioW);
             if (s.customRatioH) setCustomRatioH(s.customRatioH);
-            if (s.orientation) setOrientation(s.orientation as "landscape" | "portrait");
-            if (s.alignment) setAlignment(s.alignment as "top" | "center");
+            if (s.orientation && ['landscape', 'portrait'].includes(s.orientation)) {
+                setOrientation(s.orientation as "landscape" | "portrait");
+            }
+            if (s.alignment && ['top', 'center'].includes(s.alignment)) {
+                setAlignment(s.alignment as "top" | "center");
+            }
             if (s.showPipeSeparator !== undefined) setShowPipeSeparator(s.showPipeSeparator);
             if (s.frameColor) setGlobalFrameColor(s.frameColor);
             if (s.textColor) setGlobalTextColor(s.textColor);
             if (s.jpegQuality) setGlobalJpegQuality(s.jpegQuality);
+            else setGlobalJpegQuality("auto");
             if (s.profile) {
                 setProfile(['digital', 'film'].includes(s.profile) ? s.profile : 'digital');
             }
@@ -65,10 +70,7 @@ export function useSettingsSync({
         }).catch((err: any) => {
             console.error("Failed to load settings:", err);
         }).finally(() => {
-            // Add a small delay to prevent state bounce or immediate auto-export triggers during component mount
-            setTimeout(() => {
-                isInitialLoad.current = false;
-            }, 100);
+            isInitialLoad.current = false;
         });
 
         const unsubSettings = Events.On("settings_saved", () => {
@@ -92,14 +94,14 @@ export function useSettingsSync({
         };
     }, [setExif]);
 
-    const handleSaveAutoExportDefault = async (currentExif: ExifData, currentFrameColor: string, currentTextColor: string) => {
+    const handleSaveAutoExportDefault = async (currentExif: ExifData, currentFrameColor: string, currentTextColor: string, currentOrientation: "landscape" | "portrait") => {
         const s = new Settings();
         s.watchFolder = watchFolder;
         s.exportFolder = exportFolder;
         s.aspectRatioPreset = aspectRatioPreset;
         s.customRatioW = customRatioW;
         s.customRatioH = customRatioH;
-        s.orientation = orientation;
+        s.orientation = currentOrientation;
         s.alignment = alignment;
         s.showPipeSeparator = showPipeSeparator;
         s.profile = profile;

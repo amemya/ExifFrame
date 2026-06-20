@@ -71,18 +71,23 @@ export function useBackgroundProcessor() {
                         time: currentSet.time || ""
                     };
 
-                    renderImageToCanvas(offscreenCanvas, img, exifData, {
-                        aspectRatioPreset: currentSet.aspectRatioPreset || "4300:3618",
-                        customRatioW: currentSet.customRatioW || 4300,
-                        customRatioH: currentSet.customRatioH || 3618,
-                        orientation: (currentSet.orientation as "landscape" | "portrait") || "landscape",
-                        alignment: (currentSet.alignment as "top" | "center") || "top",
-                        showPipeSeparator: currentSet.showPipeSeparator ?? true,
-                        profile: currentSet.profile || "digital",
-                        visibility: toVisibility(currentSet),
-                        frameColor: currentSet.frameColor || "#ffffff",
-                        textColor: currentSet.textColor || "#000000"
-                    });
+                    try {
+                        renderImageToCanvas(offscreenCanvas, img, exifData, {
+                            aspectRatioPreset: currentSet.aspectRatioPreset || "4300:3618",
+                            customRatioW: currentSet.customRatioW || 4300,
+                            customRatioH: currentSet.customRatioH || 3618,
+                            orientation: (currentSet.orientation as "landscape" | "portrait") || "landscape",
+                            alignment: (currentSet.alignment as "top" | "center") || "top",
+                            showPipeSeparator: currentSet.showPipeSeparator ?? true,
+                            profile: currentSet.profile || "digital",
+                            visibility: toVisibility(currentSet),
+                            frameColor: currentSet.frameColor || "#ffffff",
+                            textColor: currentSet.textColor || "#000000"
+                        });
+                    } catch (e) {
+                        console.error("Failed to render background canvas:", e);
+                        return;
+                    }
 
                     const { isPng, targetMime, exportName } = getExportInfo(result.filePath || "", result.mimeType || "");
 
@@ -97,11 +102,15 @@ export function useBackgroundProcessor() {
                             if (!isMounted) return;
                             if (resultSave.saveToken) {
                                 const arrayBuffer = await blob.arrayBuffer();
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(() => controller.abort(), 15000);
                                 const resp = await fetch(`/api/save?token=${encodeURIComponent(resultSave.saveToken)}`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': targetMime },
                                     body: arrayBuffer,
+                                    signal: controller.signal
                                 });
+                                clearTimeout(timeoutId);
                                 if (!resp.ok) {
                                     const errText = await resp.text();
                                     console.error("Background save failed:", resp.status, errText);
