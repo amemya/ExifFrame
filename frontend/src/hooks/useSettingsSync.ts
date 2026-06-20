@@ -42,8 +42,8 @@ export function useSettingsSync({
             if (s.aspectRatioPreset) setAspectRatioPreset(s.aspectRatioPreset);
             if (s.customRatioW) setCustomRatioW(s.customRatioW);
             if (s.customRatioH) setCustomRatioH(s.customRatioH);
-            if (s.orientation) setOrientation(s.orientation as any);
-            if (s.alignment) setAlignment(s.alignment as any);
+            if (s.orientation) setOrientation(s.orientation as "landscape" | "portrait");
+            if (s.alignment) setAlignment(s.alignment as "top" | "center");
             if (s.showPipeSeparator !== undefined) setShowPipeSeparator(s.showPipeSeparator);
             if (s.frameColor) setGlobalFrameColor(s.frameColor);
             if (s.textColor) setGlobalTextColor(s.textColor);
@@ -65,12 +65,16 @@ export function useSettingsSync({
         }).catch((err: any) => {
             console.error("Failed to load settings:", err);
         }).finally(() => {
+            // Add a small delay to prevent state bounce or immediate auto-export triggers during component mount
             setTimeout(() => {
                 isInitialLoad.current = false;
             }, 100);
         });
 
         const unsubSettings = Events.On("settings_saved", () => {
+            // Intentionally only update global auto-export settings (watchFolder, exportFolder, jpegQuality).
+            // Do not update profile or colors here to avoid unexpectedly overwriting 
+            // the user's ongoing manual edits in the main window.
             AppAPI.GetSettings().then((s: Settings) => {
                 if (s.watchFolder) setWatchFolder(s.watchFolder);
                 else setWatchFolder("");
@@ -105,11 +109,10 @@ export function useSettingsSync({
         try {
             const currentSettings = await AppAPI.GetSettings();
             s.overrideExif = currentSettings.overrideExif;
-            s.jpegQuality = currentSettings.jpegQuality || "auto";
         } catch (e) {
             s.overrideExif = false;
-            s.jpegQuality = "auto";
         }
+        s.jpegQuality = globalJpegQuality;
 
         const exif = currentExif;
         s.camera = exif.camera;
@@ -134,6 +137,7 @@ export function useSettingsSync({
                 showToast("Auto-export default saved");
             }
         } catch (e: any) {
+            console.error("Failed to save auto-export default settings:", e);
             showToast("Error saving settings", true);
         }
     };

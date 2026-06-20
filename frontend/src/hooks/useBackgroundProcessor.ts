@@ -30,6 +30,7 @@ interface WailsProcessFileEvent {
 
 export function useBackgroundProcessor() {
     useEffect(() => {
+        let isMounted = true;
         const unsubProcess = Events.On("process_file", (event: WailsProcessFileEvent) => {
             if (!event?.data) return;
             // Handle both Wails v2 (array) and Wails v3 (single object) format:
@@ -45,8 +46,10 @@ export function useBackgroundProcessor() {
             if (!imageUrl || !exportFolderStr) return;
 
             AppAPI.GetSettings().then(async (currentSet: Settings) => {
+                if (!isMounted) return;
                 const img = new Image();
                 img.onload = async () => {
+                    if (!isMounted) return;
                     const offscreenCanvas = document.createElement('canvas');
 
                     const override = currentSet.overrideExif;
@@ -87,9 +90,11 @@ export function useBackgroundProcessor() {
 
                     const quality = getQualityFromBPP(result.originalBPP, currentSet.jpegQuality || "auto");
                     offscreenCanvas.toBlob(async (blob) => {
+                        if (!isMounted) return;
                         if (!blob) return;
                         try {
                             const resultSave = await AppAPI.SaveAutoImage(isPng, savePath);
+                            if (!isMounted) return;
                             if (resultSave.saveToken) {
                                 const arrayBuffer = await blob.arrayBuffer();
                                 const resp = await fetch(`/api/save?token=${encodeURIComponent(resultSave.saveToken)}`, {
@@ -119,6 +124,7 @@ export function useBackgroundProcessor() {
         });
 
         return () => {
+            isMounted = false;
             unsubProcess();
         };
     }, []);

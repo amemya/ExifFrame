@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ImportedImage, ExifData, ExifResult } from '../types';
-
+/**
+ * Manages images and EXIF data.
+ * @param showToast Must be a stable function (e.g. wrapped in useCallback).
+ * @param setGlobalFrameColor Must be a stable function.
+ * @param setGlobalTextColor Must be a stable function.
+ * @param setOrientation Must be a stable function.
+ */
 export function useImageManager(
     showToast: (msg: string, isError?: boolean) => void,
     globalFrameColor: string,
@@ -114,7 +120,7 @@ export function useImageManager(
             const newImages: ImportedImage[] = validResults.map(r => ({
                 filePath: r.filePath || "",
                 imageURL: r.imageURL!,
-                sourceMimeType: (r.mimeType as 'image/jpeg' | 'image/png') || 'image/jpeg',
+                sourceMimeType: r.mimeType && r.mimeType.includes('png') ? 'image/png' : 'image/jpeg',
                 originalBPP: r.originalBPP,
                 imageObj: null,
                 exif: {
