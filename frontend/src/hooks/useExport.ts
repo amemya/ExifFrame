@@ -22,6 +22,7 @@ export interface UseExportProps {
     showPipeSeparator: boolean;
     profile: string;
     visibility: MetadataVisibility;
+    fontFamily: string;
     globalFrameColor: string;
     globalTextColor: string;
     globalJpegQuality: string;
@@ -69,7 +70,10 @@ export function useExport({
     isSelectingRef, setIsSelecting, showToast,
     aspectRatioPreset, customRatioW, customRatioH, orientation,
     alignment, showPipeSeparator, profile, visibility,
-    globalFrameColor, globalTextColor, globalJpegQuality
+    fontFamily,
+    globalFrameColor,
+    globalTextColor,
+    globalJpegQuality
 }: UseExportProps) {
     
     const downloadImage = async () => {
@@ -162,6 +166,7 @@ export function useExport({
                         showPipeSeparator,
                         profile,
                         visibility,
+                        fontFamily,
                         frameColor: imgState.frameColor ?? globalFrameColor,
                         textColor: imgState.textColor ?? globalTextColor
                     });

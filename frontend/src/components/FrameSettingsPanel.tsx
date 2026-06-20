@@ -1,3 +1,7 @@
+import { useState, useEffect } from 'react';
+// @ts-expect-error generated bindings
+import { App as AppAPI } from '../../bindings/ExifFrame/index';
+
 export interface FrameSettingsPanelProps {
     aspectRatioPreset: string;
     setAspectRatioPreset: (val: string) => void;
@@ -15,6 +19,8 @@ export interface FrameSettingsPanelProps {
     setFrameColor: (val: string) => void;
     textColor: string;
     setTextColor: (val: string) => void;
+    fontFamily: string;
+    setFontFamily: (val: string) => void;
     onApplyToAllColors?: () => void;
 }
 
@@ -27,9 +33,23 @@ export const FrameSettingsPanel = ({
     showPipeSeparator, setShowPipeSeparator,
     frameColor, setFrameColor,
     textColor, setTextColor,
+    fontFamily, setFontFamily,
     onApplyToAllColors
-}: FrameSettingsPanelProps) => (
-    <div className="sidebar-section frame-settings-section">
+}: FrameSettingsPanelProps) => {
+    const [systemFonts, setSystemFonts] = useState<string[]>([]);
+
+    useEffect(() => {
+        AppAPI.GetSystemFonts()
+            .then((fonts: string[]) => {
+                if (fonts && fonts.length > 0) {
+                    setSystemFonts(fonts);
+                }
+            })
+            .catch((err: any) => console.error("Failed to fetch system fonts", err));
+    }, []);
+
+    return (
+        <div className="sidebar-section frame-settings-section">
         <h3>Frame Settings</h3>
         <div className="input-group">
             <label htmlFor="aspect-ratio-preset">Aspect Ratio</label>
@@ -167,6 +187,26 @@ export const FrameSettingsPanel = ({
             </div>
         </div>
 
+        <div className="input-group" style={{ marginTop: '1rem' }}>
+            <label htmlFor="font-family">Font</label>
+            <select
+                id="font-family"
+                value={fontFamily}
+                onChange={(e) => setFontFamily(e.target.value)}
+                style={{ fontFamily: fontFamily }}
+            >
+                <option value='"Gill Sans", sans-serif'>Default (Gill Sans)</option>
+                <option value="sans-serif">System Sans-Serif</option>
+                <option value="serif">System Serif</option>
+                <option value="monospace">System Monospace</option>
+                {systemFonts.length > 0 && <optgroup label="System Fonts">
+                    {systemFonts.map(font => (
+                        <option key={font} value={font} style={{ fontFamily: font }}>{font}</option>
+                    ))}
+                </optgroup>}
+            </select>
+        </div>
+
         {onApplyToAllColors && (
             <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
                 <button
@@ -180,4 +220,5 @@ export const FrameSettingsPanel = ({
             </div>
         )}
     </div>
-);
+    );
+};

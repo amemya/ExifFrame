@@ -32,6 +32,7 @@ export function useSettingsSync({
     const [globalFrameColor, setGlobalFrameColor] = useState<string>("#ffffff");
     const [globalTextColor, setGlobalTextColor] = useState<string>("#000000");
     const [globalJpegQuality, setGlobalJpegQuality] = useState<string>("auto");
+    const [fontFamily, setFontFamily] = useState<string>("\"Gill Sans\", sans-serif");
 
     const isInitialLoad = useRef(true);
     // setExif depends on `selectedIndex` in useImageManager, meaning it is recreated on every selection change.
@@ -58,6 +59,7 @@ export function useSettingsSync({
             if (s.showPipeSeparator !== undefined) setShowPipeSeparator(s.showPipeSeparator);
             if (s.frameColor) setGlobalFrameColor(s.frameColor);
             if (s.textColor) setGlobalTextColor(s.textColor);
+            if (s.fontFamily) setFontFamily(s.fontFamily);
             if (s.jpegQuality) setGlobalJpegQuality(s.jpegQuality);
             else setGlobalJpegQuality("auto");
             if (s.profile) {
@@ -114,6 +116,7 @@ export function useSettingsSync({
         s.profile = profile;
         s.frameColor = currentFrameColor;
         s.textColor = currentTextColor;
+        s.fontFamily = fontFamily;
 
         try {
             const currentSettings = await AppAPI.GetSettings();
@@ -170,6 +173,7 @@ export function useSettingsSync({
         globalFrameColor, setGlobalFrameColor,
         globalTextColor, setGlobalTextColor,
         globalJpegQuality, setGlobalJpegQuality,
+        fontFamily, setFontFamily,
         handleSaveAutoExportDefault,
         isInitialLoad
     };
