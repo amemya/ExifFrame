@@ -85,6 +85,8 @@ export function useExport({
 
     const downloadAllImages = async () => {
         if (importedImages.length === 0) return;
+        if (isSelectingRef.current) return;
+        
         isSelectingRef.current = true;
         let successCount = 0;
         let failCount = 0;
@@ -92,7 +94,6 @@ export function useExport({
         try {
             const exportDir = await AppAPI.SelectExportFolder();
             if (!exportDir) {
-                setIsSelecting(false);
                 isSelectingRef.current = false;
                 return; // Cancelled
             }

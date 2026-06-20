@@ -33,14 +33,11 @@ function App() {
     useBackgroundProcessor();
     const { updateState, setUpdateState, triggerUpdate, restartApp } = useUpdater();
 
-    const imageManagerRef = useRef<any>(null);
+    const imageManagerRef = useRef<ReturnType<typeof useImageManager> | null>(null);
 
     const settings = useSettingsSync({
         setExif: (action) => imageManagerRef.current?.setExif(action),
-        showToast,
-        getCurrentExif: () => imageManagerRef.current?.exif || { camera: "", lens: "", focalLength: "", aperture: "", shutterSpeed: "", iso: "", film: "", developer: "", dilution: "", temperature: "", time: "" },
-        getCurrentFrameColor: () => imageManagerRef.current?.frameColor || settings.globalFrameColor,
-        getCurrentTextColor: () => imageManagerRef.current?.textColor || settings.globalTextColor
+        showToast
     });
 
     const imageManager = useImageManager(
@@ -128,7 +125,7 @@ function App() {
             setIsSelecting(false);
             isSelectingRef.current = false;
         }
-    }, [imageManager, showToast]);
+    }, [imageManager.handleExifResults, showToast]);
 
     const handleAddFiles = useCallback(
         () => handleOpenImages(() => AppAPI.OpenImages(), "open images"),
@@ -387,7 +384,7 @@ function App() {
                             <button
                                 className="btn btn-primary"
                                 style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-                                onClick={settings.handleSaveAutoExportDefault}
+                                onClick={() => settings.handleSaveAutoExportDefault(imageManager.exif, imageManager.frameColor, imageManager.textColor)}
                                 title="Save current settings as default for auto-processing"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>

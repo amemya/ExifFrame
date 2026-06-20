@@ -42,7 +42,12 @@ export function useUpdater() {
             const data = Array.isArray(e?.data) ? e.data[0] : e?.data;
             if (data && data.total > 0) {
                 const pct = Math.round(((data.written || 0) / data.total) * 100);
-                setUpdateState(prev => ({ ...prev, stage: 'downloading', downloadPct: pct }));
+                setUpdateState(prev => {
+                    if (prev.stage === 'verifying' || prev.stage === 'installing' || prev.stage === 'ready' || prev.stage === 'restarting') {
+                        return prev;
+                    }
+                    return { ...prev, stage: 'downloading', downloadPct: pct };
+                });
             }
         });
         const offReady = Events.On('wails:updater:update-ready', () => {

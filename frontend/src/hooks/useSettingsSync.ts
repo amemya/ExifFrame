@@ -7,17 +7,11 @@ import { MetadataVisibility, toVisibility, applyVisibility, ExifData } from '../
 export interface UseSettingsSyncProps {
     setExif: React.Dispatch<React.SetStateAction<ExifData>>;
     showToast: (msg: string, isError?: boolean) => void;
-    getCurrentExif: () => ExifData;
-    getCurrentFrameColor: () => string;
-    getCurrentTextColor: () => string;
 }
 
 export function useSettingsSync({
     setExif,
-    showToast,
-    getCurrentExif,
-    getCurrentFrameColor,
-    getCurrentTextColor
+    showToast
 }: UseSettingsSyncProps) {
     const [watchFolder, setWatchFolder] = useState("");
     const [exportFolder, setExportFolder] = useState("");
@@ -94,7 +88,7 @@ export function useSettingsSync({
         };
     }, [setExif]);
 
-    const handleSaveAutoExportDefault = async () => {
+    const handleSaveAutoExportDefault = async (currentExif: ExifData, currentFrameColor: string, currentTextColor: string) => {
         const s = new Settings();
         s.watchFolder = watchFolder;
         s.exportFolder = exportFolder;
@@ -105,8 +99,8 @@ export function useSettingsSync({
         s.alignment = alignment;
         s.showPipeSeparator = showPipeSeparator;
         s.profile = profile;
-        s.frameColor = getCurrentFrameColor();
-        s.textColor = getCurrentTextColor();
+        s.frameColor = currentFrameColor;
+        s.textColor = currentTextColor;
 
         try {
             const currentSettings = await AppAPI.GetSettings();
@@ -117,7 +111,7 @@ export function useSettingsSync({
             s.jpegQuality = "auto";
         }
 
-        const exif = getCurrentExif();
+        const exif = currentExif;
         s.camera = exif.camera;
         s.lens = exif.lens;
         s.focalLength = exif.focalLength;
