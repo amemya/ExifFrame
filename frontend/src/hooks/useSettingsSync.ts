@@ -1,0 +1,164 @@
+import { useState, useEffect, useRef } from 'react';
+import { Events } from '@wailsio/runtime';
+// @ts-expect-error generated bindings
+import { App as AppAPI, Settings } from '../../bindings/ExifFrame/index';
+import { MetadataVisibility, toVisibility, applyVisibility, ExifData } from '../types';
+
+export interface UseSettingsSyncProps {
+    setExif: React.Dispatch<React.SetStateAction<ExifData>>;
+    showToast: (msg: string, isError?: boolean) => void;
+    getCurrentExif: () => ExifData;
+    getCurrentFrameColor: () => string;
+    getCurrentTextColor: () => string;
+}
+
+export function useSettingsSync({
+    setExif,
+    showToast,
+    getCurrentExif,
+    getCurrentFrameColor,
+    getCurrentTextColor
+}: UseSettingsSyncProps) {
+    const [watchFolder, setWatchFolder] = useState("");
+    const [exportFolder, setExportFolder] = useState("");
+    const [profile, setProfile] = useState<string>("digital");
+
+    const [visibility, setVisibility] = useState<MetadataVisibility>({
+        camera: true, lens: true, focalLength: true, aperture: true,
+        shutterSpeed: true, iso: true, film: true, developer: true,
+        dilution: true, temperature: true, time: true
+    });
+
+    const [aspectRatioPreset, setAspectRatioPreset] = useState<string>("4300:3618");
+    const [customRatioW, setCustomRatioW] = useState<number>(4300);
+    const [customRatioH, setCustomRatioH] = useState<number>(3618);
+    const [orientation, setOrientation] = useState<"landscape" | "portrait">("landscape");
+    const [alignment, setAlignment] = useState<"top" | "center">("top");
+    const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
+    const [globalFrameColor, setGlobalFrameColor] = useState<string>("#ffffff");
+    const [globalTextColor, setGlobalTextColor] = useState<string>("#000000");
+    const [globalJpegQuality, setGlobalJpegQuality] = useState<string>("auto");
+
+    const isInitialLoad = useRef(true);
+
+    useEffect(() => {
+        AppAPI.GetSettings().then((s: Settings) => {
+            if (s.watchFolder) setWatchFolder(s.watchFolder);
+            if (s.exportFolder) setExportFolder(s.exportFolder);
+            if (s.aspectRatioPreset) setAspectRatioPreset(s.aspectRatioPreset);
+            if (s.customRatioW) setCustomRatioW(s.customRatioW);
+            if (s.customRatioH) setCustomRatioH(s.customRatioH);
+            if (s.orientation) setOrientation(s.orientation as any);
+            if (s.alignment) setAlignment(s.alignment as any);
+            if (s.showPipeSeparator !== undefined) setShowPipeSeparator(s.showPipeSeparator);
+            if (s.frameColor) setGlobalFrameColor(s.frameColor);
+            if (s.textColor) setGlobalTextColor(s.textColor);
+            if (s.jpegQuality) setGlobalJpegQuality(s.jpegQuality);
+            if (s.profile) {
+                setProfile(['digital', 'film'].includes(s.profile) ? s.profile : 'digital');
+            }
+
+            setExif((prev: ExifData) => ({
+                ...prev,
+                film: s.film || "",
+                developer: s.developer || "",
+                dilution: s.dilution || "",
+                temperature: s.temperature || "",
+                time: s.time || ""
+            }));
+
+            setVisibility(toVisibility(s));
+        }).catch((err: any) => {
+            console.error("Failed to load settings:", err);
+        }).finally(() => {
+            setTimeout(() => {
+                isInitialLoad.current = false;
+            }, 100);
+        });
+
+        const unsubSettings = Events.On("settings_saved", () => {
+            AppAPI.GetSettings().then((s: Settings) => {
+                if (s.watchFolder) setWatchFolder(s.watchFolder);
+                else setWatchFolder("");
+                if (s.exportFolder) setExportFolder(s.exportFolder);
+                else setExportFolder("");
+                if (s.jpegQuality) setGlobalJpegQuality(s.jpegQuality);
+                else setGlobalJpegQuality("auto");
+            }).catch((err: any) => {
+                console.error("Failed to reload settings:", err);
+            });
+        });
+
+        return () => {
+            unsubSettings();
+        };
+    }, [setExif]);
+
+    const handleSaveAutoExportDefault = async () => {
+        const s = new Settings();
+        s.watchFolder = watchFolder;
+        s.exportFolder = exportFolder;
+        s.aspectRatioPreset = aspectRatioPreset;
+        s.customRatioW = customRatioW;
+        s.customRatioH = customRatioH;
+        s.orientation = orientation;
+        s.alignment = alignment;
+        s.showPipeSeparator = showPipeSeparator;
+        s.profile = profile;
+        s.frameColor = getCurrentFrameColor();
+        s.textColor = getCurrentTextColor();
+
+        try {
+            const currentSettings = await AppAPI.GetSettings();
+            s.overrideExif = currentSettings.overrideExif;
+            s.jpegQuality = currentSettings.jpegQuality || "auto";
+        } catch (e) {
+            s.overrideExif = false;
+            s.jpegQuality = "auto";
+        }
+
+        const exif = getCurrentExif();
+        s.camera = exif.camera;
+        s.lens = exif.lens;
+        s.focalLength = exif.focalLength;
+        s.aperture = exif.aperture;
+        s.shutterSpeed = exif.shutterSpeed;
+        s.iso = exif.iso;
+        s.film = exif.film;
+        s.developer = exif.developer;
+        s.dilution = exif.dilution;
+        s.temperature = exif.temperature;
+        s.time = exif.time;
+
+        applyVisibility(s, visibility);
+
+        try {
+            const errStr = await AppAPI.SaveSettings(s);
+            if (errStr && errStr !== "") {
+                showToast(errStr, true);
+            } else {
+                showToast("Auto-export default saved");
+            }
+        } catch (e: any) {
+            showToast("Error saving settings", true);
+        }
+    };
+
+    return {
+        watchFolder, setWatchFolder,
+        exportFolder, setExportFolder,
+        profile, setProfile,
+        visibility, setVisibility,
+        aspectRatioPreset, setAspectRatioPreset,
+        customRatioW, setCustomRatioW,
+        customRatioH, setCustomRatioH,
+        orientation, setOrientation,
+        alignment, setAlignment,
+        showPipeSeparator, setShowPipeSeparator,
+        globalFrameColor, setGlobalFrameColor,
+        globalTextColor, setGlobalTextColor,
+        globalJpegQuality, setGlobalJpegQuality,
+        handleSaveAutoExportDefault,
+        isInitialLoad
+    };
+}
