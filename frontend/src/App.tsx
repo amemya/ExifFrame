@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import './App.css';
 // @ts-expect-error generated bindings does not provide declaration files for JS module
 import { App as AppAPI, Settings, UpdateStatus } from '../bindings/ExifFrame/index';
@@ -52,7 +52,9 @@ function App() {
         settings.setGlobalTextColor,
     );
 
-    setExifRef.current = imageManager.setExif;
+    useLayoutEffect(() => {
+        setExifRef.current = imageManager.setExif;
+    }, [imageManager.setExif]);
 
     const { downloadImage, downloadAllImages } = useExport({
         canvasRef,

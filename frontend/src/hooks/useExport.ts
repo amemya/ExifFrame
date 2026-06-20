@@ -131,9 +131,11 @@ export function useExport({
             showToast("Exporting images...");
 
             for (let i = 0; i < importedImages.length; i++) {
+                let imgToDraw: HTMLImageElement | null = null;
+                let offCanvas: HTMLCanvasElement | null = null;
                 try {
                     const imgState = importedImages[i];
-                    let imgToDraw = imgState.imageObj;
+                    imgToDraw = imgState.imageObj;
                     
                     if (!imgToDraw) {
                         try {
@@ -150,7 +152,7 @@ export function useExport({
                         }
                     }
 
-                    const offCanvas = document.createElement("canvas");
+                    offCanvas = document.createElement("canvas");
                     renderImageToCanvas(offCanvas, imgToDraw, imgState.exif, {
                         aspectRatioPreset,
                         customRatioW,
@@ -185,6 +187,14 @@ export function useExport({
                 } catch (e) {
                     console.error("Unexpected error processing image", i, e);
                     failCount++;
+                } finally {
+                    if (offCanvas) {
+                        offCanvas.width = 0;
+                        offCanvas.height = 0;
+                    }
+                    if (imgToDraw && !importedImages[i].imageObj) {
+                        imgToDraw.src = "";
+                    }
                 }
             }
             

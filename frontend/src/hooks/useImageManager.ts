@@ -76,47 +76,45 @@ export function useImageManager(
     const setFrameColor = useCallback((color: string) => setPerImageColor('frameColor', setGlobalFrameColor, color), [setPerImageColor, setGlobalFrameColor]);
     const setTextColor = useCallback((color: string) => setPerImageColor('textColor', setGlobalTextColor, color), [setPerImageColor, setGlobalTextColor]);
 
-    const importedImagesRef = useRef(importedImages);
-    importedImagesRef.current = importedImages;
     const currentImageURL = importedImages[selectedIndex]?.imageURL;
     const currentImageError = importedImages[selectedIndex]?.loadError;
 
     useEffect(() => {
         let isActive = true;
-        const images = importedImagesRef.current;
-        const current = images[selectedIndex];
-        if (current && !current.imageObj && !current.loadError) {
-            const img = new Image();
-            img.onload = () => {
-                if (!isActive) return;
-                setImportedImages(prev => {
-                    const newImages = [...prev];
-                    const idx = newImages.findIndex(item => item.imageURL === current.imageURL);
-                    if (idx !== -1) {
-                        newImages[idx] = { ...newImages[idx], imageObj: img };
-                    }
-                    return newImages;
-                });
-            };
-            img.onerror = () => {
-                if (!isActive) return;
-                showToast("Failed to load image preview", true);
-                setImportedImages(prev => {
-                    const newImages = [...prev];
-                    const idx = newImages.findIndex(item => item.imageURL === current.imageURL);
-                    if (idx !== -1) {
-                        newImages[idx] = { ...newImages[idx], loadError: true };
-                    }
-                    return newImages;
-                });
-            };
-            img.src = current.imageURL;
+        if (!currentImageURL || isCurrentImageLoaded || currentImageError) {
+            return;
         }
+
+        const img = new Image();
+        img.onload = () => {
+            if (!isActive) return;
+            setImportedImages(prev => {
+                const newImages = [...prev];
+                const idx = newImages.findIndex(item => item.imageURL === currentImageURL);
+                if (idx !== -1) {
+                    newImages[idx] = { ...newImages[idx], imageObj: img };
+                }
+                return newImages;
+            });
+        };
+        img.onerror = () => {
+            if (!isActive) return;
+            showToast("Failed to load image preview", true);
+            setImportedImages(prev => {
+                const newImages = [...prev];
+                const idx = newImages.findIndex(item => item.imageURL === currentImageURL);
+                if (idx !== -1) {
+                    newImages[idx] = { ...newImages[idx], loadError: true };
+                }
+                return newImages;
+            });
+        };
+        img.src = currentImageURL;
 
         return () => {
             isActive = false;
         };
-    }, [selectedIndex, currentImageURL, isCurrentImageLoaded, currentImageError, showToast]);
+    }, [currentImageURL, isCurrentImageLoaded, currentImageError, showToast]);
 
     const { film, developer, dilution, temperature, time } = globalExif;
 

@@ -126,6 +126,8 @@ export function useBackgroundProcessor() {
                                 } else {
                                     console.log("Background save complete:", savePath);
                                 }
+                            } else {
+                                console.error(`Auto save failed for ${savePath}: No saveToken returned`);
                             }
                         } catch (e: any) {
                             if (e.name === 'AbortError') {
