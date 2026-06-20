@@ -699,13 +699,6 @@ func (a *App) GetSystemFonts() []string {
 			uniqueFonts = append(uniqueFonts, f.Family)
 		}
 	}
-
-	// Simple case-insensitive sort, but since we are just returning them,
-	// let's use strings.ToLower to sort but keep original casing in array.
-	// We'll use a simple sort with sort.Slice
-	// Wait, we need to import "sort" if we use sort.Slice. Let me just add import "sort" manually or not sort and do it in frontend?
-	// It's better to do in frontend if we don't import sort, but I can add "sort" import.
-	// Actually, let's just return uniqueFonts and let frontend sort it.
 	
 	cachedFonts = uniqueFonts
 	return cachedFonts

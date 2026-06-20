@@ -156,7 +156,7 @@ export function useSettingsSync({
         }
     }, [
         watchFolder, exportFolder, aspectRatioPreset, customRatioW, customRatioH,
-        alignment, showPipeSeparator, profile, globalJpegQuality, visibility, showToast
+        alignment, showPipeSeparator, profile, globalJpegQuality, visibility, fontFamily, showToast
     ]);
 
     return {
