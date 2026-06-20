@@ -85,7 +85,8 @@ export function useBackgroundProcessor() {
                             profile: currentSet.profile || "digital",
                             visibility: toVisibility(currentSet),
                             frameColor: currentSet.frameColor || "#ffffff",
-                            textColor: currentSet.textColor || "#000000"
+                            textColor: currentSet.textColor || "#000000",
+                            fontFamily: currentSet.fontFamily || "\"Gill Sans\", sans-serif"
                         });
                     } catch (e) {
                         console.error("Failed to render background canvas:", e);
