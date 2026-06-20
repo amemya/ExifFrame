@@ -34,6 +34,8 @@ export function useSettingsSync({
     const [globalJpegQuality, setGlobalJpegQuality] = useState<string>("auto");
 
     const isInitialLoad = useRef(true);
+    const setExifRef = useRef(setExif);
+    setExifRef.current = setExif;
 
     useEffect(() => {
         AppAPI.GetSettings().then((s: Settings) => {
@@ -57,7 +59,7 @@ export function useSettingsSync({
                 setProfile(['digital', 'film'].includes(s.profile) ? s.profile : 'digital');
             }
 
-            setExif((prev: ExifData) => ({
+            setExifRef.current((prev: ExifData) => ({
                 ...prev,
                 film: s.film || "",
                 developer: s.developer || "",
@@ -92,7 +94,7 @@ export function useSettingsSync({
         return () => {
             unsubSettings();
         };
-    }, [setExif]);
+    }, []);
 
     const handleSaveAutoExportDefault = async (currentExif: ExifData, currentFrameColor: string, currentTextColor: string, currentOrientation: "landscape" | "portrait") => {
         const s = new Settings();

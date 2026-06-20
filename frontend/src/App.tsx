@@ -136,7 +136,7 @@ function App() {
             aspectRatioPreset: settings.aspectRatioPreset,
             customRatioW: settings.customRatioW,
             customRatioH: settings.customRatioH,
-            orientation: settings.orientation,
+            orientation: imageManager.currentOrientation,
             alignment: settings.alignment,
             showPipeSeparator: settings.showPipeSeparator,
             profile: settings.profile,
