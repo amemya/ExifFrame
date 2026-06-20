@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { Events } from '@wailsio/runtime';
 // @ts-expect-error generated bindings
 import { App as AppAPI, Settings } from '../../bindings/ExifFrame/index';
@@ -38,7 +38,9 @@ export function useSettingsSync({
     // To prevent the settings fetch `useEffect` from re-running (and resetting user input) on every selection,
     // we use a ref to safely access the latest setExif function without adding it to the dependency array.
     const setExifRef = useRef(setExif);
-    setExifRef.current = setExif;
+    useLayoutEffect(() => {
+        setExifRef.current = setExif;
+    }, [setExif]);
 
     useEffect(() => {
         AppAPI.GetSettings().then((s: Settings) => {

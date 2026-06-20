@@ -13,8 +13,8 @@ export interface UpdateState {
     errorMessage: string;
 }
 
-    // Helper to normalize event data differences between Wails v2 (array) and v3 (object/string)
-    const getEventData = (e: any) => Array.isArray(e?.data) ? e.data[0] : e?.data;
+// Helper to normalize event data differences between Wails v2 (array) and v3 (object/string)
+const getEventData = (e: any) => Array.isArray(e?.data) ? e.data[0] : e?.data;
 
 export function useUpdater() {
     const [updateState, setUpdateState] = useState<UpdateState>({

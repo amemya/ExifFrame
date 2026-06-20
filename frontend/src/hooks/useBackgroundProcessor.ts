@@ -98,6 +98,8 @@ export function useBackgroundProcessor() {
 
                     const quality = getQualityFromBPP(result.originalBPP, currentSet.jpegQuality || "auto");
                     offscreenCanvas.toBlob(async (blob) => {
+                        offscreenCanvas.width = 0;
+                        offscreenCanvas.height = 0;
                         if (!isMounted) return;
                         if (!blob) return;
                         try {
