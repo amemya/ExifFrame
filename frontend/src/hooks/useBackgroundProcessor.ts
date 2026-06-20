@@ -103,7 +103,10 @@ export function useBackgroundProcessor() {
                         offscreenCanvas.width = 0;
                         offscreenCanvas.height = 0;
                         if (!isMounted) return;
-                        if (!blob) return;
+                        if (!blob) {
+                            console.error(`Auto save failed for ${savePath}: toBlob returned null`);
+                            return;
+                        }
                         try {
                             const resultSave = await AppAPI.SaveAutoImage(isPng, savePath);
                             if (!isMounted) return;
