@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	goruntime "runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -699,6 +700,10 @@ func (a *App) GetSystemFonts() []string {
 			uniqueFonts = append(uniqueFonts, f.Family)
 		}
 	}
+
+	sort.Slice(uniqueFonts, func(i, j int) bool {
+		return strings.ToLower(uniqueFonts[i]) < strings.ToLower(uniqueFonts[j])
+	})
 	
 	cachedFonts = uniqueFonts
 	return cachedFonts
