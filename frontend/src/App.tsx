@@ -33,6 +33,10 @@ function App() {
     useBackgroundProcessor();
     const { updateState, dismissUpdateError, triggerUpdate, restartApp } = useUpdater();
 
+    // Note: To resolve a circular dependency between useSettingsSync and useImageManager,
+    // we use a ref for setExif. Since useSettingsSync fetches asynchronously inside a useEffect,
+    // it will safely call the function after it's initialized. However, calling this synchronously
+    // during initial render would result in a null reference.
     const setExifRef = useRef<React.Dispatch<React.SetStateAction<ExifData>> | null>(null);
 
     const settings = useSettingsSync({
@@ -344,7 +348,7 @@ function App() {
                         <div className="filmstrip-area">
                             {imageManager.importedImages.map((img, idx) => (
                                 <button 
-                                    key={idx} 
+                                    key={img.imageURL} 
                                     type="button"
                                     className={`filmstrip-item ${imageManager.selectedIndex === idx ? 'selected' : ''}`}
                                     onClick={() => imageManager.setSelectedIndex(idx)}

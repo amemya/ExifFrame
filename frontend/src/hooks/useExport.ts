@@ -27,6 +27,43 @@ export interface UseExportProps {
     globalJpegQuality: string;
 }
 
+const uploadCanvasBlob = async (
+    canvas: HTMLCanvasElement,
+    targetMime: string,
+    quality: number | undefined,
+    saveToken: string
+) => {
+    const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+            (b) => b ? resolve(b) : reject(new Error("toBlob returned null")),
+            targetMime,
+            quality
+        );
+    });
+    const arrayBuffer = await blob.arrayBuffer();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    try {
+        const response = await fetch(`/api/save?token=${encodeURIComponent(saveToken)}`, {
+            method: 'POST',
+            body: arrayBuffer,
+            headers: { 'Content-Type': targetMime },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text);
+        }
+    } catch (e: any) {
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError') {
+            throw new Error("Timeout");
+        }
+        throw e;
+    }
+};
+
 export function useExport({
     canvasRef, imageObj, currentImage, importedImages,
     isSelectingRef, setIsSelecting, showToast,
@@ -54,29 +91,14 @@ export function useExport({
             }
 
             const quality = getQualityFromBPP(currentImage.originalBPP, globalJpegQuality);
-            const blob = await new Promise<Blob>((resolve, reject) => {
-                canvasRef.current!.toBlob(
-                    (b) => b ? resolve(b) : reject(new Error("toBlob returned null")),
-                    targetMime,
-                    quality
-                );
-            });
-
-            const arrayBuffer = await blob.arrayBuffer();
-
-            const response = await fetch(`/api/save?token=${result.saveToken}`, {
-                method: 'POST',
-                body: arrayBuffer,
-                headers: { 'Content-Type': targetMime }
-            });
-
-            if (!response.ok) {
-                const text = await response.text();
-                console.error("HTTP POST failed for", exportName, text);
-                showToast("Save failed: " + text, true);
-                return;
+            
+            try {
+                await uploadCanvasBlob(canvasRef.current, targetMime, quality, result.saveToken);
+                showToast("Export complete!");
+            } catch (err: any) {
+                console.error("HTTP POST failed for", exportName, err);
+                showToast("Save failed: " + (err instanceof Error ? err.message : String(err)), true);
             }
-            showToast("Export complete!");
         } catch (err) {
             console.error("Failed to execute SaveImage:", err);
             showToast("Failed to save image", true);
@@ -88,18 +110,25 @@ export function useExport({
         if (isSelectingRef.current) return;
         
         isSelectingRef.current = true;
+        let exportDir = "";
+        try {
+            exportDir = await AppAPI.SelectExportFolder();
+        } catch (e) {
+            isSelectingRef.current = false;
+            return;
+        }
+
+        if (!exportDir) {
+            isSelectingRef.current = false;
+            return; // Cancelled
+        }
+
+        setIsSelecting(true);
         let successCount = 0;
         let failCount = 0;
 
         try {
-            const exportDir = await AppAPI.SelectExportFolder();
-            if (!exportDir) {
-                isSelectingRef.current = false;
-                return; // Cancelled
-            }
-
             showToast("Exporting images...");
-            setIsSelecting(true);
 
             for (let i = 0; i < importedImages.length; i++) {
                 try {
@@ -145,31 +174,14 @@ export function useExport({
                         continue;
                     }
 
-                    const blob = await new Promise<Blob>((resolve, reject) => {
+                    try {
                         const quality = getQualityFromBPP(imgState.originalBPP, globalJpegQuality);
-                        offCanvas.toBlob(
-                            (b) => b ? resolve(b) : reject(new Error("toBlob returned null")),
-                            targetMime,
-                            quality
-                        );
-                    });
-
-                    const arrayBuffer = await blob.arrayBuffer();
-
-                    const response = await fetch(`/api/save?token=${result.saveToken}`, {
-                        method: 'POST',
-                        body: arrayBuffer,
-                        headers: { 'Content-Type': targetMime }
-                    });
-
-                    if (!response.ok) {
-                        const text = await response.text();
-                        console.error("Save failed:", text);
+                        await uploadCanvasBlob(offCanvas, targetMime, quality, result.saveToken);
+                        successCount++;
+                    } catch (err: any) {
+                        console.error("Save failed:", err);
                         failCount++;
-                        continue;
                     }
-                    
-                    successCount++;
                 } catch (e) {
                     console.error("Unexpected error processing image", i, e);
                     failCount++;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Events } from '@wailsio/runtime';
 // @ts-expect-error generated bindings
 import { App as AppAPI, Settings } from '../../bindings/ExifFrame/index';
@@ -34,6 +34,9 @@ export function useSettingsSync({
     const [globalJpegQuality, setGlobalJpegQuality] = useState<string>("auto");
 
     const isInitialLoad = useRef(true);
+    // setExif depends on `selectedIndex` in useImageManager, meaning it is recreated on every selection change.
+    // To prevent the settings fetch `useEffect` from re-running (and resetting user input) on every selection,
+    // we use a ref to safely access the latest setExif function without adding it to the dependency array.
     const setExifRef = useRef(setExif);
     setExifRef.current = setExif;
 
@@ -96,7 +99,7 @@ export function useSettingsSync({
         };
     }, []);
 
-    const handleSaveAutoExportDefault = async (currentExif: ExifData, currentFrameColor: string, currentTextColor: string, currentOrientation: "landscape" | "portrait") => {
+    const handleSaveAutoExportDefault = useCallback(async (currentExif: ExifData, currentFrameColor: string, currentTextColor: string, currentOrientation: "landscape" | "portrait") => {
         const s = new Settings();
         s.watchFolder = watchFolder;
         s.exportFolder = exportFolder;
@@ -144,7 +147,10 @@ export function useSettingsSync({
             console.error("Failed to save auto-export default settings:", e);
             showToast("Error saving settings", true);
         }
-    };
+    }, [
+        watchFolder, exportFolder, aspectRatioPreset, customRatioW, customRatioH,
+        alignment, showPipeSeparator, profile, globalJpegQuality, visibility, showToast
+    ]);
 
     return {
         watchFolder, setWatchFolder,

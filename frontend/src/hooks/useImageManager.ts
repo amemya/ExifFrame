@@ -118,6 +118,8 @@ export function useImageManager(
         };
     }, [selectedIndex, currentImageURL, isCurrentImageLoaded, currentImageError, showToast]);
 
+    const { film, developer, dilution, temperature, time } = globalExif;
+
     const handleExifResults = useCallback((results: ExifResult[]) => {
         const validResults = results.filter(r => !r.cancelled && !r.error && r.imageURL);
         if (validResults.length === 0) {
@@ -143,18 +145,18 @@ export function useImageManager(
                     aperture: r.aperture || "",
                     shutterSpeed: r.shutterSpeed || "",
                     iso: r.iso || "",
-                    film: globalExif.film,
-                    developer: globalExif.developer,
-                    dilution: globalExif.dilution,
-                    temperature: globalExif.temperature,
-                    time: globalExif.time,
+                    film,
+                    developer,
+                    dilution,
+                    temperature,
+                    time,
                 }
             }));
             return newImages;
         });
         setSelectedIndex(0);
         setIsCanvasReady(false);
-    }, [showToast, globalExif]);
+    }, [showToast, film, developer, dilution, temperature, time]);
 
     const handleApplyToAll = useCallback(() => {
         if (importedImages.length === 0) return;

@@ -31,6 +31,7 @@ interface WailsProcessFileEvent {
 export function useBackgroundProcessor() {
     useEffect(() => {
         let isMounted = true;
+        const pendingImages = new Set<HTMLImageElement>();
         const unsubProcess = Events.On("process_file", (event: WailsProcessFileEvent) => {
             if (!event?.data) return;
             // Handle both Wails v2 (array) and Wails v3 (single object) format:
@@ -48,7 +49,9 @@ export function useBackgroundProcessor() {
             AppAPI.GetSettings().then(async (currentSet: Settings) => {
                 if (!isMounted) return;
                 const img = new Image();
+                pendingImages.add(img);
                 img.onload = async () => {
+                    pendingImages.delete(img);
                     if (!isMounted) return;
                     const offscreenCanvas = document.createElement('canvas');
 
@@ -125,12 +128,17 @@ export function useBackgroundProcessor() {
                                 }
                             }
                         } catch (e: any) {
-                            const errMsg = e instanceof Error ? e.message : String(e);
-                            console.error(`Unexpected error during auto save for ${savePath}:`, errMsg);
+                            if (e.name === 'AbortError') {
+                                console.error(`Timeout during auto save for ${savePath}`);
+                            } else {
+                                const errMsg = e instanceof Error ? e.message : String(e);
+                                console.error(`Unexpected error during auto save for ${savePath}:`, errMsg);
+                            }
                         }
                     }, targetMime, quality);
                 };
                 img.onerror = () => {
+                    pendingImages.delete(img);
                     console.error("Background image load failed:", imageUrl);
                 };
                 img.src = imageUrl;
@@ -140,6 +148,12 @@ export function useBackgroundProcessor() {
         return () => {
             isMounted = false;
             unsubProcess();
+            pendingImages.forEach(img => {
+                img.onload = null;
+                img.onerror = null;
+                img.src = "";
+            });
+            pendingImages.clear();
         };
     }, []);
 }
