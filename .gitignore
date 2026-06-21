@@ -1,7 +1,7 @@
 build/bin
 node_modules
 frontend/dist
-
+frontend/coverage
 # macOS
 .DS_Store
 
