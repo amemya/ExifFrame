@@ -30,6 +30,14 @@ jobs:
         cache: 'npm'
         cache-dependency-path: './frontend/package-lock.json'
 
+    - name: Install Wails v3 CLI
+      run: |
+        go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+    - name: Generate Bindings
+      run: wails3 generate bindings
+
     - name: Frontend Build & Test
       working-directory: ./frontend
       run: |
