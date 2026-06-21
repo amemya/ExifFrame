@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 // @ts-expect-error generated bindings
 import { App as AppAPI } from '../../bindings/ExifFrame/index';
-import { DEFAULT_FONT_FAMILY } from '../types';
+import { DEFAULT_FONT_FAMILY, CSS_GENERIC_FONTS } from '../types';
 
 export interface FrameSettingsPanelProps {
     aspectRatioPreset: string;
@@ -202,7 +202,7 @@ export const FrameSettingsPanel = ({
                 value={fontFamily}
                 onChange={(e) => setFontFamily(e.target.value)}
             >
-                {fontFamily && fontFamily !== DEFAULT_FONT_FAMILY && !['sans-serif', 'serif', 'monospace'].includes(fontFamily) && !systemFonts.includes(fontFamily) && (
+                {fontFamily && fontFamily !== DEFAULT_FONT_FAMILY && !CSS_GENERIC_FONTS.includes(fontFamily) && !systemFonts.includes(fontFamily) && (
                     <option value={fontFamily}>{fontFamily} {!isLoadingFonts ? "(Missing)" : ""}</option>
                 )}
                 <option value={DEFAULT_FONT_FAMILY}>Default ({DEFAULT_FONT_FAMILY})</option>

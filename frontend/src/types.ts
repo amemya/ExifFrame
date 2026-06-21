@@ -86,3 +86,9 @@ export interface ExifResult {
 }
 
 export const DEFAULT_FONT_FAMILY = "Arial";
+
+export const CSS_GENERIC_FONTS = [
+    'serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 
+    'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 
+    'ui-rounded', 'math', 'emoji', 'fangsong'
+];

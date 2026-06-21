@@ -1,4 +1,4 @@
-import { ExifData, MetadataVisibility } from './types';
+import { ExifData, MetadataVisibility, CSS_GENERIC_FONTS } from './types';
 
 export interface RenderSettings {
     aspectRatioPreset: string;
@@ -116,11 +116,7 @@ export function renderImageToCanvas(
             return `normal ${size}px sans-serif`;
         }
         
-        const genericFamilies = new Set([
-            'serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 
-            'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 
-            'ui-rounded', 'math', 'emoji', 'fangsong'
-        ]);
+        const genericFamilies = new Set(CSS_GENERIC_FONTS);
 
         const trimmedFamily = family.trim();
         const isGeneric = genericFamilies.has(trimmedFamily.toLowerCase());
