@@ -723,9 +723,12 @@ func (a *App) GetSystemFonts() []string {
 			family = getFontFamilyName(f.Filename)
 		}
 		
-		if family != "" && !fontMap[family] {
-			fontMap[family] = true
-			uniqueFonts = append(uniqueFonts, family)
+		if family != "" {
+			lowerFamily := strings.ToLower(family)
+			if !fontMap[lowerFamily] {
+				fontMap[lowerFamily] = true
+				uniqueFonts = append(uniqueFonts, family)
+			}
 		}
 	}
 

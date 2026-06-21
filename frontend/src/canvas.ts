@@ -115,8 +115,17 @@ export function renderImageToCanvas(
         if (!family || family.trim() === "") {
             return `normal ${size}px sans-serif`;
         }
-        const isGenericOrComplex = family.includes(',') || family.includes('"') || family.includes("'") || ['sans-serif', 'serif', 'monospace'].includes(family);
-        const safeFamily = isGenericOrComplex ? family : `"${family}"`;
+        
+        const genericFamilies = new Set([
+            'serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 
+            'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 
+            'ui-rounded', 'math', 'emoji', 'fangsong'
+        ]);
+
+        const isGeneric = genericFamilies.has(family.toLowerCase());
+        const hasQuotes = family.includes('"') || family.includes("'");
+        
+        const safeFamily = (isGeneric || hasQuotes) ? family : `"${family}"`;
         return `normal ${size}px ${safeFamily}, sans-serif`;
     };
 
