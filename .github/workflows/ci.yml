@@ -8,11 +8,9 @@ on:
 
 jobs:
   build-and-test:
-    # strategy.matrix を使うことで、複数のOSやバージョンで同じテストを並列実行できます
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-      # 1つのOSのテストが失敗しても、他のOSのテストは続行する設定
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
@@ -27,7 +25,6 @@ jobs:
         cache: true
 
     - name: Install Wails Dependencies (Linux)
-      # このステップはLinuxの時だけ実行する
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
@@ -41,7 +38,6 @@ jobs:
         cache-dependency-path: './frontend/package-lock.json'
 
     - name: Install Wails v3 CLI
-      # actions/setup-go は自動的にインストール先のbinをPATHに通すため、パス追加コマンドは不要です
       run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
 
     - name: Generate Bindings
