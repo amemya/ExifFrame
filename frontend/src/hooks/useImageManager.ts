@@ -1,17 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ImportedImage, ExifData, ExifResult } from '../types';
+
+export interface DefaultFrameSettings {
+    frameColor: string;
+    textColor: string;
+    aspectRatioPreset: string;
+    customRatioW: number;
+    customRatioH: number;
+    alignment: "top" | "center";
+    showPipeSeparator: boolean;
+    fontFamily: string;
+}
+
 /**
  * Manages images and EXIF data.
  * @param showToast Must be a stable function (e.g. wrapped in useCallback).
- * @param setGlobalFrameColor Must be a stable function.
- * @param setGlobalTextColor Must be a stable function.
+ * @param defaultSettings Global default settings applied to newly imported images.
  */
 export function useImageManager(
     showToast: (msg: string, isError?: boolean) => void,
-    globalFrameColor: string,
-    globalTextColor: string,
-    setGlobalFrameColor: (v: string) => void,
-    setGlobalTextColor: (v: string) => void
+    defaultSettings: DefaultFrameSettings
 ) {
     const [importedImages, setImportedImages] = useState<ImportedImage[]>([]);
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -29,20 +37,36 @@ export function useImageManager(
     const sourceMimeType = currentImage?.sourceMimeType || "";
     const exif = currentImage?.exif || globalExif;
 
-    const frameColor = currentImage?.frameColor ?? globalFrameColor;
-    const textColor = currentImage?.textColor ?? globalTextColor;
+    const frameColor = currentImage?.frameColor ?? defaultSettings.frameColor;
+    const textColor = currentImage?.textColor ?? defaultSettings.textColor;
     const currentOrientation = currentImage?.orientation ?? (imageObj && imageObj.height > imageObj.width ? "portrait" : "landscape");
+    const currentAspectRatioPreset = currentImage?.aspectRatioPreset ?? defaultSettings.aspectRatioPreset;
+    const currentCustomRatioW = currentImage?.customRatioW ?? defaultSettings.customRatioW;
+    const currentCustomRatioH = currentImage?.customRatioH ?? defaultSettings.customRatioH;
+    const currentAlignment = currentImage?.alignment ?? defaultSettings.alignment;
+    const currentShowPipeSeparator = currentImage?.showPipeSeparator ?? defaultSettings.showPipeSeparator;
+    const currentFontFamily = currentImage?.fontFamily ?? defaultSettings.fontFamily;
 
-    const setPerImageOrientation = useCallback((orientation: "landscape" | "portrait") => {
+    const setPerImageSetting = useCallback(<K extends keyof ImportedImage>(key: K, value: ImportedImage[K]) => {
         setImportedImages(prev => {
             if (prev.length === 0) return prev;
             const newImages = [...prev];
             const current = newImages[selectedIndex];
             if (!current) return prev;
-            newImages[selectedIndex] = { ...current, orientation };
+            newImages[selectedIndex] = { ...current, [key]: value };
             return newImages;
         });
     }, [selectedIndex]);
+
+    const setPerImageOrientation = useCallback((orientation: "landscape" | "portrait") => setPerImageSetting('orientation', orientation), [setPerImageSetting]);
+    const setFrameColor = useCallback((color: string) => setPerImageSetting('frameColor', color), [setPerImageSetting]);
+    const setTextColor = useCallback((color: string) => setPerImageSetting('textColor', color), [setPerImageSetting]);
+    const setPerImageAspectRatioPreset = useCallback((preset: string) => setPerImageSetting('aspectRatioPreset', preset), [setPerImageSetting]);
+    const setPerImageCustomRatioW = useCallback((w: number) => setPerImageSetting('customRatioW', w), [setPerImageSetting]);
+    const setPerImageCustomRatioH = useCallback((h: number) => setPerImageSetting('customRatioH', h), [setPerImageSetting]);
+    const setPerImageAlignment = useCallback((alignment: "top" | "center") => setPerImageSetting('alignment', alignment), [setPerImageSetting]);
+    const setPerImageShowPipeSeparator = useCallback((show: boolean) => setPerImageSetting('showPipeSeparator', show), [setPerImageSetting]);
+    const setPerImageFontFamily = useCallback((fontFamily: string) => setPerImageSetting('fontFamily', fontFamily), [setPerImageSetting]);
 
     const setExif: React.Dispatch<React.SetStateAction<ExifData>> = useCallback((action) => {
         setImportedImages(prev => {
@@ -58,23 +82,6 @@ export function useImageManager(
             return newImages;
         });
     }, [selectedIndex]);
-
-    const setPerImageColor = useCallback((key: 'frameColor' | 'textColor', globalSetter: (v: string) => void, color: string) => {
-        setImportedImages(prev => {
-            if (prev.length === 0) {
-                globalSetter(color);
-                return prev;
-            }
-            const newImages = [...prev];
-            const current = newImages[selectedIndex];
-            if (!current) return prev;
-            newImages[selectedIndex] = { ...current, [key]: color };
-            return newImages;
-        });
-    }, [selectedIndex]);
-
-    const setFrameColor = useCallback((color: string) => setPerImageColor('frameColor', setGlobalFrameColor, color), [setPerImageColor, setGlobalFrameColor]);
-    const setTextColor = useCallback((color: string) => setPerImageColor('textColor', setGlobalTextColor, color), [setPerImageColor, setGlobalTextColor]);
 
     const currentImageURL = importedImages[selectedIndex]?.imageURL;
     const currentImageError = importedImages[selectedIndex]?.loadError;
@@ -135,6 +142,14 @@ export function useImageManager(
             sourceMimeType: r.mimeType?.toLowerCase().includes('png') ? 'image/png' : 'image/jpeg',
             originalBPP: r.originalBPP,
             imageObj: null,
+            frameColor: defaultSettings.frameColor,
+            textColor: defaultSettings.textColor,
+            aspectRatioPreset: defaultSettings.aspectRatioPreset,
+            customRatioW: defaultSettings.customRatioW,
+            customRatioH: defaultSettings.customRatioH,
+            alignment: defaultSettings.alignment,
+            showPipeSeparator: defaultSettings.showPipeSeparator,
+            fontFamily: defaultSettings.fontFamily,
             exif: {
                 camera: r.camera || "",
                 lens: r.lens || "",
@@ -151,7 +166,7 @@ export function useImageManager(
         })));
         setSelectedIndex(0);
         setIsCanvasReady(false);
-    }, [showToast, film, developer, dilution, temperature, time]);
+    }, [showToast, film, developer, dilution, temperature, time, defaultSettings]);
 
     const handleApplyToAll = useCallback(() => {
         if (importedImages.length === 0) return;
@@ -162,15 +177,35 @@ export function useImageManager(
         showToast("Applied metadata to all images");
     }, [exif, importedImages.length, showToast]);
 
-    const handleApplyColorsToAll = useCallback(() => {
+    const handleApplySettingsToAll = useCallback((scope: 'all' | 'colors' | 'ratios' | 'text') => {
         if (importedImages.length === 0) return;
-        setImportedImages(prev => prev.map(img => ({
-            ...img,
-            frameColor,
-            textColor
-        })));
-        showToast("Applied colors to all images");
-    }, [frameColor, textColor, importedImages.length, showToast]);
+        setImportedImages(prev => prev.map(img => {
+            const newImg = { ...img };
+            if (scope === 'all' || scope === 'colors') {
+                newImg.frameColor = frameColor;
+                newImg.textColor = textColor;
+            }
+            if (scope === 'all' || scope === 'ratios') {
+                newImg.aspectRatioPreset = currentAspectRatioPreset;
+                newImg.customRatioW = currentCustomRatioW;
+                newImg.customRatioH = currentCustomRatioH;
+                newImg.orientation = currentOrientation;
+            }
+            if (scope === 'all' || scope === 'text') {
+                newImg.alignment = currentAlignment;
+                newImg.showPipeSeparator = currentShowPipeSeparator;
+                newImg.fontFamily = currentFontFamily;
+            }
+            return newImg;
+        }));
+        
+        let scopeName = "All frame settings";
+        if (scope === 'colors') scopeName = "Colors";
+        else if (scope === 'ratios') scopeName = "Ratios & Orientation";
+        else if (scope === 'text') scopeName = "Text formatting";
+        
+        showToast(`Applied ${scopeName.toLowerCase()} to all images`);
+    }, [frameColor, textColor, currentAspectRatioPreset, currentCustomRatioW, currentCustomRatioH, currentOrientation, currentAlignment, currentShowPipeSeparator, currentFontFamily, importedImages.length, showToast]);
 
     return {
         importedImages, setImportedImages,
@@ -178,7 +213,13 @@ export function useImageManager(
         currentImage, hasImages, isCurrentImageLoaded, imageObj, filePath, sourceMimeType, exif, setExif,
         frameColor, textColor, setFrameColor, setTextColor,
         currentOrientation, setPerImageOrientation,
-        handleExifResults, handleApplyToAll, handleApplyColorsToAll,
+        currentAspectRatioPreset, setPerImageAspectRatioPreset,
+        currentCustomRatioW, setPerImageCustomRatioW,
+        currentCustomRatioH, setPerImageCustomRatioH,
+        currentAlignment, setPerImageAlignment,
+        currentShowPipeSeparator, setPerImageShowPipeSeparator,
+        currentFontFamily, setPerImageFontFamily,
+        handleExifResults, handleApplyToAll, handleApplySettingsToAll,
         isCanvasReady, setIsCanvasReady
     };
 }

@@ -1,7 +1,7 @@
 import { RefObject, MutableRefObject } from 'react';
 // @ts-expect-error generated bindings
 import { App as AppAPI } from '../../bindings/ExifFrame/index';
-import { ImportedImage, MetadataVisibility } from '../types';
+import { ImportedImage, MetadataVisibility, DEFAULT_FONT_FAMILY } from '../types';
 import { getExportInfo, getQualityFromBPP } from '../utils';
 import { renderImageToCanvas } from '../canvas';
 
@@ -14,17 +14,8 @@ export interface UseExportProps {
     setIsSelecting: (v: boolean) => void;
     showToast: (msg: string, isError?: boolean) => void;
     
-    aspectRatioPreset: string;
-    customRatioW: number;
-    customRatioH: number;
-    orientation: "landscape" | "portrait";
-    alignment: "top" | "center";
-    showPipeSeparator: boolean;
     profile: string;
     visibility: MetadataVisibility;
-    fontFamily: string;
-    globalFrameColor: string;
-    globalTextColor: string;
     globalJpegQuality: string;
 }
 
@@ -68,12 +59,7 @@ const uploadCanvasBlob = async (
 export function useExport({
     canvasRef, imageObj, currentImage, importedImages,
     isSelectingRef, setIsSelecting, showToast,
-    aspectRatioPreset, customRatioW, customRatioH, orientation,
-    alignment, showPipeSeparator, profile, visibility,
-    fontFamily,
-    globalFrameColor,
-    globalTextColor,
-    globalJpegQuality
+    profile, visibility, globalJpegQuality
 }: UseExportProps) {
     
     const downloadImage = async () => {
@@ -158,17 +144,17 @@ export function useExport({
 
                     offCanvas = document.createElement("canvas");
                     renderImageToCanvas(offCanvas, imgToDraw, imgState.exif, {
-                        aspectRatioPreset,
-                        customRatioW,
-                        customRatioH,
+                        aspectRatioPreset: imgState.aspectRatioPreset || '1:1',
+                        customRatioW: imgState.customRatioW || 0,
+                        customRatioH: imgState.customRatioH || 0,
                         orientation: imgState.orientation || (imgToDraw.height > imgToDraw.width ? "portrait" : "landscape"),
-                        alignment,
-                        showPipeSeparator,
+                        alignment: imgState.alignment || 'center',
+                        showPipeSeparator: imgState.showPipeSeparator || false,
                         profile,
                         visibility,
-                        fontFamily,
-                        frameColor: imgState.frameColor ?? globalFrameColor,
-                        textColor: imgState.textColor ?? globalTextColor
+                        fontFamily: imgState.fontFamily || DEFAULT_FONT_FAMILY,
+                        frameColor: imgState.frameColor || '#ffffff',
+                        textColor: imgState.textColor || '#000000'
                     });
 
                     const { isPng, targetMime, baseName } = getExportInfo(imgState.filePath || `exif-frame-${i}`, imgState.sourceMimeType);

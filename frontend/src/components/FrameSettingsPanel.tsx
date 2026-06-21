@@ -22,7 +22,7 @@ export interface FrameSettingsPanelProps {
     setTextColor: (val: string) => void;
     fontFamily: string;
     setFontFamily: (val: string) => void;
-    onApplyToAllColors?: () => void;
+    onApplyToAll?: (scope: 'all' | 'colors' | 'ratios' | 'text') => void;
 }
 
 export const FrameSettingsPanel = ({
@@ -35,10 +35,37 @@ export const FrameSettingsPanel = ({
     frameColor, setFrameColor,
     textColor, setTextColor,
     fontFamily, setFontFamily,
-    onApplyToAllColors
+    onApplyToAll
 }: FrameSettingsPanelProps) => {
     const [systemFonts, setSystemFonts] = useState<string[]>([]);
     const [isLoadingFonts, setIsLoadingFonts] = useState<boolean>(true);
+    const [applyMenuVisible, setApplyMenuVisible] = useState(false);
+    const [confirmScope, setConfirmScope] = useState<'all' | 'colors' | 'ratios' | 'text' | null>(null);
+
+    const handleApplyWithConfirm = (scope: 'all' | 'colors' | 'ratios' | 'text') => {
+        setConfirmScope(scope);
+        setApplyMenuVisible(false);
+    };
+
+    const confirmApply = () => {
+        if (confirmScope && onApplyToAll) {
+            onApplyToAll(confirmScope);
+        }
+        setConfirmScope(null);
+    };
+
+    useEffect(() => {
+        if (!confirmScope) return;
+        
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setConfirmScope(null);
+            }
+        };
+        
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [confirmScope]);
 
     useEffect(() => {
         let isMounted = true;
@@ -223,16 +250,63 @@ export const FrameSettingsPanel = ({
             </select>
         </div>
 
-        {onApplyToAllColors && (
-            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
-                <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ width: '100%', fontSize: '0.85rem' }}
-                    onClick={onApplyToAllColors}
+        {onApplyToAll && (
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                <div 
+                    className="btn-group" 
+                    style={{ width: '100%', display: 'flex' }}
+                    tabIndex={-1}
+                    onBlur={(e) => {
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                            setApplyMenuVisible(false);
+                        }
+                    }}
                 >
-                    Apply Colors to All
-                </button>
+                    <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ flex: 1, fontSize: '0.85rem' }}
+                        onClick={() => handleApplyWithConfirm('all')}
+                    >
+                        Apply All Frame Settings
+                    </button>
+                    <div className="dropdown" style={{ display: 'flex' }}>
+                        <button
+                            type="button"
+                            className="btn btn-secondary dropdown-toggle"
+                            aria-label="More apply options"
+                            onClick={() => setApplyMenuVisible(v => !v)}
+                            style={{ padding: '0 0.5rem' }}
+                        >
+                            ▼
+                        </button>
+                        {applyMenuVisible && (
+                            <div className="dropdown-menu" style={{ right: 0, left: 'auto', bottom: '100%', top: 'auto', marginBottom: '0.25rem' }}>
+                                <button className="dropdown-item" onClick={() => { setApplyMenuVisible(false); handleApplyWithConfirm('colors'); }}>Apply Colors to All</button>
+                                <button className="dropdown-item" onClick={() => { setApplyMenuVisible(false); handleApplyWithConfirm('ratios'); }}>Apply Ratios & Orientation to All</button>
+                                <button className="dropdown-item" onClick={() => { setApplyMenuVisible(false); handleApplyWithConfirm('text'); }}>Apply Text Settings to All</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {confirmScope && (
+            <div className="modal-overlay" onClick={() => setConfirmScope(null)} style={{ zIndex: 3000 }}>
+                <div className="modal-content" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+                    <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem', marginTop: 0 }}>Confirm Apply Frame Settings</h2>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                        {confirmScope === 'colors' ? "Apply frame and text colors to all images?" :
+                         confirmScope === 'ratios' ? "Apply aspect ratio and orientation to all images?\n\nNote: This will force all images to match the current landscape/portrait orientation." :
+                         confirmScope === 'text' ? "Apply text layout and fonts to all images?" :
+                         "Apply all frame settings to all images?\n\nNote: Individual settings will be overwritten."}
+                    </p>
+                    <div className="modal-actions" style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+                        <button className="btn btn-secondary" onClick={() => setConfirmScope(null)}>Cancel</button>
+                        <button className="btn btn-primary" onClick={confirmApply}>Apply</button>
+                    </div>
+                </div>
             </div>
         )}
     </div>

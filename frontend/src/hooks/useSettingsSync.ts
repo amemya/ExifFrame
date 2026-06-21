@@ -4,6 +4,19 @@ import { Events } from '@wailsio/runtime';
 import { App as AppAPI, Settings } from '../../bindings/ExifFrame/index';
 import { MetadataVisibility, toVisibility, applyVisibility, ExifData, DEFAULT_FONT_FAMILY } from '../types';
 
+export interface AutoExportSettingsPayload {
+    exif: ExifData;
+    frameColor: string;
+    textColor: string;
+    orientation: "landscape" | "portrait";
+    aspectRatioPreset: string;
+    customRatioW: number;
+    customRatioH: number;
+    alignment: "top" | "center";
+    showPipeSeparator: boolean;
+    fontFamily: string;
+}
+
 export interface UseSettingsSyncProps {
     setExif: React.Dispatch<React.SetStateAction<ExifData>>;
     showToast: (msg: string, isError?: boolean) => void;
@@ -103,20 +116,20 @@ export function useSettingsSync({
         };
     }, []);
 
-    const handleSaveAutoExportDefault = useCallback(async (currentExif: ExifData, currentFrameColor: string, currentTextColor: string, currentOrientation: "landscape" | "portrait") => {
+    const handleSaveAutoExportDefault = useCallback(async (currentSettingsObj: AutoExportSettingsPayload) => {
         const s = new Settings();
         s.watchFolder = watchFolder;
         s.exportFolder = exportFolder;
-        s.aspectRatioPreset = aspectRatioPreset;
-        s.customRatioW = customRatioW;
-        s.customRatioH = customRatioH;
-        s.orientation = currentOrientation;
-        s.alignment = alignment;
-        s.showPipeSeparator = showPipeSeparator;
+        s.aspectRatioPreset = currentSettingsObj.aspectRatioPreset;
+        s.customRatioW = currentSettingsObj.customRatioW;
+        s.customRatioH = currentSettingsObj.customRatioH;
+        s.orientation = currentSettingsObj.orientation;
+        s.alignment = currentSettingsObj.alignment;
+        s.showPipeSeparator = currentSettingsObj.showPipeSeparator;
         s.profile = profile;
-        s.frameColor = currentFrameColor;
-        s.textColor = currentTextColor;
-        s.fontFamily = fontFamily;
+        s.frameColor = currentSettingsObj.frameColor;
+        s.textColor = currentSettingsObj.textColor;
+        s.fontFamily = currentSettingsObj.fontFamily;
 
         try {
             const currentSettings = await AppAPI.GetSettings();
@@ -128,7 +141,7 @@ export function useSettingsSync({
         }
         s.jpegQuality = globalJpegQuality;
 
-        const exif = currentExif;
+        const exif = currentSettingsObj.exif;
         s.camera = exif.camera;
         s.lens = exif.lens;
         s.focalLength = exif.focalLength;
@@ -155,8 +168,7 @@ export function useSettingsSync({
             showToast("Error saving settings", true);
         }
     }, [
-        watchFolder, exportFolder, aspectRatioPreset, customRatioW, customRatioH,
-        alignment, showPipeSeparator, profile, globalJpegQuality, visibility, fontFamily, showToast
+        watchFolder, exportFolder, profile, globalJpegQuality, visibility, showToast
     ]);
 
     return {
