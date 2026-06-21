@@ -14,17 +14,8 @@ export interface UseExportProps {
     setIsSelecting: (v: boolean) => void;
     showToast: (msg: string, isError?: boolean) => void;
     
-    aspectRatioPreset: string;
-    customRatioW: number;
-    customRatioH: number;
-    orientation: "landscape" | "portrait";
-    alignment: "top" | "center";
-    showPipeSeparator: boolean;
     profile: string;
     visibility: MetadataVisibility;
-    fontFamily: string;
-    globalFrameColor: string;
-    globalTextColor: string;
     globalJpegQuality: string;
 }
 
@@ -68,12 +59,7 @@ const uploadCanvasBlob = async (
 export function useExport({
     canvasRef, imageObj, currentImage, importedImages,
     isSelectingRef, setIsSelecting, showToast,
-    aspectRatioPreset, customRatioW, customRatioH, orientation,
-    alignment, showPipeSeparator, profile, visibility,
-    fontFamily,
-    globalFrameColor,
-    globalTextColor,
-    globalJpegQuality
+    profile, visibility, globalJpegQuality
 }: UseExportProps) {
     
     const downloadImage = async () => {
@@ -158,17 +144,17 @@ export function useExport({
 
                     offCanvas = document.createElement("canvas");
                     renderImageToCanvas(offCanvas, imgToDraw, imgState.exif, {
-                        aspectRatioPreset,
-                        customRatioW,
-                        customRatioH,
+                        aspectRatioPreset: imgState.aspectRatioPreset!,
+                        customRatioW: imgState.customRatioW!,
+                        customRatioH: imgState.customRatioH!,
                         orientation: imgState.orientation || (imgToDraw.height > imgToDraw.width ? "portrait" : "landscape"),
-                        alignment,
-                        showPipeSeparator,
+                        alignment: imgState.alignment!,
+                        showPipeSeparator: imgState.showPipeSeparator!,
                         profile,
                         visibility,
-                        fontFamily,
-                        frameColor: imgState.frameColor ?? globalFrameColor,
-                        textColor: imgState.textColor ?? globalTextColor
+                        fontFamily: imgState.fontFamily!,
+                        frameColor: imgState.frameColor!,
+                        textColor: imgState.textColor!
                     });
 
                     const { isPng, targetMime, baseName } = getExportInfo(imgState.filePath || `exif-frame-${i}`, imgState.sourceMimeType);

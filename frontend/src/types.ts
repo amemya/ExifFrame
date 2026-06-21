@@ -61,6 +61,12 @@ export interface ImportedImage {
     frameColor?: string;
     textColor?: string;
     orientation?: "landscape" | "portrait";
+    aspectRatioPreset?: string;
+    customRatioW?: number;
+    customRatioH?: number;
+    alignment?: "top" | "center";
+    showPipeSeparator?: boolean;
+    fontFamily?: string;
     originalBPP?: number;
     
     /** The decoded image object loaded into memory. Lazily initialized on demand. */

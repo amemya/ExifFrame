@@ -103,20 +103,20 @@ export function useSettingsSync({
         };
     }, []);
 
-    const handleSaveAutoExportDefault = useCallback(async (currentExif: ExifData, currentFrameColor: string, currentTextColor: string, currentOrientation: "landscape" | "portrait") => {
+    const handleSaveAutoExportDefault = useCallback(async (currentSettingsObj: any) => {
         const s = new Settings();
         s.watchFolder = watchFolder;
         s.exportFolder = exportFolder;
-        s.aspectRatioPreset = aspectRatioPreset;
-        s.customRatioW = customRatioW;
-        s.customRatioH = customRatioH;
-        s.orientation = currentOrientation;
-        s.alignment = alignment;
-        s.showPipeSeparator = showPipeSeparator;
+        s.aspectRatioPreset = currentSettingsObj.aspectRatioPreset;
+        s.customRatioW = currentSettingsObj.customRatioW;
+        s.customRatioH = currentSettingsObj.customRatioH;
+        s.orientation = currentSettingsObj.orientation;
+        s.alignment = currentSettingsObj.alignment;
+        s.showPipeSeparator = currentSettingsObj.showPipeSeparator;
         s.profile = profile;
-        s.frameColor = currentFrameColor;
-        s.textColor = currentTextColor;
-        s.fontFamily = fontFamily;
+        s.frameColor = currentSettingsObj.frameColor;
+        s.textColor = currentSettingsObj.textColor;
+        s.fontFamily = currentSettingsObj.fontFamily;
 
         try {
             const currentSettings = await AppAPI.GetSettings();
@@ -128,7 +128,7 @@ export function useSettingsSync({
         }
         s.jpegQuality = globalJpegQuality;
 
-        const exif = currentExif;
+        const exif = currentSettingsObj.exif;
         s.camera = exif.camera;
         s.lens = exif.lens;
         s.focalLength = exif.focalLength;

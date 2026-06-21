@@ -46,10 +46,16 @@ function App() {
 
     const imageManager = useImageManager(
         showToast,
-        settings.globalFrameColor,
-        settings.globalTextColor,
-        settings.setGlobalFrameColor,
-        settings.setGlobalTextColor,
+        {
+            frameColor: settings.globalFrameColor,
+            textColor: settings.globalTextColor,
+            aspectRatioPreset: settings.aspectRatioPreset,
+            customRatioW: settings.customRatioW,
+            customRatioH: settings.customRatioH,
+            alignment: settings.alignment,
+            showPipeSeparator: settings.showPipeSeparator,
+            fontFamily: settings.fontFamily || DEFAULT_FONT_FAMILY
+        }
     );
 
     useLayoutEffect(() => {
@@ -64,17 +70,8 @@ function App() {
         isSelectingRef,
         setIsSelecting,
         showToast,
-        aspectRatioPreset: settings.aspectRatioPreset,
-        customRatioW: settings.customRatioW,
-        customRatioH: settings.customRatioH,
-        orientation: settings.orientation,
-        alignment: settings.alignment,
-        showPipeSeparator: settings.showPipeSeparator,
         profile: settings.profile,
         visibility: settings.visibility,
-        fontFamily: settings.fontFamily || DEFAULT_FONT_FAMILY,
-        globalFrameColor: settings.globalFrameColor,
-        globalTextColor: settings.globalTextColor,
         globalJpegQuality: settings.globalJpegQuality
     });
 
@@ -140,20 +137,20 @@ function App() {
         const canvas = canvasRef.current;
         if (!canvas) return;
         renderImageToCanvas(canvas, img, imageManager.exif, {
-            aspectRatioPreset: settings.aspectRatioPreset,
-            customRatioW: settings.customRatioW,
-            customRatioH: settings.customRatioH,
+            aspectRatioPreset: imageManager.currentAspectRatioPreset,
+            customRatioW: imageManager.currentCustomRatioW,
+            customRatioH: imageManager.currentCustomRatioH,
             orientation: imageManager.currentOrientation,
-            alignment: settings.alignment,
-            showPipeSeparator: settings.showPipeSeparator,
+            alignment: imageManager.currentAlignment,
+            showPipeSeparator: imageManager.currentShowPipeSeparator,
             profile: settings.profile,
             visibility: settings.visibility,
             frameColor: imageManager.frameColor,
             textColor: imageManager.textColor,
-            fontFamily: settings.fontFamily || DEFAULT_FONT_FAMILY
+            fontFamily: imageManager.currentFontFamily
         });
         imageManager.setIsCanvasReady(true);
-    }, [imageManager.exif, settings.aspectRatioPreset, settings.customRatioW, settings.customRatioH, imageManager.currentOrientation, settings.alignment, settings.showPipeSeparator, settings.profile, settings.visibility, imageManager.frameColor, imageManager.textColor, settings.fontFamily, imageManager.setIsCanvasReady]);
+    }, [imageManager.exif, imageManager.currentAspectRatioPreset, imageManager.currentCustomRatioW, imageManager.currentCustomRatioH, imageManager.currentOrientation, imageManager.currentAlignment, imageManager.currentShowPipeSeparator, settings.profile, settings.visibility, imageManager.frameColor, imageManager.textColor, imageManager.currentFontFamily, imageManager.setIsCanvasReady]);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -367,16 +364,16 @@ function App() {
                 {imageManager.hasImages && (
                     <aside className="sidebar">
                         <FrameSettingsPanel
-                            aspectRatioPreset={settings.aspectRatioPreset} setAspectRatioPreset={settings.setAspectRatioPreset}
-                            customRatioW={settings.customRatioW} setCustomRatioW={settings.setCustomRatioW}
-                            customRatioH={settings.customRatioH} setCustomRatioH={settings.setCustomRatioH}
+                            aspectRatioPreset={imageManager.currentAspectRatioPreset} setAspectRatioPreset={imageManager.setPerImageAspectRatioPreset}
+                            customRatioW={imageManager.currentCustomRatioW} setCustomRatioW={imageManager.setPerImageCustomRatioW}
+                            customRatioH={imageManager.currentCustomRatioH} setCustomRatioH={imageManager.setPerImageCustomRatioH}
                             orientation={imageManager.currentOrientation} setOrientation={imageManager.setPerImageOrientation}
-                            alignment={settings.alignment} setAlignment={settings.setAlignment}
-                            showPipeSeparator={settings.showPipeSeparator} setShowPipeSeparator={settings.setShowPipeSeparator}
+                            alignment={imageManager.currentAlignment} setAlignment={imageManager.setPerImageAlignment}
+                            showPipeSeparator={imageManager.currentShowPipeSeparator} setShowPipeSeparator={imageManager.setPerImageShowPipeSeparator}
                             frameColor={imageManager.frameColor} setFrameColor={imageManager.setFrameColor}
                             textColor={imageManager.textColor} setTextColor={imageManager.setTextColor}
-                            fontFamily={settings.fontFamily} setFontFamily={settings.setFontFamily}
-                            onApplyToAllColors={imageManager.importedImages.length > 1 ? imageManager.handleApplyColorsToAll : undefined}
+                            fontFamily={imageManager.currentFontFamily} setFontFamily={imageManager.setPerImageFontFamily}
+                            onApplyToAll={imageManager.importedImages.length > 1 ? imageManager.handleApplySettingsToAll : undefined}
                         />
 
                         <MetadataSettingsPanel
@@ -390,7 +387,18 @@ function App() {
                             <button
                                 className="btn btn-primary"
                                 style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-                                onClick={() => settings.handleSaveAutoExportDefault(imageManager.exif, imageManager.frameColor, imageManager.textColor, imageManager.currentOrientation)}
+                                onClick={() => settings.handleSaveAutoExportDefault({
+                                    exif: imageManager.exif,
+                                    frameColor: imageManager.frameColor,
+                                    textColor: imageManager.textColor,
+                                    orientation: imageManager.currentOrientation,
+                                    aspectRatioPreset: imageManager.currentAspectRatioPreset,
+                                    customRatioW: imageManager.currentCustomRatioW,
+                                    customRatioH: imageManager.currentCustomRatioH,
+                                    alignment: imageManager.currentAlignment,
+                                    showPipeSeparator: imageManager.currentShowPipeSeparator,
+                                    fontFamily: imageManager.currentFontFamily
+                                })}
                                 title="Save current settings as default for auto-processing"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
