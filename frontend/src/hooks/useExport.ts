@@ -6,7 +6,7 @@ import { getExportInfo, getQualityFromBPP } from '../utils';
 import { renderImageToCanvas } from '../canvas';
 
 export interface UseExportProps {
-    canvasRef: RefObject<HTMLCanvasElement>;
+    canvasRef: RefObject<HTMLCanvasElement | null>;
     imageObj: HTMLImageElement | null;
     currentImage: ImportedImage;
     importedImages: ImportedImage[];
