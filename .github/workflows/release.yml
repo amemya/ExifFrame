@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
-          go install github.com/go-task/task/v3/cmd/task@latest
+          go install github.com/go-task/task/v3/cmd/task@v3.38.0
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Generate Bindings
