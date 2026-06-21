@@ -32,7 +32,7 @@ export function useSettingsSync({
     const [globalFrameColor, setGlobalFrameColor] = useState<string>("#ffffff");
     const [globalTextColor, setGlobalTextColor] = useState<string>("#000000");
     const [globalJpegQuality, setGlobalJpegQuality] = useState<string>("auto");
-    const [fontFamily, setFontFamily] = useState<string>("\"Gill Sans\", sans-serif");
+    const [fontFamily, setFontFamily] = useState<string>("Helvetica");
 
     const isInitialLoad = useRef(true);
     // setExif depends on `selectedIndex` in useImageManager, meaning it is recreated on every selection change.

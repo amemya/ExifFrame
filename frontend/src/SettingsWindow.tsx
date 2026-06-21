@@ -28,7 +28,7 @@ function SettingsWindow() {
     const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
     const [frameColor, setFrameColor] = useState<string>("#ffffff");
     const [textColor, setTextColor] = useState<string>("#000000");
-    const [fontFamily, setFontFamily] = useState<string>("\"Gill Sans\", sans-serif");
+    const [fontFamily, setFontFamily] = useState<string>("Helvetica");
 
     // Metadata Settings
     const [profile, setProfile] = useState<string>("digital");
@@ -55,7 +55,7 @@ function SettingsWindow() {
         setShowPipeSeparator(s.showPipeSeparator ?? true);
         setFrameColor(s.frameColor || "#ffffff");
         setTextColor(s.textColor || "#000000");
-        setFontFamily(s.fontFamily || "\"Gill Sans\", sans-serif");
+        setFontFamily(s.fontFamily || "Helvetica");
 
         setProfile(s.profile || "digital");
         setOverrideExif(s.overrideExif ?? false);

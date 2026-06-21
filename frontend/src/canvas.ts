@@ -111,9 +111,15 @@ export function renderImageToCanvas(
     if (settings.visibility.lens && exif.lens) topElements.push(exif.lens);
     const topText = topElements.join(separator);
 
+    const getFontString = (size: number, family: string) => {
+        const isGenericOrComplex = family.includes(',') || family.includes('"') || family.includes("'") || ['sans-serif', 'serif', 'monospace'].includes(family);
+        const safeFamily = isGenericOrComplex ? family : `"${family}"`;
+        return `normal ${size}px ${safeFamily}, sans-serif`;
+    };
+
     if (topText) {
         const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
-        ctx.font = `normal ${titleFontSize}px ${settings.fontFamily}`;
+        ctx.font = getFontString(titleFontSize, settings.fontFamily);
         ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
     }
 
@@ -135,7 +141,7 @@ export function renderImageToCanvas(
 
     if (bottomText) {
         const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
-        ctx.font = `normal ${descFontSize}px ${settings.fontFamily}`;
+        ctx.font = getFontString(descFontSize, settings.fontFamily);
         ctx.globalAlpha = 0.6;
         ctx.fillStyle = settings.textColor;
         ctx.fillText(bottomText, canvas.width / 2, textY + (descFontSize * 0.8));

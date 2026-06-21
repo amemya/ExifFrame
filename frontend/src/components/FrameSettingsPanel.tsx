@@ -194,15 +194,15 @@ export const FrameSettingsPanel = ({
                 value={fontFamily}
                 onChange={(e) => setFontFamily(e.target.value)}
             >
-                <option value='"Gill Sans", sans-serif'>Default (Gill Sans)</option>
+                <option value="Helvetica">Default (Helvetica)</option>
                 <option value="sans-serif">System Sans-Serif</option>
                 <option value="serif">System Serif</option>
                 <option value="monospace">System Monospace</option>
                 {systemFonts.length > 0 && <optgroup label="System Fonts">
                     {systemFonts.map(font => {
-                        const fontValue = `"${font}"`;
+                        const styleFontValue = `"${font}", sans-serif`;
                         return (
-                            <option key={font} value={fontValue} style={{ fontFamily: fontValue }}>{font}</option>
+                            <option key={font} value={font} style={{ fontFamily: styleFontValue }}>{font}</option>
                         );
                     })}
                 </optgroup>}

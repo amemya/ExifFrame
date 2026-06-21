@@ -732,5 +732,7 @@ func (a *App) GetSystemFonts() []string {
 	})
 	
 	cachedFonts = uniqueFonts
-	return cachedFonts
+	result := make([]string, len(cachedFonts))
+	copy(result, cachedFonts)
+	return result
 }
