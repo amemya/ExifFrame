@@ -47,7 +47,7 @@ export const FrameSettingsPanel = ({
                 setSystemFonts(fonts || []);
                 setIsLoadingFonts(false);
             }
-        }).catch(e => {
+        }).catch((e: unknown) => {
             console.error("Failed to load system fonts", e);
             if (isMounted) {
                 setIsLoadingFonts(false);
