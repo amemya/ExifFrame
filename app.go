@@ -706,7 +706,9 @@ func (a *App) GetSystemFonts() []string {
 	defer fontsMu.Unlock()
 
 	if len(cachedFonts) > 0 {
-		return cachedFonts
+		result := make([]string, len(cachedFonts))
+		copy(result, cachedFonts)
+		return result
 	}
 
 	finder := sysfont.NewFinder(nil)
