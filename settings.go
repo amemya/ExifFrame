@@ -84,7 +84,7 @@ func init() {
 		FrameColor:        "#ffffff",
 		TextColor:         "#000000",
 		JpegQuality:       "auto",
-		FontFamily:        "Helvetica",
+		FontFamily:        "Arial",
 		Profile:           "digital",
 		VisibilityCamera:       true,
 		VisibilityLens:         true,
