@@ -159,6 +159,7 @@ jobs:
             !define UNINST_KEY_NAME "${INFO_COMPANYNAME}${INFO_PRODUCTNAME}"
           !endif
           !define ARCH "amd64"
+          !include "LogicLib.nsh"
           !macro wails.checkArchitecture
             !ifdef ARCH
               ${If} ${RunningX64}
