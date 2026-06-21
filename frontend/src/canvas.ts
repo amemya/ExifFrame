@@ -112,6 +112,9 @@ export function renderImageToCanvas(
     const topText = topElements.join(separator);
 
     const getFontString = (size: number, family: string) => {
+        if (!family || family.trim() === "") {
+            return `normal ${size}px sans-serif`;
+        }
         const isGenericOrComplex = family.includes(',') || family.includes('"') || family.includes("'") || ['sans-serif', 'serif', 'monospace'].includes(family);
         const safeFamily = isGenericOrComplex ? family : `"${family}"`;
         return `normal ${size}px ${safeFamily}, sans-serif`;

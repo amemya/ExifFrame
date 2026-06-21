@@ -72,7 +72,7 @@ function App() {
         showPipeSeparator: settings.showPipeSeparator,
         profile: settings.profile,
         visibility: settings.visibility,
-        fontFamily: settings.fontFamily,
+        fontFamily: settings.fontFamily || DEFAULT_FONT_FAMILY,
         globalFrameColor: settings.globalFrameColor,
         globalTextColor: settings.globalTextColor,
         globalJpegQuality: settings.globalJpegQuality

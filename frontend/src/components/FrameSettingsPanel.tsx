@@ -38,15 +38,22 @@ export const FrameSettingsPanel = ({
     onApplyToAllColors
 }: FrameSettingsPanelProps) => {
     const [systemFonts, setSystemFonts] = useState<string[]>([]);
+    const [isLoadingFonts, setIsLoadingFonts] = useState<boolean>(true);
 
     useEffect(() => {
-        AppAPI.GetSystemFonts()
-            .then((fonts: string[]) => {
-                if (fonts && fonts.length > 0) {
-                    setSystemFonts(fonts);
-                }
-            })
-            .catch((err: any) => console.error("Failed to fetch system fonts", err));
+        let isMounted = true;
+        AppAPI.GetSystemFonts().then((fonts: string[]) => {
+            if (isMounted) {
+                setSystemFonts(fonts || []);
+                setIsLoadingFonts(false);
+            }
+        }).catch(e => {
+            console.error("Failed to load system fonts", e);
+            if (isMounted) {
+                setIsLoadingFonts(false);
+            }
+        });
+        return () => { isMounted = false; };
     }, []);
 
     return (
@@ -199,7 +206,10 @@ export const FrameSettingsPanel = ({
                 <option value="sans-serif">System Sans-Serif</option>
                 <option value="serif">System Serif</option>
                 <option value="monospace">System Monospace</option>
-                {systemFonts.length > 0 && <optgroup label="System Fonts">
+                {isLoadingFonts && <optgroup label="System Fonts">
+                    <option disabled>Loading system fonts...</option>
+                </optgroup>}
+                {!isLoadingFonts && systemFonts.length > 0 && <optgroup label="System Fonts">
                     {systemFonts.map(font => {
                         const styleFontValue = `"${font}", sans-serif`;
                         return (
