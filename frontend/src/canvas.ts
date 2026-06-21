@@ -122,10 +122,14 @@ export function renderImageToCanvas(
             'ui-rounded', 'math', 'emoji', 'fangsong'
         ]);
 
-        const isGeneric = genericFamilies.has(family.toLowerCase());
-        const hasQuotes = family.includes('"') || family.includes("'");
+        const trimmedFamily = family.trim();
+        const isGeneric = genericFamilies.has(trimmedFamily.toLowerCase());
+        const hasDoubleQuotes = trimmedFamily.startsWith('"') && trimmedFamily.endsWith('"');
+        const hasSingleQuotes = trimmedFamily.startsWith("'") && trimmedFamily.endsWith("'");
+        const hasQuotes = hasDoubleQuotes || hasSingleQuotes;
         
-        const safeFamily = (isGeneric || hasQuotes) ? family : `"${family}"`;
+        const escapedFamily = trimmedFamily.replace(/"/g, '\\"');
+        const safeFamily = (isGeneric || hasQuotes) ? trimmedFamily : `"${escapedFamily}"`;
         return `normal ${size}px ${safeFamily}, sans-serif`;
     };
 
