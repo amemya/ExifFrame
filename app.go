@@ -172,21 +172,19 @@ func (a *App) ProcessPaths(paths []string) []ExifResult {
 		}
 
 		if info.IsDir() {
-			err = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					log.Printf("Error accessing path %s: %v", path, err)
-					return nil // Skip this file/folder but continue walking
-				}
-				if !info.IsDir() {
+			entries, err := os.ReadDir(p)
+			if err != nil {
+				results = append(results, ExifResult{Error: "Failed to read directory: " + err.Error(), FilePath: p})
+				continue
+			}
+			for _, entry := range entries {
+				if !entry.IsDir() {
+					path := filepath.Join(p, entry.Name())
 					lower := strings.ToLower(path)
 					if strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") || strings.HasSuffix(lower, ".png") {
 						validPaths = append(validPaths, path)
 					}
 				}
-				return nil
-			})
-			if err != nil {
-				results = append(results, ExifResult{Error: "Failed to read directory: " + err.Error(), FilePath: p})
 			}
 		} else {
 			validPaths = append(validPaths, p)
