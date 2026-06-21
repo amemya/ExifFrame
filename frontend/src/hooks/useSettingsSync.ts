@@ -4,6 +4,19 @@ import { Events } from '@wailsio/runtime';
 import { App as AppAPI, Settings } from '../../bindings/ExifFrame/index';
 import { MetadataVisibility, toVisibility, applyVisibility, ExifData, DEFAULT_FONT_FAMILY } from '../types';
 
+export interface AutoExportSettingsPayload {
+    exif: ExifData;
+    frameColor: string;
+    textColor: string;
+    orientation: "landscape" | "portrait";
+    aspectRatioPreset: string;
+    customRatioW: number;
+    customRatioH: number;
+    alignment: "top" | "center";
+    showPipeSeparator: boolean;
+    fontFamily: string;
+}
+
 export interface UseSettingsSyncProps {
     setExif: React.Dispatch<React.SetStateAction<ExifData>>;
     showToast: (msg: string, isError?: boolean) => void;
@@ -103,7 +116,7 @@ export function useSettingsSync({
         };
     }, []);
 
-    const handleSaveAutoExportDefault = useCallback(async (currentSettingsObj: any) => {
+    const handleSaveAutoExportDefault = useCallback(async (currentSettingsObj: AutoExportSettingsPayload) => {
         const s = new Settings();
         s.watchFolder = watchFolder;
         s.exportFolder = exportFolder;

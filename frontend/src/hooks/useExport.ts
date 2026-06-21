@@ -144,17 +144,17 @@ export function useExport({
 
                     offCanvas = document.createElement("canvas");
                     renderImageToCanvas(offCanvas, imgToDraw, imgState.exif, {
-                        aspectRatioPreset: imgState.aspectRatioPreset!,
-                        customRatioW: imgState.customRatioW!,
-                        customRatioH: imgState.customRatioH!,
+                        aspectRatioPreset: imgState.aspectRatioPreset || '1:1',
+                        customRatioW: imgState.customRatioW || 0,
+                        customRatioH: imgState.customRatioH || 0,
                         orientation: imgState.orientation || (imgToDraw.height > imgToDraw.width ? "portrait" : "landscape"),
-                        alignment: imgState.alignment!,
-                        showPipeSeparator: imgState.showPipeSeparator!,
+                        alignment: imgState.alignment || 'center',
+                        showPipeSeparator: imgState.showPipeSeparator || false,
                         profile,
                         visibility,
-                        fontFamily: imgState.fontFamily!,
-                        frameColor: imgState.frameColor!,
-                        textColor: imgState.textColor!
+                        fontFamily: imgState.fontFamily || '',
+                        frameColor: imgState.frameColor || '#ffffff',
+                        textColor: imgState.textColor || '#000000'
                     });
 
                     const { isPng, targetMime, baseName } = getExportInfo(imgState.filePath || `exif-frame-${i}`, imgState.sourceMimeType);
