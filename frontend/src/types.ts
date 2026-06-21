@@ -84,3 +84,5 @@ export interface ExifResult {
     iso?: string;
     originalBPP?: number;
 }
+
+export const DEFAULT_FONT_FAMILY = "Helvetica";
