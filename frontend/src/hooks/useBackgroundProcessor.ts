@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Events } from '@wailsio/runtime';
 // @ts-expect-error generated bindings does not provide declaration files for JS module
 import { App as AppAPI, Settings } from '../../bindings/ExifFrame/index';
-import { toVisibility } from '../types';
+import { toVisibility, DEFAULT_FONT_FAMILY } from '../types';
 import { getExportInfo, getQualityFromBPP } from '../utils';
 import { renderImageToCanvas } from '../canvas';
 
@@ -85,7 +85,8 @@ export function useBackgroundProcessor() {
                             profile: currentSet.profile || "digital",
                             visibility: toVisibility(currentSet),
                             frameColor: currentSet.frameColor || "#ffffff",
-                            textColor: currentSet.textColor || "#000000"
+                            textColor: currentSet.textColor || "#000000",
+                            fontFamily: currentSet.fontFamily || DEFAULT_FONT_FAMILY
                         });
                     } catch (e) {
                         console.error("Failed to render background canvas:", e);

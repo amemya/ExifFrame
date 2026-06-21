@@ -23,6 +23,7 @@ type Settings struct {
 	FrameColor        string `json:"frameColor"`
 	TextColor         string `json:"textColor"`
 	JpegQuality       string `json:"jpegQuality"`
+	FontFamily        string `json:"fontFamily"`
 
 	// New fields for Profiles and Film metadata
 	Profile      string `json:"profile"`
@@ -83,6 +84,7 @@ func init() {
 		FrameColor:        "#ffffff",
 		TextColor:         "#000000",
 		JpegQuality:       "auto",
+		FontFamily:        "Arial",
 		Profile:           "digital",
 		VisibilityCamera:       true,
 		VisibilityLens:         true,

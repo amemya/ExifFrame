@@ -1,3 +1,8 @@
+import { useState, useEffect } from 'react';
+// @ts-expect-error generated bindings
+import { App as AppAPI } from '../../bindings/ExifFrame/index';
+import { DEFAULT_FONT_FAMILY, CSS_GENERIC_FONTS } from '../types';
+
 export interface FrameSettingsPanelProps {
     aspectRatioPreset: string;
     setAspectRatioPreset: (val: string) => void;
@@ -15,6 +20,8 @@ export interface FrameSettingsPanelProps {
     setFrameColor: (val: string) => void;
     textColor: string;
     setTextColor: (val: string) => void;
+    fontFamily: string;
+    setFontFamily: (val: string) => void;
     onApplyToAllColors?: () => void;
 }
 
@@ -27,9 +34,30 @@ export const FrameSettingsPanel = ({
     showPipeSeparator, setShowPipeSeparator,
     frameColor, setFrameColor,
     textColor, setTextColor,
+    fontFamily, setFontFamily,
     onApplyToAllColors
-}: FrameSettingsPanelProps) => (
-    <div className="sidebar-section frame-settings-section">
+}: FrameSettingsPanelProps) => {
+    const [systemFonts, setSystemFonts] = useState<string[]>([]);
+    const [isLoadingFonts, setIsLoadingFonts] = useState<boolean>(true);
+
+    useEffect(() => {
+        let isMounted = true;
+        AppAPI.GetSystemFonts().then((fonts: string[]) => {
+            if (isMounted) {
+                setSystemFonts(fonts || []);
+                setIsLoadingFonts(false);
+            }
+        }).catch((e: unknown) => {
+            console.error("Failed to load system fonts", e);
+            if (isMounted) {
+                setIsLoadingFonts(false);
+            }
+        });
+        return () => { isMounted = false; };
+    }, []);
+
+    return (
+        <div className="sidebar-section frame-settings-section">
         <h3>Frame Settings</h3>
         <div className="input-group">
             <label htmlFor="aspect-ratio-preset">Aspect Ratio</label>
@@ -167,6 +195,34 @@ export const FrameSettingsPanel = ({
             </div>
         </div>
 
+        <div className="input-group" style={{ marginTop: '1rem' }}>
+            <label htmlFor="font-family">Font</label>
+            <select
+                id="font-family"
+                value={fontFamily}
+                onChange={(e) => setFontFamily(e.target.value)}
+            >
+                {fontFamily && fontFamily !== DEFAULT_FONT_FAMILY && !CSS_GENERIC_FONTS.includes(fontFamily) && !systemFonts.includes(fontFamily) && (
+                    <option value={fontFamily}>{fontFamily} {!isLoadingFonts ? "(Missing)" : ""}</option>
+                )}
+                <option value={DEFAULT_FONT_FAMILY}>Default ({DEFAULT_FONT_FAMILY})</option>
+                <option value="sans-serif">System Sans-Serif</option>
+                <option value="serif">System Serif</option>
+                <option value="monospace">System Monospace</option>
+                {isLoadingFonts && <optgroup label="System Fonts">
+                    <option disabled>Loading system fonts...</option>
+                </optgroup>}
+                {!isLoadingFonts && systemFonts.length > 0 && <optgroup label="System Fonts">
+                    {systemFonts.map(font => {
+                        const styleFontValue = `"${font}", sans-serif`;
+                        return (
+                            <option key={font} value={font} style={{ fontFamily: styleFontValue }}>{font}</option>
+                        );
+                    })}
+                </optgroup>}
+            </select>
+        </div>
+
         {onApplyToAllColors && (
             <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
                 <button
@@ -180,4 +236,5 @@ export const FrameSettingsPanel = ({
             </div>
         )}
     </div>
-);
+    );
+};

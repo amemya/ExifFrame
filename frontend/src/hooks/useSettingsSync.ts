@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react
 import { Events } from '@wailsio/runtime';
 // @ts-expect-error generated bindings
 import { App as AppAPI, Settings } from '../../bindings/ExifFrame/index';
-import { MetadataVisibility, toVisibility, applyVisibility, ExifData } from '../types';
+import { MetadataVisibility, toVisibility, applyVisibility, ExifData, DEFAULT_FONT_FAMILY } from '../types';
 
 export interface UseSettingsSyncProps {
     setExif: React.Dispatch<React.SetStateAction<ExifData>>;
@@ -32,6 +32,7 @@ export function useSettingsSync({
     const [globalFrameColor, setGlobalFrameColor] = useState<string>("#ffffff");
     const [globalTextColor, setGlobalTextColor] = useState<string>("#000000");
     const [globalJpegQuality, setGlobalJpegQuality] = useState<string>("auto");
+    const [fontFamily, setFontFamily] = useState<string>(DEFAULT_FONT_FAMILY);
 
     const isInitialLoad = useRef(true);
     // setExif depends on `selectedIndex` in useImageManager, meaning it is recreated on every selection change.
@@ -58,6 +59,7 @@ export function useSettingsSync({
             if (s.showPipeSeparator !== undefined) setShowPipeSeparator(s.showPipeSeparator);
             if (s.frameColor) setGlobalFrameColor(s.frameColor);
             if (s.textColor) setGlobalTextColor(s.textColor);
+            setFontFamily(s.fontFamily || DEFAULT_FONT_FAMILY);
             if (s.jpegQuality) setGlobalJpegQuality(s.jpegQuality);
             else setGlobalJpegQuality("auto");
             if (s.profile) {
@@ -114,6 +116,7 @@ export function useSettingsSync({
         s.profile = profile;
         s.frameColor = currentFrameColor;
         s.textColor = currentTextColor;
+        s.fontFamily = fontFamily;
 
         try {
             const currentSettings = await AppAPI.GetSettings();
@@ -153,7 +156,7 @@ export function useSettingsSync({
         }
     }, [
         watchFolder, exportFolder, aspectRatioPreset, customRatioW, customRatioH,
-        alignment, showPipeSeparator, profile, globalJpegQuality, visibility, showToast
+        alignment, showPipeSeparator, profile, globalJpegQuality, visibility, fontFamily, showToast
     ]);
 
     return {
@@ -170,6 +173,7 @@ export function useSettingsSync({
         globalFrameColor, setGlobalFrameColor,
         globalTextColor, setGlobalTextColor,
         globalJpegQuality, setGlobalJpegQuality,
+        fontFamily, setFontFamily,
         handleSaveAutoExportDefault,
         isInitialLoad
     };

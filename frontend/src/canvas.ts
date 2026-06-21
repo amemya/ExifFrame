@@ -1,4 +1,4 @@
-import { ExifData, MetadataVisibility } from './types';
+import { ExifData, MetadataVisibility, CSS_GENERIC_FONTS } from './types';
 
 export interface RenderSettings {
     aspectRatioPreset: string;
@@ -11,6 +11,7 @@ export interface RenderSettings {
     visibility: MetadataVisibility;
     frameColor: string;
     textColor: string;
+    fontFamily: string;
 }
 
 export function renderImageToCanvas(
@@ -110,9 +111,27 @@ export function renderImageToCanvas(
     if (settings.visibility.lens && exif.lens) topElements.push(exif.lens);
     const topText = topElements.join(separator);
 
+    const getFontString = (size: number, family: string) => {
+        if (!family || family.trim() === "") {
+            return `normal ${size}px sans-serif`;
+        }
+        
+        const genericFamilies = new Set(CSS_GENERIC_FONTS);
+
+        const trimmedFamily = family.trim();
+        const isGeneric = genericFamilies.has(trimmedFamily.toLowerCase());
+        const hasDoubleQuotes = trimmedFamily.startsWith('"') && trimmedFamily.endsWith('"');
+        const hasSingleQuotes = trimmedFamily.startsWith("'") && trimmedFamily.endsWith("'");
+        const hasQuotes = hasDoubleQuotes || hasSingleQuotes;
+        
+        const escapedFamily = trimmedFamily.replace(/"/g, '\\"');
+        const safeFamily = (isGeneric || hasQuotes) ? trimmedFamily : `"${escapedFamily}"`;
+        return `normal ${size}px ${safeFamily}, sans-serif`;
+    };
+
     if (topText) {
         const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
-        ctx.font = `normal ${titleFontSize}px "Gill Sans", sans-serif`;
+        ctx.font = getFontString(titleFontSize, settings.fontFamily);
         ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
     }
 
@@ -134,7 +153,7 @@ export function renderImageToCanvas(
 
     if (bottomText) {
         const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
-        ctx.font = `normal ${descFontSize}px "Gill Sans", sans-serif`;
+        ctx.font = getFontString(descFontSize, settings.fontFamily);
         ctx.globalAlpha = 0.6;
         ctx.fillStyle = settings.textColor;
         ctx.fillText(bottomText, canvas.width / 2, textY + (descFontSize * 0.8));

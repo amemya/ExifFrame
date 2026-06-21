@@ -5,7 +5,7 @@ import { App as AppAPI, Settings } from '../bindings/ExifFrame/index';
 import { Events, System } from '@wailsio/runtime';
 import { FrameSettingsPanel } from './components/FrameSettingsPanel';
 import { MetadataSettingsPanel } from './components/MetadataSettingsPanel';
-import { ExifData, MetadataVisibility, toVisibility, applyVisibility } from './types';
+import { ExifData, MetadataVisibility, toVisibility, applyVisibility, DEFAULT_FONT_FAMILY } from './types';
 import { useToast } from './hooks/useToast';
 
 function SettingsWindow() {
@@ -28,6 +28,7 @@ function SettingsWindow() {
     const [showPipeSeparator, setShowPipeSeparator] = useState<boolean>(true);
     const [frameColor, setFrameColor] = useState<string>("#ffffff");
     const [textColor, setTextColor] = useState<string>("#000000");
+    const [fontFamily, setFontFamily] = useState<string>(DEFAULT_FONT_FAMILY);
 
     // Metadata Settings
     const [profile, setProfile] = useState<string>("digital");
@@ -54,6 +55,7 @@ function SettingsWindow() {
         setShowPipeSeparator(s.showPipeSeparator ?? true);
         setFrameColor(s.frameColor || "#ffffff");
         setTextColor(s.textColor || "#000000");
+        setFontFamily(s.fontFamily || DEFAULT_FONT_FAMILY);
 
         setProfile(s.profile || "digital");
         setOverrideExif(s.overrideExif ?? false);
@@ -103,6 +105,7 @@ function SettingsWindow() {
         s.showPipeSeparator = showPipeSeparator;
         s.frameColor = frameColor;
         s.textColor = textColor;
+        s.fontFamily = fontFamily;
 
         s.profile = profile;
         s.overrideExif = overrideExif;
@@ -228,6 +231,7 @@ function SettingsWindow() {
                                 showPipeSeparator={showPipeSeparator} setShowPipeSeparator={setShowPipeSeparator}
                                 frameColor={frameColor} setFrameColor={setFrameColor}
                                 textColor={textColor} setTextColor={setTextColor}
+                                fontFamily={fontFamily} setFontFamily={setFontFamily}
                             />
                         </div>
                     )}

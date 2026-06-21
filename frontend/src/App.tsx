@@ -4,7 +4,7 @@ import './App.css';
 import { App as AppAPI, Settings, UpdateStatus } from '../bindings/ExifFrame/index';
 import { Window, Events, System, Call, Browser } from '@wailsio/runtime';
 
-import { ExifData, MetadataVisibility, toVisibility, applyVisibility, ImportedImage, ExifResult } from './types';
+import { ExifData, MetadataVisibility, toVisibility, applyVisibility, ImportedImage, ExifResult, DEFAULT_FONT_FAMILY } from './types';
 import { FrameSettingsPanel } from './components/FrameSettingsPanel';
 import { MetadataSettingsPanel } from './components/MetadataSettingsPanel';
 import { useToast } from './hooks/useToast';
@@ -72,6 +72,7 @@ function App() {
         showPipeSeparator: settings.showPipeSeparator,
         profile: settings.profile,
         visibility: settings.visibility,
+        fontFamily: settings.fontFamily || DEFAULT_FONT_FAMILY,
         globalFrameColor: settings.globalFrameColor,
         globalTextColor: settings.globalTextColor,
         globalJpegQuality: settings.globalJpegQuality
@@ -148,10 +149,11 @@ function App() {
             profile: settings.profile,
             visibility: settings.visibility,
             frameColor: imageManager.frameColor,
-            textColor: imageManager.textColor
+            textColor: imageManager.textColor,
+            fontFamily: settings.fontFamily || DEFAULT_FONT_FAMILY
         });
         imageManager.setIsCanvasReady(true);
-    }, [imageManager.exif, settings.aspectRatioPreset, settings.customRatioW, settings.customRatioH, imageManager.currentOrientation, settings.alignment, settings.showPipeSeparator, settings.profile, settings.visibility, imageManager.frameColor, imageManager.textColor, imageManager.setIsCanvasReady]);
+    }, [imageManager.exif, settings.aspectRatioPreset, settings.customRatioW, settings.customRatioH, imageManager.currentOrientation, settings.alignment, settings.showPipeSeparator, settings.profile, settings.visibility, imageManager.frameColor, imageManager.textColor, settings.fontFamily, imageManager.setIsCanvasReady]);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -373,6 +375,7 @@ function App() {
                             showPipeSeparator={settings.showPipeSeparator} setShowPipeSeparator={settings.setShowPipeSeparator}
                             frameColor={imageManager.frameColor} setFrameColor={imageManager.setFrameColor}
                             textColor={imageManager.textColor} setTextColor={imageManager.setTextColor}
+                            fontFamily={settings.fontFamily} setFontFamily={settings.setFontFamily}
                             onApplyToAllColors={imageManager.importedImages.length > 1 ? imageManager.handleApplyColorsToAll : undefined}
                         />
 
