@@ -55,6 +55,19 @@ export const FrameSettingsPanel = ({
     };
 
     useEffect(() => {
+        if (!confirmScope) return;
+        
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setConfirmScope(null);
+            }
+        };
+        
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [confirmScope]);
+
+    useEffect(() => {
         let isMounted = true;
         AppAPI.GetSystemFonts().then((fonts: string[]) => {
             if (isMounted) {
