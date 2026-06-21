@@ -168,8 +168,7 @@ export function useSettingsSync({
             showToast("Error saving settings", true);
         }
     }, [
-        watchFolder, exportFolder, aspectRatioPreset, customRatioW, customRatioH,
-        alignment, showPipeSeparator, profile, globalJpegQuality, visibility, fontFamily, showToast
+        watchFolder, exportFolder, profile, globalJpegQuality, visibility, showToast
     ]);
 
     return {

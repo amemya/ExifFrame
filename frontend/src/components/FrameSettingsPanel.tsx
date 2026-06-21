@@ -294,7 +294,7 @@ export const FrameSettingsPanel = ({
 
         {confirmScope && (
             <div className="modal-overlay" onClick={() => setConfirmScope(null)} style={{ zIndex: 3000 }}>
-                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="modal-content" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
                     <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem', marginTop: 0 }}>Confirm Apply Frame Settings</h2>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
                         {confirmScope === 'colors' ? "Apply frame and text colors to all images?" :

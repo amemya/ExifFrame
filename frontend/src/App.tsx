@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from 'react';
 import './App.css';
 // @ts-expect-error generated bindings does not provide declaration files for JS module
 import { App as AppAPI, Settings, UpdateStatus } from '../bindings/ExifFrame/index';
@@ -44,18 +44,24 @@ function App() {
         showToast
     });
 
+    const defaultSettings = useMemo(() => ({
+        frameColor: settings.globalFrameColor,
+        textColor: settings.globalTextColor,
+        aspectRatioPreset: settings.aspectRatioPreset,
+        customRatioW: settings.customRatioW,
+        customRatioH: settings.customRatioH,
+        alignment: settings.alignment,
+        showPipeSeparator: settings.showPipeSeparator,
+        fontFamily: settings.fontFamily || DEFAULT_FONT_FAMILY
+    }), [
+        settings.globalFrameColor, settings.globalTextColor, settings.aspectRatioPreset,
+        settings.customRatioW, settings.customRatioH, settings.alignment,
+        settings.showPipeSeparator, settings.fontFamily
+    ]);
+
     const imageManager = useImageManager(
         showToast,
-        {
-            frameColor: settings.globalFrameColor,
-            textColor: settings.globalTextColor,
-            aspectRatioPreset: settings.aspectRatioPreset,
-            customRatioW: settings.customRatioW,
-            customRatioH: settings.customRatioH,
-            alignment: settings.alignment,
-            showPipeSeparator: settings.showPipeSeparator,
-            fontFamily: settings.fontFamily || DEFAULT_FONT_FAMILY
-        }
+        defaultSettings
     );
 
     useLayoutEffect(() => {
