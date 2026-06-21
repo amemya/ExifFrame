@@ -203,7 +203,7 @@ export const FrameSettingsPanel = ({
                 onChange={(e) => setFontFamily(e.target.value)}
             >
                 {fontFamily && fontFamily !== DEFAULT_FONT_FAMILY && !['sans-serif', 'serif', 'monospace'].includes(fontFamily) && !systemFonts.includes(fontFamily) && (
-                    <option value={fontFamily}>{fontFamily} (Missing)</option>
+                    <option value={fontFamily}>{fontFamily} {!isLoadingFonts ? "(Missing)" : ""}</option>
                 )}
                 <option value={DEFAULT_FONT_FAMILY}>Default ({DEFAULT_FONT_FAMILY})</option>
                 <option value="sans-serif">System Sans-Serif</option>
