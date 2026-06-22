@@ -438,7 +438,19 @@ function App() {
                     )}
 
                     {imageManager.importedImages.length > 0 && (
-                        <div className="filmstrip-area">
+                        <div 
+                            className="filmstrip-area"
+                            ref={(node) => {
+                                if (node) {
+                                    node.onwheel = (e: WheelEvent) => {
+                                        if (e.deltaY !== 0 && e.deltaX === 0) {
+                                            e.preventDefault();
+                                            node.scrollLeft += e.deltaY;
+                                        }
+                                    };
+                                }
+                            }}
+                        >
                             {imageManager.importedImages.map((img, idx) => (
                                 <button 
                                     key={img.imageURL} 
