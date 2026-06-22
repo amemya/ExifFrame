@@ -663,7 +663,7 @@ func (a *App) OpenSettingsWindow() {
 			TitleBar: application.MacTitleBarHiddenInsetUnified,
 		},
 		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              "/settings",
+		URL:              "/?page=settings",
 	})
 }
 
