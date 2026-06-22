@@ -142,6 +142,25 @@ func (a *App) OpenImages() []ExifResult {
 	return a.ProcessPaths(filePaths)
 }
 
+// OpenFiles opens a native file dialog for multiple files, reads EXIF metadata, and returns
+// a list of HTTP URLs and metadata for the frontend.
+func (a *App) OpenFiles() []ExifResult {
+	filePaths, err := application.Get().Dialog.OpenFile().
+		SetTitle("Select Photos").
+		AddFilter("Images", "*.jpg;*.jpeg;*.png").
+		CanChooseDirectories(false).
+		CanChooseFiles(true).
+		PromptForMultipleSelection()
+	if err != nil {
+		return []ExifResult{{Error: err.Error()}}
+	}
+	if len(filePaths) == 0 {
+		return []ExifResult{{Cancelled: true}}
+	}
+
+	return a.ProcessPaths(filePaths)
+}
+
 // OpenFolder opens a native directory dialog and processes all valid images within.
 func (a *App) OpenFolder() []ExifResult {
 	folderPath, err := application.Get().Dialog.OpenFile().

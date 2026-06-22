@@ -33,10 +33,37 @@ func buildMenu(app *App) *application.Menu {
 			application.Get().Quit()
 		})
 
+		fileMenu := appMenu.AddSubmenu("File")
+		fileMenu.Add("Open Files...").SetAccelerator("CmdOrCtrl+O").OnClick(func(ctx *application.Context) {
+			results := app.OpenFiles()
+			if len(results) > 0 && !results[0].Cancelled {
+				application.Get().Event.Emit("images-opened", results)
+			}
+		})
+		fileMenu.Add("Open Folder...").OnClick(func(ctx *application.Context) {
+			results := app.OpenFolder()
+			if len(results) > 0 && !results[0].Cancelled {
+				application.Get().Event.Emit("images-opened", results)
+			}
+		})
+
 		appMenu.AddRole(application.EditMenu)
 		appMenu.AddRole(application.WindowMenu)
 	} else {
 		fileMenu := appMenu.AddSubmenu("File")
+		fileMenu.Add("Open Files...").SetAccelerator("CmdOrCtrl+O").OnClick(func(ctx *application.Context) {
+			results := app.OpenFiles()
+			if len(results) > 0 && !results[0].Cancelled {
+				application.Get().Event.Emit("images-opened", results)
+			}
+		})
+		fileMenu.Add("Open Folder...").OnClick(func(ctx *application.Context) {
+			results := app.OpenFolder()
+			if len(results) > 0 && !results[0].Cancelled {
+				application.Get().Event.Emit("images-opened", results)
+			}
+		})
+		fileMenu.AddSeparator()
 		fileMenu.Add("Preferences...").SetAccelerator("CmdOrCtrl+,").OnClick(func(ctx *application.Context) {
 			app.OpenSettingsWindow()
 		})
