@@ -170,7 +170,10 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 	defer func() { <-thumbProcessSem }()
 
 	// Reset file pointer
-	f.Seek(0, io.SeekStart)
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		http.Error(w, "Failed to seek file", http.StatusInternalServerError)
+		return
+	}
 
 	// Decode high-res image
 	img, _, err := image.Decode(f)
