@@ -182,6 +182,11 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 	// Calculate thumbnail size (max 256x256)
 	bounds := img.Bounds()
 	w0, h0 := bounds.Dx(), bounds.Dy()
+	if w0 <= 0 || h0 <= 0 {
+		http.Error(w, "Invalid image dimensions", http.StatusInternalServerError)
+		return
+	}
+
 	var w1, h1 int
 	if w0 > h0 {
 		w1 = 256
