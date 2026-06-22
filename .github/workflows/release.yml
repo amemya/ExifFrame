@@ -19,7 +19,7 @@ jobs:
           - os: windows-2022
             artifact: ExifFrame-windows-amd64.exe
           - os: macos-14
-            artifact: ExifFrame-macos-arm64.zip
+            artifact: ExifFrame-darwin-arm64.zip
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -95,7 +95,7 @@ jobs:
           cp build/darwin/Info.plist bin/ExifFrame.app/Contents/
           codesign --force --deep --sign - bin/ExifFrame.app
           cd bin
-          ditto -c -k --keepParent ExifFrame.app ExifFrame-macos-arm64.zip
+          ditto -c -k --keepParent ExifFrame.app ExifFrame-darwin-arm64.zip
 
       - name: Create macOS DMG Installer
         if: runner.os == 'macOS'
@@ -111,17 +111,12 @@ jobs:
             --icon "ExifFrame.app" 175 190 \
             --app-drop-link 425 190 \
             --no-internet-enable \
-            "bin/ExifFrame-macos-arm64.dmg" \
+            "bin/ExifFrame-darwin-arm64.dmg" \
             "bin/ExifFrame.app" || true
           # create-dmg returns non-zero when signing is skipped; check the file exists
-          test -f bin/ExifFrame-macos-arm64.dmg
-          hdiutil verify bin/ExifFrame-macos-arm64.dmg
+          test -f bin/ExifFrame-darwin-arm64.dmg
+          hdiutil verify bin/ExifFrame-darwin-arm64.dmg
 
-      - name: Copy macOS bare binary for auto-update
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          cp bin/ExifFrame bin/ExifFrame-darwin-arm64
 
       - name: Package Windows App
         if: runner.os == 'Windows'
