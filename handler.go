@@ -159,9 +159,7 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 		pic, err := x.JpegThumbnail()
 		if err == nil && len(pic) > 0 {
 			w.Header().Set("Content-Type", "image/jpeg")
-			if _, err := w.Write(pic); err != nil {
-				log.Printf("Failed to write EXIF thumbnail: %v", err)
-			}
+			w.Write(pic)
 			return
 		}
 	}
