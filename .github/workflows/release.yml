@@ -160,6 +160,7 @@ jobs:
           !endif
           !define ARCH "amd64"
           !include "LogicLib.nsh"
+          !include "x64.nsh"
           !macro wails.checkArchitecture
             !ifdef ARCH
               ${If} ${RunningX64}
