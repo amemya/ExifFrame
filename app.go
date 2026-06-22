@@ -211,9 +211,9 @@ func (a *App) ProcessPaths(paths []string) []ExifResult {
 		}
 	}
 
-	if len(validPaths) > 2000 {
-		results = append(results, ExifResult{Error: "2000枚を超える画像が選択されました。最初の2000枚のみ読み込みます。"})
-		validPaths = validPaths[:2000]
+	if len(validPaths) > maxImageTokens {
+		results = append(results, ExifResult{Error: fmt.Sprintf("%d枚を超える画像が選択されました。最初の%d枚のみ読み込みます。", maxImageTokens, maxImageTokens)})
+		validPaths = validPaths[:maxImageTokens]
 	}
 
 	// Process files concurrently with bounded parallelism.

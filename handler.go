@@ -158,7 +158,9 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 		pic, err := x.JpegThumbnail()
 		if err == nil && len(pic) > 0 {
 			w.Header().Set("Content-Type", "image/jpeg")
-			w.Write(pic)
+			if _, err := w.Write(pic); err != nil {
+				log.Printf("Failed to write EXIF thumbnail: %v", err)
+			}
 			return
 		}
 	}
@@ -200,7 +202,9 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
 
 	w.Header().Set("Content-Type", "image/jpeg")
-	jpeg.Encode(w, dst, &jpeg.Options{Quality: 70})
+	if err := jpeg.Encode(w, dst, &jpeg.Options{Quality: 70}); err != nil {
+		log.Printf("Failed to encode/write generated thumbnail: %v", err)
+	}
 }
 
 // prepareSave is called from the IPC side (App.SaveImage) after the native save
