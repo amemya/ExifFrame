@@ -458,7 +458,7 @@ function App() {
                                     className={`filmstrip-item ${imageManager.selectedIndex === idx ? 'selected' : ''}`}
                                     onClick={() => imageManager.setSelectedIndex(idx)}
                                 >
-                                    <img id={`thumb-${idx}`} src={img.imageURL} alt={`Thumbnail ${idx}`} loading="lazy" draggable={false} />
+                                    <img id={`thumb-${idx}`} src={img.thumbURL || img.imageURL} alt={`Thumbnail ${idx}`} loading="lazy" draggable={false} />
                                 </button>
                             ))}
                         </div>

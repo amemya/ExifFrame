@@ -91,10 +91,11 @@ func (a *App) getCurrentImagePath() string {
 }
 
 type ExifResult struct {
-	ImageURL     string `json:"imageURL"`
-	MimeType     string `json:"mimeType"`
-	Camera       string `json:"camera"`
-	Lens         string `json:"lens"`
+	ImageURL     string  `json:"imageURL"`
+	ThumbURL     string  `json:"thumbURL"`
+	MimeType     string  `json:"mimeType"`
+	Camera       string  `json:"camera"`
+	Lens         string  `json:"lens"`
 	FocalLength  string `json:"focalLength"`
 	Aperture     string `json:"aperture"`
 	ShutterSpeed string `json:"shutterSpeed"`
@@ -210,6 +211,11 @@ func (a *App) ProcessPaths(paths []string) []ExifResult {
 		}
 	}
 
+	if len(validPaths) > 2000 {
+		results = append(results, ExifResult{Error: "2000枚を超える画像が選択されました。最初の2000枚のみ読み込みます。"})
+		validPaths = validPaths[:2000]
+	}
+
 	// Process files concurrently with bounded parallelism.
 	// ProcessImageFile is thread-safe: doOpenImage uses a.mu for currentImagePath
 	// and registerImageToken uses imgMu for token management.
@@ -279,12 +285,15 @@ func (a *App) doOpenImage(filePath string, f *os.File, mimeType string) ExifResu
 	a.mu.Unlock()
 
 	var url string
+	var thumbUrl string
 	if a.handler != nil {
 		token := a.handler.registerImageToken(filePath)
 		url = fmt.Sprintf("/api/image?token=%s&t=%d", token, time.Now().UnixNano())
+		thumbUrl = fmt.Sprintf("/api/thumb?token=%s&t=%d", token, time.Now().UnixNano())
 	} else {
 		// Cache-busting timestamp ensures the browser fetches the new image.
 		url = fmt.Sprintf("/api/image?t=%d", time.Now().UnixNano())
+		thumbUrl = url // Fallback
 	}
 
 	var originalBPP float64
@@ -301,6 +310,7 @@ func (a *App) doOpenImage(filePath string, f *os.File, mimeType string) ExifResu
 
 	result := ExifResult{
 		ImageURL:    url,
+		ThumbURL:    thumbUrl,
 		MimeType:    mimeType,
 		FilePath:    filePath,
 		OriginalBPP: originalBPP,

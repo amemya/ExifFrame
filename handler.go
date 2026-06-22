@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"image"
+	"image/jpeg"
 	"io"
 	"log"
 	"mime"
@@ -15,7 +17,19 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rwcarlsen/goexif/exif"
+	"golang.org/x/image/draw"
 )
+
+const maxImageTokens = 2000
+
+// fileOpenSem restricts the number of concurrent file opens for /api/image and /api/thumb
+// to avoid hitting the OS file descriptor limit (e.g. 256 on macOS).
+var fileOpenSem = make(chan struct{}, 100)
+
+// thumbProcessSem restricts concurrent heavy image decoding/resizing.
+var thumbProcessSem = make(chan struct{}, 4)
 
 // ImageHandler provides HTTP endpoints to stream images and receive binary save data,
 // avoiding the memory-intensive Base64 IPC transfer.
@@ -68,6 +82,8 @@ func (h *ImageHandler) Middleware(next http.Handler) http.Handler {
 		switch r.URL.Path {
 		case "/api/image":
 			h.handleImage(w, r)
+		case "/api/thumb":
+			h.handleThumb(w, r)
 		case "/api/save":
 			h.handleSave(w, r)
 		default:
@@ -101,9 +117,90 @@ func (h *ImageHandler) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fileOpenSem <- struct{}{}
+	defer func() { <-fileOpenSem }()
+
 	// http.ServeFile handles Content-Type detection, Range requests, and streaming
 	// without loading the entire file into memory.
 	http.ServeFile(w, r, filePath)
+}
+
+// handleThumb serves a lightweight thumbnail for the requested image token.
+func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	token := r.URL.Query().Get("token")
+	h.imgMu.RLock()
+	filePath := h.imageTokens[token]
+	h.imgMu.RUnlock()
+
+	if filePath == "" {
+		http.Error(w, "Token not found", http.StatusNotFound)
+		return
+	}
+
+	fileOpenSem <- struct{}{}
+	defer func() { <-fileOpenSem }()
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+	defer f.Close()
+
+	// 1. Try to get EXIF thumbnail
+	x, err := exif.Decode(f)
+	if err == nil {
+		pic, err := x.JpegThumbnail()
+		if err == nil && len(pic) > 0 {
+			w.Header().Set("Content-Type", "image/jpeg")
+			w.Write(pic)
+			return
+		}
+	}
+
+	// 2. No EXIF thumbnail, generate one on the fly safely
+	thumbProcessSem <- struct{}{}
+	defer func() { <-thumbProcessSem }()
+
+	// Reset file pointer
+	f.Seek(0, io.SeekStart)
+
+	// Decode high-res image
+	img, _, err := image.Decode(f)
+	if err != nil {
+		http.Error(w, "Failed to decode image", http.StatusInternalServerError)
+		return
+	}
+
+	// Calculate thumbnail size (max 256x256)
+	bounds := img.Bounds()
+	w0, h0 := bounds.Dx(), bounds.Dy()
+	var w1, h1 int
+	if w0 > h0 {
+		w1 = 256
+		h1 = h0 * 256 / w0
+	} else {
+		h1 = 256
+		w1 = w0 * 256 / h0
+	}
+	if w1 == 0 {
+		w1 = 1
+	}
+	if h1 == 0 {
+		h1 = 1
+	}
+
+	dst := image.NewRGBA(image.Rect(0, 0, w1, h1))
+	// ApproxBiLinear is faster than CatmullRom and sufficient for a thumbnail
+	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
+
+	w.Header().Set("Content-Type", "image/jpeg")
+	jpeg.Encode(w, dst, &jpeg.Options{Quality: 70})
 }
 
 // prepareSave is called from the IPC side (App.SaveImage) after the native save
@@ -155,8 +252,8 @@ func (h *ImageHandler) registerImageToken(filePath string) string {
 	
 	token := generateToken()
 
-	// Optional: Limit size to prevent memory leaks if many images are opened
-	if len(h.imageTokens) >= 100 {
+	// Limit size to prevent memory leaks if many images are opened
+	if len(h.imageTokens) >= maxImageTokens {
 		// Evict the oldest entry (FIFO with registration-time refresh) to free space.
 		if len(h.imageTokenOrder) > 0 {
 			oldestToken := h.imageTokenOrder[0]

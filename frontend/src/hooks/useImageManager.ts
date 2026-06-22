@@ -127,18 +127,22 @@ export function useImageManager(
 
     const handleExifResults = useCallback((results: ExifResult[]) => {
         const validResults = results.filter(r => !r.cancelled && !r.error && r.imageURL);
+        
+        // Show the first error if any exists
+        const firstError = results.find(r => r.error);
+        if (firstError && firstError.error) {
+            console.error(firstError.error);
+            showToast(firstError.error, true);
+        }
+
         if (validResults.length === 0) {
-            const firstError = results.find(r => r.error);
-            if (firstError && firstError.error) {
-                console.error(firstError.error);
-                showToast(firstError.error, true);
-            }
             return;
         }
 
         setImportedImages(validResults.map(r => ({
             filePath: r.filePath || "",
             imageURL: r.imageURL!,
+            thumbURL: r.thumbURL,
             sourceMimeType: r.mimeType?.toLowerCase().includes('png') ? 'image/png' : 'image/jpeg',
             originalBPP: r.originalBPP,
             imageObj: null,
