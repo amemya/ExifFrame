@@ -117,7 +117,25 @@ function App() {
                 }
             }
         });
-        return () => { offFilesDropped(); };
+
+        const offImagesOpened = Events.On("images-opened", (e: any) => {
+            let results: ExifResult[] = [];
+            if (Array.isArray(e.data)) {
+                if (e.data.length > 0 && Array.isArray(e.data[0])) {
+                    results = e.data[0];
+                } else {
+                    results = e.data;
+                }
+            }
+            if (results && results.length > 0) {
+                imageManager.handleExifResults(results);
+            }
+        });
+
+        return () => { 
+            offFilesDropped(); 
+            offImagesOpened();
+        };
     }, [imageManager.handleExifResults, showToast]);
 
     const handleOpenImages = useCallback(async (
