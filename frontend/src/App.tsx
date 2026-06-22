@@ -82,7 +82,12 @@ function App() {
     });
 
     useEffect(() => {
-        setIsMac(System.IsMac());
+        System.Environment().then(env => {
+            setIsMac(env.OS === 'darwin');
+        }).catch(err => {
+            console.error("Failed to fetch environment:", err);
+            setIsMac(System.IsMac());
+        });
     }, []);
 
     useEffect(() => {
