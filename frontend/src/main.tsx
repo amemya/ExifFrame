@@ -8,7 +8,8 @@ const container = document.getElementById('root')
 
 const root = createRoot(container!)
 
-if (window.location.pathname === '/settings') {
+const urlParams = new URLSearchParams(window.location.search);
+if (window.location.pathname === '/settings' || urlParams.get('page') === 'settings') {
     root.render(
         <React.StrictMode>
             <SettingsWindow />
