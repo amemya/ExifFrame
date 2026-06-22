@@ -1,12 +1,1143 @@
 [
-  { "film": "Kodak Tri-X 400", "developer": "D-76", "dilution": "Stock", "temp": "20", "time": "6:45" },
-  { "film": "Kodak Tri-X 400", "developer": "D-76", "dilution": "1+1", "temp": "20", "time": "9:45" },
-  { "film": "Kodak Tri-X 400", "developer": "HC-110", "dilution": "B", "temp": "20", "time": "4:30" },
-  { "film": "Kodak T-Max 400", "developer": "T-MAX", "dilution": "1+4", "temp": "20", "time": "6:30" },
-  { "film": "Ilford HP5 Plus 400", "developer": "Ilfosol 3", "dilution": "1+9", "temp": "20", "time": "6:30" },
-  { "film": "Ilford HP5 Plus 400", "developer": "D-76", "dilution": "Stock", "temp": "20", "time": "7:30" },
-  { "film": "Ilford HP5 Plus 400", "developer": "D-76", "dilution": "1+1", "temp": "20", "time": "13:00" },
-  { "film": "Kentmere 400", "developer": "Rodinal", "dilution": "1+25", "temp": "20", "time": "8:30" },
-  { "film": "Kentmere 400", "developer": "Rodinal", "dilution": "1+50", "temp": "20", "time": "18:00" },
-  { "film": "Fomapan 400", "developer": "Rodinal", "dilution": "1+50", "temp": "20", "time": "11:00" }
+  {
+    "film": "Kodak Tri-X 400",
+    "developer": "D-76",
+    "dilution": "Stock",
+    "temp": "20",
+    "time": "6:45"
+  },
+  {
+    "film": "Kodak Tri-X 400",
+    "developer": "D-76",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "9:45"
+  },
+  {
+    "film": "Kodak Tri-X 400",
+    "developer": "HC-110",
+    "dilution": "B",
+    "temp": "20",
+    "time": "4:30"
+  },
+  {
+    "film": "Kodak T-Max 400",
+    "developer": "T-MAX",
+    "dilution": "1+4",
+    "temp": "20",
+    "time": "6:30"
+  },
+  {
+    "film": "Ilford HP5 Plus 400",
+    "developer": "Ilfosol 3",
+    "dilution": "1+9",
+    "temp": "20",
+    "time": "6:30"
+  },
+  {
+    "film": "Ilford HP5 Plus 400",
+    "developer": "D-76",
+    "dilution": "Stock",
+    "temp": "20",
+    "time": "7:30"
+  },
+  {
+    "film": "Ilford HP5 Plus 400",
+    "developer": "D-76",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "13:00"
+  },
+  {
+    "film": "Kentmere 400",
+    "developer": "Rodinal",
+    "dilution": "1+25",
+    "temp": "20",
+    "time": "8:30"
+  },
+  {
+    "film": "Kentmere 400",
+    "developer": "Rodinal",
+    "dilution": "1+50",
+    "temp": "20",
+    "time": "18:00"
+  },
+  {
+    "film": "Fomapan 400",
+    "developer": "Rodinal",
+    "dilution": "1+50",
+    "temp": "20",
+    "time": "11:00"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "D-76",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "D-76",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "8.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "D-76",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "17.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "HC-110",
+    "dilution": "B",
+    "temp": "20",
+    "time": "6.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "HC-110",
+    "dilution": "H",
+    "temp": "20",
+    "time": "16"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "HC-110",
+    "dilution": "A",
+    "temp": "20",
+    "time": "15"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "ID-11",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "ID-11",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "8.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "ID-11",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "17.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "DD-X",
+    "dilution": "1+4",
+    "temp": "20",
+    "time": "8.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "Microphen",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "8.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "Microphen",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "10.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "Microphen",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "14.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "Rodinal",
+    "dilution": "1+50",
+    "temp": "20",
+    "time": "4.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "Rodinal",
+    "dilution": "1+25",
+    "temp": "20",
+    "time": "9"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "Rodinal",
+    "dilution": "1+100",
+    "temp": "20",
+    "time": "120"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "Rodinal",
+    "dilution": "1+6",
+    "temp": "19.5",
+    "time": "12.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "XTOL",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "6.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "XTOL",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "8.5"
+  },
+  {
+    "film": "Kentmere 100",
+    "developer": "XTOL",
+    "dilution": "1+2",
+    "temp": "20",
+    "time": "18.5"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "D-76",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "8.75"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "D-76",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "6-7"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "D-76",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "17"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "R09",
+    "dilution": "1+50",
+    "temp": "18",
+    "time": "10.5"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "R09",
+    "dilution": "1+25",
+    "temp": "20",
+    "time": "4"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "Microfine",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "10.5"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "HC-110",
+    "dilution": "B",
+    "temp": "20",
+    "time": "4.5"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "HC-110",
+    "dilution": "G",
+    "temp": "20",
+    "time": "13"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "HC-110",
+    "dilution": "E",
+    "temp": "20",
+    "time": "6"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "HC-110",
+    "dilution": "F",
+    "temp": "20",
+    "time": "7.75"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "HC-110",
+    "dilution": "1+39",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "HC-110",
+    "dilution": "D",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "HC-110",
+    "dilution": "H",
+    "temp": "20",
+    "time": "9"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "ID-11",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "6-7"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "ID-11",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "8-10"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "ID-11",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "15-17"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "DD-X",
+    "dilution": "1+4",
+    "temp": "20",
+    "time": "8"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "DD-X",
+    "dilution": "1+9",
+    "temp": "20",
+    "time": "12"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "Microphen",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "11.5"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "Microphen",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "5-7"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "Microphen",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "8-9"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "Rodinal",
+    "dilution": "1+50",
+    "temp": "24",
+    "time": "5.5"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "Rodinal",
+    "dilution": "1+100",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "Rodinal",
+    "dilution": "1+25",
+    "temp": "20",
+    "time": "4"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "Rodinal",
+    "dilution": "1+200",
+    "temp": "20",
+    "time": "30"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "XTOL",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "5-6"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "XTOL",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "8"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "XTOL",
+    "dilution": "1+3",
+    "temp": "21",
+    "time": "10"
+  },
+  {
+    "film": "Fomapan 100",
+    "developer": "XTOL",
+    "dilution": "1+2",
+    "temp": "20",
+    "time": "9"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "D-76",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "4.5"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "D-76",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "D-76",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "15"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "R09",
+    "dilution": "1+25",
+    "temp": "20",
+    "time": "9"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "R09",
+    "dilution": "1+50",
+    "temp": "20",
+    "time": "16"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "HC-110",
+    "dilution": "B",
+    "temp": "20",
+    "time": "5"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "HC-110",
+    "dilution": "E",
+    "temp": "20",
+    "time": "5.5"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "HC-110",
+    "dilution": "1+39",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "HC-110",
+    "dilution": "D",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "HC-110",
+    "dilution": "G",
+    "temp": "20",
+    "time": "24"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "ID-11",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "4.5"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "ID-11",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "ID-11",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "15"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "DD-X",
+    "dilution": "1+4",
+    "temp": "20",
+    "time": "8"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "DD-X",
+    "dilution": "1+9",
+    "temp": "20",
+    "time": "10.75"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "Microphen",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "6.5"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "Microphen",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "10"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "Microphen",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "14"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "Rodinal",
+    "dilution": "1+25",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "Rodinal",
+    "dilution": "1+50",
+    "temp": "20",
+    "time": "10"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "Rodinal",
+    "dilution": "1+500",
+    "temp": "24",
+    "time": "360"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "Rodinal",
+    "dilution": "1+100",
+    "temp": "20",
+    "time": "18"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "SPD",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "5"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "SPD",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "XTOL",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "6.75"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "XTOL",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "9"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "XTOL",
+    "dilution": "1+2",
+    "temp": "20",
+    "time": "11"
+  },
+  {
+    "film": "Ilford Delta 100",
+    "developer": "XTOL",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "13.5"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "D-76",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "D-76",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "10"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "D-76",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "18"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "D-76",
+    "dilution": "1+2",
+    "temp": "20",
+    "time": "17"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "R09",
+    "dilution": "1+25",
+    "temp": "20",
+    "time": "8"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "R09",
+    "dilution": "1+50",
+    "temp": "20",
+    "time": "18"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "HC-110",
+    "dilution": "B",
+    "temp": "20",
+    "time": "4.5"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "HC-110",
+    "dilution": "A",
+    "temp": "20",
+    "time": "4"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "HC-110",
+    "dilution": "1+250",
+    "temp": "20",
+    "time": "90"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "ID-11",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "ID-11",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "10"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "ID-11",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "18"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "ID-11",
+    "dilution": "1+2",
+    "temp": "20",
+    "time": "30"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "DD-X",
+    "dilution": "1+4",
+    "temp": "20",
+    "time": "6"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "DD-X",
+    "dilution": "1+9",
+    "temp": "24",
+    "time": "13"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "Microphen",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "5"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "Microphen",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "8.5"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "Microphen",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "16"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "Rodinal",
+    "dilution": "1+25",
+    "temp": "20",
+    "time": "5.5"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "Rodinal",
+    "dilution": "1+50",
+    "temp": "20",
+    "time": "11"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "Rodinal",
+    "dilution": "1+100",
+    "temp": "20",
+    "time": "120"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "Rodinal",
+    "dilution": "1+24",
+    "temp": "20",
+    "time": "7.5"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "Rodinal",
+    "dilution": "1+200",
+    "temp": "20",
+    "time": "105"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "Rodinal",
+    "dilution": "1+16",
+    "temp": "20",
+    "time": "20"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "XTOL",
+    "dilution": "1+2",
+    "temp": "24",
+    "time": "6"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "XTOL",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "6"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "XTOL",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "9"
+  },
+  {
+    "film": "Ilford Delta 400",
+    "developer": "XTOL",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "16.5"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "D-76",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "5.5"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "D-76",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "9.5"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "D-76",
+    "dilution": "1+3",
+    "temp": "22",
+    "time": "16"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "HC-110",
+    "dilution": "B",
+    "temp": "20",
+    "time": "6"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "HC-110",
+    "dilution": "A",
+    "temp": "20",
+    "time": "4.5"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "ID-11",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "5.5"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "ID-11",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "11"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "ID-11",
+    "dilution": "1+3",
+    "temp": "22",
+    "time": "16"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "DD-X",
+    "dilution": "1+4",
+    "temp": "20",
+    "time": "6"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "DD-X",
+    "dilution": "1+9",
+    "temp": "20",
+    "time": "13"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "Microphen",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "6"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "Rodinal",
+    "dilution": "1+25",
+    "temp": "20",
+    "time": "5.5"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "Rodinal",
+    "dilution": "1+63",
+    "temp": "20",
+    "time": "28"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "Rodinal",
+    "dilution": "1+15",
+    "temp": "20",
+    "time": "18"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "XTOL",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "5"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "XTOL",
+    "dilution": "1+1",
+    "temp": "24",
+    "time": "15"
+  },
+  {
+    "film": "Ilford Delta 3200",
+    "developer": "XTOL",
+    "dilution": "1+2",
+    "temp": "24",
+    "time": "17"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "D-76",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "6.25"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "D-76",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "10.5"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "D-76",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "17"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "Microfine",
+    "dilution": "stock",
+    "temp": "18",
+    "time": "12.5"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "Microfine",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "13-15"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "HC-110",
+    "dilution": "F",
+    "temp": "24",
+    "time": "7"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "HC-110",
+    "dilution": "B",
+    "temp": "20",
+    "time": "4.5"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "HC-110",
+    "dilution": "1+141",
+    "temp": "21",
+    "time": "45"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "HC-110",
+    "dilution": "C",
+    "temp": "20",
+    "time": "5"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "HC-110",
+    "dilution": "E",
+    "temp": "20",
+    "time": "7"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "HC-110",
+    "dilution": "H",
+    "temp": "20",
+    "time": "10"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "ID-11",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "6.25"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "ID-11",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "10"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "ID-11",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "14.5"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "DD-X",
+    "dilution": "1+4",
+    "temp": "20",
+    "time": "9"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "DD-X",
+    "dilution": "1+9",
+    "temp": "20",
+    "time": "16"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "Microphen",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "8"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "Microphen",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "9"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "Microphen",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "14.5"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "Rodinal",
+    "dilution": "1+50",
+    "temp": "20",
+    "time": "11"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "Rodinal",
+    "dilution": "1+25",
+    "temp": "20",
+    "time": "6.5"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "Rodinal",
+    "dilution": "1+100",
+    "temp": "20",
+    "time": "18"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "Rodinal",
+    "dilution": "1+300",
+    "temp": "20",
+    "time": "180"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "Rodinal",
+    "dilution": "1+400",
+    "temp": "20",
+    "time": "240"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "SPD",
+    "dilution": "stock",
+    "temp": "18",
+    "time": "5.5"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "SPD",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "6.5"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "XTOL",
+    "dilution": "stock",
+    "temp": "20",
+    "time": "8"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "XTOL",
+    "dilution": "1+1",
+    "temp": "20",
+    "time": "9.5"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "XTOL",
+    "dilution": "1+2",
+    "temp": "20",
+    "time": "13"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "XTOL",
+    "dilution": "1+3",
+    "temp": "20",
+    "time": "14"
+  },
+  {
+    "film": "Fujifilm Neopan 100 Acros II",
+    "developer": "XTOL",
+    "dilution": "1+4",
+    "temp": "20",
+    "time": "16"
+  }
 ]
