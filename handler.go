@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -209,10 +210,15 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 	// ApproxBiLinear is faster than CatmullRom and sufficient for a thumbnail
 	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
 
-	w.Header().Set("Content-Type", "image/jpeg")
-	if err := jpeg.Encode(w, dst, &jpeg.Options{Quality: 70}); err != nil {
-		log.Printf("Failed to encode/write generated thumbnail: %v", err)
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: 70}); err != nil {
+		log.Printf("Failed to encode generated thumbnail: %v", err)
+		http.Error(w, "Failed to encode thumbnail", http.StatusInternalServerError)
+		return
 	}
+
+	w.Header().Set("Content-Type", "image/jpeg")
+	w.Write(buf.Bytes())
 }
 
 // prepareSave is called from the IPC side (App.SaveImage) after the native save
