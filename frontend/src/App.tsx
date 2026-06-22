@@ -128,7 +128,18 @@ function App() {
                 }
             }
             if (results && results.length > 0) {
-                imageManager.handleExifResults(results);
+                if (isSelectingRef.current) return;
+                isSelectingRef.current = true;
+                setIsSelecting(true);
+                try {
+                    imageManager.handleExifResults(results);
+                } catch (err: any) {
+                    console.error("Failed to process opened images:", err);
+                    showToast("Failed to process images: " + (err instanceof Error ? err.message : String(err)), true);
+                } finally {
+                    setIsSelecting(false);
+                    isSelectingRef.current = false;
+                }
             }
         });
 
