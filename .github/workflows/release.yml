@@ -175,7 +175,7 @@ jobs:
             SetShellVarContext current
           !macroend
           !macro wails.files
-            File /oname=${PRODUCT_EXECUTABLE} "..\..\bin\ExifFrame-windows-amd64.exe"
+            File /oname=${PRODUCT_EXECUTABLE} "..\..\..\bin\ExifFrame-windows-amd64.exe"
           !macroend
           !macro wails.writeUninstaller
             WriteUninstaller "$INSTDIR\uninstall.exe"
