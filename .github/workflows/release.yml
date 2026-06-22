@@ -111,11 +111,11 @@ jobs:
             --icon "ExifFrame.app" 175 190 \
             --app-drop-link 425 190 \
             --no-internet-enable \
-            "bin/ExifFrame-darwin-arm64.dmg" \
+            "bin/ExifFrame-macos-arm64.dmg" \
             "bin/ExifFrame.app" || true
           # create-dmg returns non-zero when signing is skipped; check the file exists
-          test -f bin/ExifFrame-darwin-arm64.dmg
-          hdiutil verify bin/ExifFrame-darwin-arm64.dmg
+          test -f bin/ExifFrame-macos-arm64.dmg
+          hdiutil verify bin/ExifFrame-macos-arm64.dmg
 
 
       - name: Package Windows App
