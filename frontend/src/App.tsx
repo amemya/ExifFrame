@@ -410,16 +410,7 @@ function App() {
                                     <svg className="spinner" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }} aria-hidden="true">
                                         <line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
                                     </svg>
-                                    {exportProgress.total > 0 ? (
-                                        <div style={{ width: '100%', maxWidth: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <p style={{ marginBottom: '0.5rem' }}>Exporting images... ({exportProgress.current} / {exportProgress.total})</p>
-                                            <div className="progress-container" style={{ width: '100%', height: '6px', backgroundColor: 'var(--bg-hover)', borderRadius: '3px', overflow: 'hidden' }}>
-                                                <div className="progress-bar-fill" style={{ width: `${(exportProgress.current / exportProgress.total) * 100}%`, height: '100%', backgroundColor: 'var(--accent-color)', transition: 'width 0.2s ease-out' }}></div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <p>Processing images...</p>
-                                    )}
+                                    <p>Processing images...</p>
                                 </>
                             ) : (
                                 <>
@@ -439,11 +430,22 @@ function App() {
                                     pointerEvents: imageManager.isCurrentImageLoaded ? 'auto' : 'none'
                                 }} 
                             />
-                            <div className={`loading-overlay ${!imageManager.isCurrentImageLoaded && imageManager.isCanvasReady ? 'visible' : ''}`}>
+                            <div className={`loading-overlay ${(!imageManager.isCurrentImageLoaded && imageManager.isCanvasReady) || isSelecting ? 'visible' : ''}`}>
                                 <svg className="spinner" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '0.5rem' }} aria-hidden="true">
                                     <line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
                                 </svg>
-                                <span>Loading...</span>
+                                {exportProgress.total > 0 ? (
+                                    <div style={{ width: '100%', maxWidth: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                        <span style={{ marginBottom: '0.5rem' }}>Exporting images... ({exportProgress.current} / {exportProgress.total})</span>
+                                        <div className="progress-container" style={{ width: '100%', height: '6px', backgroundColor: 'var(--bg-hover)', borderRadius: '3px', overflow: 'hidden' }}>
+                                            <div className="progress-bar-fill" style={{ width: `${(exportProgress.current / exportProgress.total) * 100}%`, height: '100%', backgroundColor: 'var(--accent-color)', transition: 'width 0.2s ease-out' }}></div>
+                                        </div>
+                                    </div>
+                                ) : isSelecting ? (
+                                    <span>Processing images...</span>
+                                ) : (
+                                    <span>Loading...</span>
+                                )}
                             </div>
                         </div>
                     )}
