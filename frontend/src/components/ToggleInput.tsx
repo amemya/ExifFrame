@@ -38,6 +38,9 @@ export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisib
     };
 
     const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
+        if (tempValue !== null) {
+            e.currentTarget.value = value;
+        }
         if (onBlur) {
             onBlur(e);
         }

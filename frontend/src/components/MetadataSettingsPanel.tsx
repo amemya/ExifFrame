@@ -17,7 +17,7 @@ const formatFocalLength = (val: string): string => {
     if (/^\d+(\.\d+)?(-\d+(\.\d+)?)?$/.test(trimmed)) {
         return `${trimmed}mm`;
     }
-    return val;
+    return trimmed;
 };
 
 const formatAperture = (val: string): string => {
@@ -26,7 +26,7 @@ const formatAperture = (val: string): string => {
     if (match) {
         return `f/${match[2]}`;
     }
-    return val;
+    return trimmed;
 };
 
 const formatShutterSpeed = (val: string): string => {
@@ -34,7 +34,7 @@ const formatShutterSpeed = (val: string): string => {
     if (/^\d+(\/\d+)?$/.test(trimmed) || /^\d+\.\d+$/.test(trimmed)) {
         return `${trimmed}s`;
     }
-    return val;
+    return trimmed;
 };
 
 const formatISO = (val: string): string => {
@@ -43,7 +43,7 @@ const formatISO = (val: string): string => {
     if (match) {
         return `ISO${match[2]}`;
     }
-    return val;
+    return trimmed;
 };
 
 const formatTemp = (val: string): string => {
@@ -51,7 +51,7 @@ const formatTemp = (val: string): string => {
     if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
         return `${trimmed}℃`;
     }
-    return val;
+    return trimmed;
 };
 
 const formatTime = (val: string): string => {
@@ -59,7 +59,7 @@ const formatTime = (val: string): string => {
     if (/^\d+(\.\d+)?$/.test(trimmed)) {
         return `${trimmed}min`;
     }
-    return val;
+    return trimmed;
 };
 
 export interface MetadataSettingsPanelProps {
