@@ -52,6 +52,9 @@ type Settings struct {
 	VisibilityDilution     bool `json:"visibilityDilution"`
 	VisibilityTemperature  bool `json:"visibilityTemperature"`
 	VisibilityTime         bool `json:"visibilityTime"`
+
+	// Updater settings
+	EnableBetaUpdates bool `json:"enableBetaUpdates"`
 }
 
 var (
@@ -97,6 +100,7 @@ func init() {
 		VisibilityDilution:     true,
 		VisibilityTemperature:  true,
 		VisibilityTime:         true,
+		EnableBetaUpdates:      false,
 	}
 	loadSettings()
 }
