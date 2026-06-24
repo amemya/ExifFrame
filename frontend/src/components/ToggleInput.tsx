@@ -1,4 +1,4 @@
-import { ChangeEvent, FocusEvent } from 'react';
+import { ChangeEvent, FocusEvent, useState } from 'react';
 
 const EyeIcon = ({ visible }: { visible: boolean }) => (
     visible ? (
@@ -20,40 +20,66 @@ export interface ToggleInputProps {
     onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
 }
 
-export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility, hideInput, suggestions, onBlur }: ToggleInputProps) => (
-    <div className="input-group">
-        <div className="toggle-input-header">
-            <label htmlFor={id} className="toggle-input-label">{label}</label>
-            <button
-                type="button"
-                onClick={onToggleVisibility}
-                className={`toggle-visibility-btn ${visible ? 'visible' : ''}`}
-                title={visible ? `Hide ${label} from frame` : `Show ${label} on frame`}
-                aria-label={visible ? `Hide ${label} from frame` : `Show ${label} on frame`}
-                aria-pressed={visible}
-            >
-                <EyeIcon visible={visible} />
-            </button>
+export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisibility, hideInput, suggestions, onBlur }: ToggleInputProps) => {
+    // Temporary override to show all datalist options on click.
+    // null = no override (use parent's value), "" = cleared for datalist display.
+    const [tempValue, setTempValue] = useState<string | null>(null);
+    const hasSuggestions = suggestions && suggestions.length > 0;
+
+    const handleMouseDown = () => {
+        if (hasSuggestions) {
+            setTempValue("");
+        }
+    };
+
+    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setTempValue(null);
+        onChange(e);
+    };
+
+    const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
+        setTempValue(null);
+        onBlur?.(e);
+    };
+
+    const displayValue = tempValue !== null ? tempValue : value;
+
+    return (
+        <div className="input-group">
+            <div className="toggle-input-header">
+                <label htmlFor={id} className="toggle-input-label">{label}</label>
+                <button
+                    type="button"
+                    onClick={onToggleVisibility}
+                    className={`toggle-visibility-btn ${visible ? 'visible' : ''}`}
+                    title={visible ? `Hide ${label} from frame` : `Show ${label} on frame`}
+                    aria-label={visible ? `Hide ${label} from frame` : `Show ${label} on frame`}
+                    aria-pressed={visible}
+                >
+                    <EyeIcon visible={visible} />
+                </button>
+            </div>
+            {!hideInput && (
+                <>
+                    <input
+                        id={id}
+                        type="text"
+                        value={displayValue}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onMouseDown={handleMouseDown}
+                        className={`toggle-input-field ${!visible ? 'hidden' : ''}`}
+                        list={hasSuggestions ? `${id}-datalist` : undefined}
+                    />
+                    {hasSuggestions && (
+                        <datalist id={`${id}-datalist`}>
+                            {suggestions.map((s) => (
+                                <option key={s} value={s} />
+                            ))}
+                        </datalist>
+                    )}
+                </>
+            )}
         </div>
-        {!hideInput && (
-            <>
-                <input
-                    id={id}
-                    type="text"
-                    value={value}
-                    onChange={onChange}
-                    onBlur={onBlur}
-                    className={`toggle-input-field ${!visible ? 'hidden' : ''}`}
-                    list={suggestions && suggestions.length > 0 ? `${id}-datalist` : undefined}
-                />
-                {suggestions && suggestions.length > 0 && (
-                    <datalist id={`${id}-datalist`}>
-                        {suggestions.map((s) => (
-                            <option key={s} value={s} />
-                        ))}
-                    </datalist>
-                )}
-            </>
-        )}
-    </div>
-);
+    );
+};
