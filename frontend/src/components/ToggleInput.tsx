@@ -38,8 +38,20 @@ export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisib
     };
 
     const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
+        if (onBlur) {
+            if (tempValue !== null) {
+                // Proxy the event to provide the correct value instead of the temporary empty string
+                const syntheticEvent = Object.create(e);
+                const syntheticTarget = Object.create(e.target);
+                Object.defineProperty(syntheticTarget, 'value', { get: () => value });
+                Object.defineProperty(syntheticEvent, 'target', { get: () => syntheticTarget });
+                Object.defineProperty(syntheticEvent, 'currentTarget', { get: () => syntheticTarget });
+                onBlur(syntheticEvent);
+            } else {
+                onBlur(e);
+            }
+        }
         setTempValue(null);
-        onBlur?.(e);
     };
 
     const displayValue = tempValue !== null ? tempValue : value;

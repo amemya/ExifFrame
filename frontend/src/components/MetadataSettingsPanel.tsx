@@ -113,8 +113,8 @@ export const MetadataSettingsPanel = ({
         const availableTemps = Array.from(new Set(matchingRecipesForDilution.map(r => formatTemp(r.temp)))).filter(Boolean).sort();
         
         // Filter matching temperature to narrow down times
-        const isTempValid = !!exif.temperature && matchingRecipesForDilution.some(r => formatTemp(r.temp) === exif.temperature);
-        const matchingRecipesForTemp = isTempValid ? matchingRecipesForDilution.filter(r => formatTemp(r.temp) === exif.temperature) : matchingRecipesForDilution;
+        const isTempValid = !!exif.temperature && matchingRecipesForDilution.some(r => formatTemp(r.temp) === formatTemp(exif.temperature));
+        const matchingRecipesForTemp = isTempValid ? matchingRecipesForDilution.filter(r => formatTemp(r.temp) === formatTemp(exif.temperature)) : matchingRecipesForDilution;
         const availableTimes = Array.from(new Set(matchingRecipesForTemp.map(r => formatTime(r.time)))).filter(Boolean).sort();
         
         return { availableFilms, availableDevelopers, availableDilutions, availableTemps, availableTimes };
