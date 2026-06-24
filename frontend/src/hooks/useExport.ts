@@ -119,11 +119,19 @@ export function useExport({
         let successCount = 0;
         let failCount = 0;
 
+        const safeOnProgress = (current: number, total: number) => {
+            if (onProgress) {
+                try {
+                    onProgress(current, total);
+                } catch (e) {
+                    console.error("onProgress failed:", e);
+                }
+            }
+        };
+
         try {
             showToast("Exporting images...");
-            if (onProgress) {
-                onProgress(0, importedImages.length);
-            }
+            safeOnProgress(0, importedImages.length);
 
             for (let i = 0; i < importedImages.length; i++) {
                 const imgState = importedImages[i];
@@ -193,9 +201,7 @@ export function useExport({
                     }
                 }
                 
-                if (onProgress) {
-                    onProgress(i + 1, importedImages.length);
-                }
+                safeOnProgress(i + 1, importedImages.length);
             }
             
             if (failCount > 0) {
@@ -208,11 +214,9 @@ export function useExport({
             console.error("Failed to export all:", errStr);
             showToast("Failed to export all: " + errStr, true);
         } finally {
-            if (onProgress) {
-                onProgress(0, 0); // Reset progress
-            }
             setIsSelecting(false);
             isSelectingRef.current = false;
+            safeOnProgress(0, 0); // Reset progress
         }
     };
 
