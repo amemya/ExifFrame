@@ -21,13 +21,12 @@ const (
 // dynamicGithubProvider routes updater requests to either a stable or beta
 // GitHub provider depending on the user's settings.
 type dynamicGithubProvider struct {
-	stableProvider updater.Provider
-	betaProvider   updater.Provider
+	updater.Provider // Embedded default provider for future-proofing interface additions
+	betaProvider     updater.Provider
 }
 
-func (p *dynamicGithubProvider) Name() string {
-	return "github"
-}
+// We let the embedded Provider handle Name(), which will correctly return "github"
+// or whatever the underlying github provider returns.
 
 func (p *dynamicGithubProvider) Check(ctx context.Context, req updater.CheckRequest) (*updater.Release, error) {
 	settingsMu.RLock()
@@ -37,7 +36,7 @@ func (p *dynamicGithubProvider) Check(ctx context.Context, req updater.CheckRequ
 	if betaEnabled {
 		return p.betaProvider.Check(ctx, req)
 	}
-	return p.stableProvider.Check(ctx, req)
+	return p.Provider.Check(ctx, req)
 }
 
 func (p *dynamicGithubProvider) Download(ctx context.Context, r *updater.Release, dst io.Writer, onProgress func(written, total int64)) error {
@@ -48,7 +47,7 @@ func (p *dynamicGithubProvider) Download(ctx context.Context, r *updater.Release
 	if betaEnabled {
 		return p.betaProvider.Download(ctx, r, dst, onProgress)
 	}
-	return p.stableProvider.Download(ctx, r, dst, onProgress)
+	return p.Provider.Download(ctx, r, dst, onProgress)
 }
 
 // InitUpdater initialises the Wails v3 built-in updater on the given app
@@ -76,8 +75,8 @@ func InitUpdater(app *application.App) {
 	}
 
 	dynProvider := &dynamicGithubProvider{
-		stableProvider: stableProvider,
-		betaProvider:   betaProvider,
+		Provider:     stableProvider,
+		betaProvider: betaProvider,
 	}
 
 	// The Wails updater expects versions without the "v" prefix.
