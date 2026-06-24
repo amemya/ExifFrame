@@ -97,21 +97,28 @@ export const MetadataSettingsPanel = ({
     const { availableFilms, availableDevelopers, availableDilutions, availableTemps, availableTimes } = useMemo(() => {
         const availableFilms = Array.from(new Set(recipes.map(r => r.film))).filter(Boolean).sort();
         
-        // Filter recipes matching the selected film
-        const matchingRecipes = recipes.filter(r => !exif.film || r.film === exif.film);
+        // Filter recipes matching the selected film (Fallback to all if invalid)
+        const isFilmValid = !!exif.film && recipes.some(r => r.film === exif.film);
+        const matchingRecipes = isFilmValid ? recipes.filter(r => r.film === exif.film) : recipes;
         const availableDevelopers = Array.from(new Set(matchingRecipes.map(r => r.developer))).filter(Boolean).sort();
         
         // Filter matching developer
-        const matchingRecipesForDev = matchingRecipes.filter(r => !exif.developer || r.developer === exif.developer);
+        const isDevValid = !!exif.developer && matchingRecipes.some(r => r.developer === exif.developer);
+        const matchingRecipesForDev = isDevValid ? matchingRecipes.filter(r => r.developer === exif.developer) : matchingRecipes;
         const availableDilutions = Array.from(new Set(matchingRecipesForDev.map(r => r.dilution))).filter(Boolean).sort();
         
         // Filter matching dilution
-        const matchingRecipesForDilution = matchingRecipesForDev.filter(r => !exif.dilution || r.dilution === exif.dilution);
-        const availableTemps = Array.from(new Set(matchingRecipesForDilution.map(r => r.temp))).filter(Boolean).sort();
-        const availableTimes = Array.from(new Set(matchingRecipesForDilution.map(r => r.time))).filter(Boolean).sort();
+        const isDilutionValid = !!exif.dilution && matchingRecipesForDev.some(r => r.dilution === exif.dilution);
+        const matchingRecipesForDilution = isDilutionValid ? matchingRecipesForDev.filter(r => r.dilution === exif.dilution) : matchingRecipesForDev;
+        const availableTemps = Array.from(new Set(matchingRecipesForDilution.map(r => formatTemp(r.temp)))).filter(Boolean).sort();
+        
+        // Filter matching temperature to narrow down times
+        const isTempValid = !!exif.temperature && matchingRecipesForDilution.some(r => formatTemp(r.temp) === exif.temperature);
+        const matchingRecipesForTemp = isTempValid ? matchingRecipesForDilution.filter(r => formatTemp(r.temp) === exif.temperature) : matchingRecipesForDilution;
+        const availableTimes = Array.from(new Set(matchingRecipesForTemp.map(r => formatTime(r.time)))).filter(Boolean).sort();
         
         return { availableFilms, availableDevelopers, availableDilutions, availableTemps, availableTimes };
-    }, [recipes, exif.film, exif.developer, exif.dilution]);
+    }, [recipes, exif.film, exif.developer, exif.dilution, exif.temperature]);
 
     return (
     <div className="sidebar-section metadata-settings-section">
