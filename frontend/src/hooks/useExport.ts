@@ -199,9 +199,8 @@ export function useExport({
                     if (imgToDraw && !imgState.imageObj) {
                         imgToDraw.src = "";
                     }
+                    safeOnProgress(i + 1, importedImages.length);
                 }
-                
-                safeOnProgress(i + 1, importedImages.length);
             }
             
             if (failCount > 0) {
