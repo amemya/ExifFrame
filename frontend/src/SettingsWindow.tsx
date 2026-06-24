@@ -18,6 +18,7 @@ function SettingsWindow() {
     const [watchFolder, setWatchFolder] = useState("");
     const [exportFolder, setExportFolder] = useState("");
     const [jpegQuality, setJpegQuality] = useState("auto");
+    const [enableBetaUpdates, setEnableBetaUpdates] = useState<boolean>(false);
 
     // Frame Settings
     const [aspectRatioPreset, setAspectRatioPreset] = useState<string>("4300:3618");
@@ -46,6 +47,7 @@ function SettingsWindow() {
         setWatchFolder(s.watchFolder || "");
         setExportFolder(s.exportFolder || "");
         setJpegQuality(s.jpegQuality || "auto");
+        setEnableBetaUpdates(s.enableBetaUpdates ?? false);
 
         setAspectRatioPreset(s.aspectRatioPreset || "4300:3618");
         setCustomRatioW(s.customRatioW || 4300);
@@ -102,6 +104,7 @@ function SettingsWindow() {
         s.watchFolder = watchFolder;
         s.exportFolder = exportFolder;
         s.jpegQuality = jpegQuality;
+        s.enableBetaUpdates = enableBetaUpdates;
         s.aspectRatioPreset = aspectRatioPreset;
         s.customRatioW = customRatioW;
         s.customRatioH = customRatioH;
@@ -221,6 +224,18 @@ function SettingsWindow() {
                                     <option value="0.8">Low (80%)</option>
                                 </select>
                                 <small style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-secondary)', textAlign: 'left' }}>Auto calculates the optimal quality based on the original image compression to prevent file size bloat.</small>
+                            </div>
+                            <div className="input-group">
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'normal', margin: 0, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={enableBetaUpdates} 
+                                        onChange={(e) => setEnableBetaUpdates(e.target.checked)} 
+                                        style={{ margin: 0, width: 'auto', height: 'auto', cursor: 'pointer' }}
+                                    />
+                                    Receive Beta Updates
+                                </label>
+                                <small style={{ display: 'block', marginTop: '0.5rem', marginLeft: '1.5rem', color: 'var(--text-secondary)', textAlign: 'left' }}>Receive pre-release (beta) versions of ExifFrame automatically.</small>
                             </div>
                         </div>
                     )}

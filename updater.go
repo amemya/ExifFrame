@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"strings"
 	"time"
@@ -17,19 +18,65 @@ const (
 	updateCheckInterval = 4 * time.Hour
 )
 
+// dynamicGithubProvider routes updater requests to either a stable or beta
+// GitHub provider depending on the user's settings.
+type dynamicGithubProvider struct {
+	updater.Provider // Embedded default provider for future-proofing interface additions
+	betaProvider     updater.Provider
+}
+
+// We let the embedded Provider handle Name(), which will correctly return "github"
+// or whatever the underlying github provider returns.
+
+func (p *dynamicGithubProvider) Check(ctx context.Context, req updater.CheckRequest) (*updater.Release, error) {
+	settingsMu.RLock()
+	betaEnabled := currentSettings.EnableBetaUpdates
+	settingsMu.RUnlock()
+
+	if betaEnabled {
+		return p.betaProvider.Check(ctx, req)
+	}
+	return p.Provider.Check(ctx, req)
+}
+
+func (p *dynamicGithubProvider) Download(ctx context.Context, r *updater.Release, dst io.Writer, onProgress func(written, total int64)) error {
+	settingsMu.RLock()
+	betaEnabled := currentSettings.EnableBetaUpdates
+	settingsMu.RUnlock()
+
+	if betaEnabled {
+		return p.betaProvider.Download(ctx, r, dst, onProgress)
+	}
+	return p.Provider.Download(ctx, r, dst, onProgress)
+}
+
 // InitUpdater initialises the Wails v3 built-in updater on the given app
 // instance. It configures a GitHub provider pointed at the ExifFrame
 // repository and enables periodic background checks.
 func InitUpdater(app *application.App) {
-	ghProvider, err := github.New(github.Config{
+	stableProvider, err := github.New(github.Config{
 		Repository:    updateOwner + "/" + updateRepo,
 		ChecksumAsset: "SHA256SUMS",
+		Prerelease:    false,
 	})
 	if err != nil {
-		// Non-fatal: if the provider can't be constructed the app still works,
-		// just without auto-update.
-		log.Printf("GitHub provider creation failed: %v", err)
+		log.Printf("GitHub stable provider creation failed: %v", err)
 		return
+	}
+
+	betaProvider, err := github.New(github.Config{
+		Repository:    updateOwner + "/" + updateRepo,
+		ChecksumAsset: "SHA256SUMS",
+		Prerelease:    true,
+	})
+	if err != nil {
+		log.Printf("GitHub beta provider creation failed: %v", err)
+		return
+	}
+
+	dynProvider := &dynamicGithubProvider{
+		Provider:     stableProvider,
+		betaProvider: betaProvider,
 	}
 
 	// The Wails updater expects versions without the "v" prefix.
@@ -37,7 +84,7 @@ func InitUpdater(app *application.App) {
 
 	err = app.Updater.Init(updater.Config{
 		CurrentVersion: ver,
-		Providers:      []updater.Provider{ghProvider},
+		Providers:      []updater.Provider{dynProvider},
 		CheckInterval:  updateCheckInterval,
 	})
 	if err != nil {
