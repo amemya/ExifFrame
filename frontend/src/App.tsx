@@ -30,6 +30,7 @@ function App() {
     const [openMenuVisible, setOpenMenuVisible] = useState(false);
     const [exportMenuVisible, setExportMenuVisible] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
 
     useBackgroundProcessor();
     const { updateState, dismissUpdateError, triggerUpdate, restartApp } = useUpdater();
@@ -79,7 +80,8 @@ function App() {
         showToast,
         profile: settings.profile,
         visibility: settings.visibility,
-        globalJpegQuality: settings.globalJpegQuality
+        globalJpegQuality: settings.globalJpegQuality,
+        onProgress: (current, total) => setExportProgress({ current, total })
     });
 
     useEffect(() => {
@@ -218,7 +220,12 @@ function App() {
             }}>
                 <div className="top-bar-left">
                     <h1>ExifFrame</h1>
-                    {updateState.stage !== 'idle' && (() => {
+                    {exportProgress.total > 0 ? (
+                        <button className="btn btn-update btn-update--progress" disabled title="Exporting images...">
+                            <span className="update-progress-bar" style={{ width: `${(exportProgress.current / exportProgress.total) * 100}%` }} />
+                            <span className="update-progress-text">Exporting... {exportProgress.current} / {exportProgress.total}</span>
+                        </button>
+                    ) : updateState.stage !== 'idle' && (() => {
                         const { stage, version, downloadPct, errorMessage, releaseNotes } = updateState;
                         if (stage === 'checking') {
                             return (

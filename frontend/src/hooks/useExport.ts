@@ -17,6 +17,8 @@ export interface UseExportProps {
     profile: string;
     visibility: MetadataVisibility;
     globalJpegQuality: string;
+
+    onProgress?: (current: number, total: number) => void;
 }
 
 const uploadCanvasBlob = async (
@@ -59,7 +61,7 @@ const uploadCanvasBlob = async (
 export function useExport({
     canvasRef, imageObj, currentImage, importedImages,
     isSelectingRef, setIsSelecting, showToast,
-    profile, visibility, globalJpegQuality
+    profile, visibility, globalJpegQuality, onProgress
 }: UseExportProps) {
     
     const downloadImage = async () => {
@@ -117,8 +119,19 @@ export function useExport({
         let successCount = 0;
         let failCount = 0;
 
+        const safeOnProgress = (current: number, total: number) => {
+            if (onProgress) {
+                try {
+                    onProgress(current, total);
+                } catch (e) {
+                    console.error("onProgress failed:", e);
+                }
+            }
+        };
+
         try {
             showToast("Exporting images...");
+            safeOnProgress(0, importedImages.length);
 
             for (let i = 0; i < importedImages.length; i++) {
                 const imgState = importedImages[i];
@@ -186,6 +199,7 @@ export function useExport({
                     if (imgToDraw && !imgState.imageObj) {
                         imgToDraw.src = "";
                     }
+                    safeOnProgress(i + 1, importedImages.length);
                 }
             }
             
@@ -201,6 +215,7 @@ export function useExport({
         } finally {
             setIsSelecting(false);
             isSelectingRef.current = false;
+            safeOnProgress(0, 0); // Reset progress
         }
     };
 
