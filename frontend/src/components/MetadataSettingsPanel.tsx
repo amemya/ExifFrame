@@ -110,12 +110,20 @@ export const MetadataSettingsPanel = ({
         // Filter matching dilution
         const isDilutionValid = !!exif.dilution && matchingRecipesForDev.some(r => r.dilution === exif.dilution);
         const matchingRecipesForDilution = isDilutionValid ? matchingRecipesForDev.filter(r => r.dilution === exif.dilution) : matchingRecipesForDev;
-        const availableTemps = Array.from(new Set(matchingRecipesForDilution.map(r => formatTemp(r.temp)))).filter(Boolean).sort();
+        
+        const numericSort = (a: string, b: string) => {
+            const numA = parseFloat(a);
+            const numB = parseFloat(b);
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+            return a.localeCompare(b);
+        };
+        
+        const availableTemps = Array.from(new Set(matchingRecipesForDilution.map(r => formatTemp(r.temp)))).filter(Boolean).sort(numericSort);
         
         // Filter matching temperature to narrow down times
         const isTempValid = !!exif.temperature && matchingRecipesForDilution.some(r => formatTemp(r.temp) === formatTemp(exif.temperature));
         const matchingRecipesForTemp = isTempValid ? matchingRecipesForDilution.filter(r => formatTemp(r.temp) === formatTemp(exif.temperature)) : matchingRecipesForDilution;
-        const availableTimes = Array.from(new Set(matchingRecipesForTemp.map(r => formatTime(r.time)))).filter(Boolean).sort();
+        const availableTimes = Array.from(new Set(matchingRecipesForTemp.map(r => formatTime(r.time)))).filter(Boolean).sort(numericSort);
         
         return { availableFilms, availableDevelopers, availableDilutions, availableTemps, availableTimes };
     }, [recipes, exif.film, exif.developer, exif.dilution, exif.temperature]);
