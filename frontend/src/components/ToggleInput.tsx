@@ -39,6 +39,10 @@ export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisib
 
     const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
         if (tempValue !== null) {
+            // Synchronously restore the real value to the DOM node before calling onBlur.
+            // This ensures that if the parent's onBlur reads e.currentTarget.value,
+            // they get the actual value instead of the temporary cleared string.
+            // The display will be restored automatically by setTempValue(null) below.
             e.currentTarget.value = value;
         }
         if (onBlur) {
