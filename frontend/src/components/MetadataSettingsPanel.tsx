@@ -17,7 +17,7 @@ const formatFocalLength = (val: string): string => {
     if (/^\d+(\.\d+)?(-\d+(\.\d+)?)?$/.test(trimmed)) {
         return `${trimmed}mm`;
     }
-    return val;
+    return trimmed;
 };
 
 const formatAperture = (val: string): string => {
@@ -26,7 +26,7 @@ const formatAperture = (val: string): string => {
     if (match) {
         return `f/${match[2]}`;
     }
-    return val;
+    return trimmed;
 };
 
 const formatShutterSpeed = (val: string): string => {
@@ -34,7 +34,7 @@ const formatShutterSpeed = (val: string): string => {
     if (/^\d+(\/\d+)?$/.test(trimmed) || /^\d+\.\d+$/.test(trimmed)) {
         return `${trimmed}s`;
     }
-    return val;
+    return trimmed;
 };
 
 const formatISO = (val: string): string => {
@@ -43,7 +43,7 @@ const formatISO = (val: string): string => {
     if (match) {
         return `ISO${match[2]}`;
     }
-    return val;
+    return trimmed;
 };
 
 const formatTemp = (val: string): string => {
@@ -51,7 +51,7 @@ const formatTemp = (val: string): string => {
     if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
         return `${trimmed}℃`;
     }
-    return val;
+    return trimmed;
 };
 
 const formatTime = (val: string): string => {
@@ -59,7 +59,7 @@ const formatTime = (val: string): string => {
     if (/^\d+(\.\d+)?$/.test(trimmed)) {
         return `${trimmed}min`;
     }
-    return val;
+    return trimmed;
 };
 
 export interface MetadataSettingsPanelProps {
@@ -95,23 +95,58 @@ export const MetadataSettingsPanel = ({
 
     // Compute suggestion lists based on current inputs
     const { availableFilms, availableDevelopers, availableDilutions, availableTemps, availableTimes } = useMemo(() => {
+        const parseValue = (val: string): number => {
+            if (val.toLowerCase() === 'stock') return 0;
+            // Handle dilutions like "1+4" or "1:4" -> returns 4
+            const dilutionMatch = val.match(/^\d+[+:](\d+(\.\d+)?)$/);
+            if (dilutionMatch) return parseFloat(dilutionMatch[1]);
+            // Handle time like "6:45" -> 6.75
+            const timeMatch = val.match(/^(\d+):(\d{2})$/);
+            if (timeMatch) return parseInt(timeMatch[1], 10) + parseInt(timeMatch[2], 10) / 60;
+            return parseFloat(val);
+        };
+
+        const customSort = (a: string, b: string) => {
+            const numA = parseValue(a);
+            const numB = parseValue(b);
+            const aIsNum = !isNaN(numA);
+            const bIsNum = !isNaN(numB);
+            
+            if (aIsNum && bIsNum) {
+                if (numA !== numB) return numA - numB;
+            } else if (aIsNum && !bIsNum) {
+                return -1; // Numbers come before strings
+            } else if (!aIsNum && bIsNum) {
+                return 1; // Strings come after numbers
+            }
+            return a.localeCompare(b);
+        };
+
         const availableFilms = Array.from(new Set(recipes.map(r => r.film))).filter(Boolean).sort();
         
-        // Filter recipes matching the selected film
-        const matchingRecipes = recipes.filter(r => !exif.film || r.film === exif.film);
+        // Filter recipes matching the selected film (Fallback to all if invalid)
+        const isFilmValid = !!exif.film && recipes.some(r => r.film === exif.film);
+        const matchingRecipes = isFilmValid ? recipes.filter(r => r.film === exif.film) : recipes;
         const availableDevelopers = Array.from(new Set(matchingRecipes.map(r => r.developer))).filter(Boolean).sort();
         
         // Filter matching developer
-        const matchingRecipesForDev = matchingRecipes.filter(r => !exif.developer || r.developer === exif.developer);
-        const availableDilutions = Array.from(new Set(matchingRecipesForDev.map(r => r.dilution))).filter(Boolean).sort();
+        const isDevValid = !!exif.developer && matchingRecipes.some(r => r.developer === exif.developer);
+        const matchingRecipesForDev = isDevValid ? matchingRecipes.filter(r => r.developer === exif.developer) : matchingRecipes;
+        const availableDilutions = Array.from(new Set(matchingRecipesForDev.map(r => r.dilution))).filter(Boolean).sort(customSort);
         
         // Filter matching dilution
-        const matchingRecipesForDilution = matchingRecipesForDev.filter(r => !exif.dilution || r.dilution === exif.dilution);
-        const availableTemps = Array.from(new Set(matchingRecipesForDilution.map(r => r.temp))).filter(Boolean).sort();
-        const availableTimes = Array.from(new Set(matchingRecipesForDilution.map(r => r.time))).filter(Boolean).sort();
+        const isDilutionValid = !!exif.dilution && matchingRecipesForDev.some(r => r.dilution === exif.dilution);
+        const matchingRecipesForDilution = isDilutionValid ? matchingRecipesForDev.filter(r => r.dilution === exif.dilution) : matchingRecipesForDev;
+        
+        const availableTemps = Array.from(new Set(matchingRecipesForDilution.map(r => formatTemp(r.temp)))).filter(Boolean).sort(customSort);
+        
+        // Filter matching temperature to narrow down times
+        const isTempValid = !!exif.temperature && matchingRecipesForDilution.some(r => formatTemp(r.temp) === formatTemp(exif.temperature));
+        const matchingRecipesForTemp = isTempValid ? matchingRecipesForDilution.filter(r => formatTemp(r.temp) === formatTemp(exif.temperature)) : matchingRecipesForDilution;
+        const availableTimes = Array.from(new Set(matchingRecipesForTemp.map(r => formatTime(r.time)))).filter(Boolean).sort(customSort);
         
         return { availableFilms, availableDevelopers, availableDilutions, availableTemps, availableTimes };
-    }, [recipes, exif.film, exif.developer, exif.dilution]);
+    }, [recipes, exif.film, exif.developer, exif.dilution, exif.temperature]);
 
     return (
     <div className="sidebar-section metadata-settings-section">
