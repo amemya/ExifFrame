@@ -1,4 +1,4 @@
-import { ChangeEvent, FocusEvent, useState } from 'react';
+import { ChangeEvent, FocusEvent, MouseEvent, useState } from 'react';
 
 const EyeIcon = ({ visible }: { visible: boolean }) => (
     visible ? (
@@ -26,7 +26,7 @@ export const ToggleInput = ({ label, id, value, onChange, visible, onToggleVisib
     const [tempValue, setTempValue] = useState<string | null>(null);
     const hasSuggestions = suggestions && suggestions.length > 0;
 
-    const handleMouseDown = (e: React.MouseEvent<HTMLInputElement>) => {
+    const handleMouseDown = (e: MouseEvent<HTMLInputElement>) => {
         if (hasSuggestions && document.activeElement !== e.currentTarget) {
             setTempValue("");
         }
