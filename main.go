@@ -36,7 +36,6 @@ func buildMenu(app *App) *application.Menu {
 		appleMenu.AddRole(application.ShowAll)
 		appleMenu.AddSeparator()
 		appleMenu.Add("Quit ExifFrame").SetAccelerator("CmdOrCtrl+q").OnClick(func(ctx *application.Context) {
-			isQuitting.Store(true)
 			application.Get().Quit()
 		})
 
@@ -102,6 +101,10 @@ func main() {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: !residentMode,
 		},
+		ShouldQuit: func() bool {
+			isQuitting.Store(true)
+			return true
+		},
 	})
 	app.Menu.SetApplicationMenu(buildMenu(appStruct))
 
@@ -153,7 +156,6 @@ func main() {
 		})
 		trayMenu.AddSeparator()
 		trayMenu.Add("Quit ExifFrame").OnClick(func(ctx *application.Context) {
-			isQuitting.Store(true)
 			application.Get().Quit()
 		})
 
