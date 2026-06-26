@@ -19,6 +19,7 @@ function SettingsWindow() {
     const [exportFolder, setExportFolder] = useState("");
     const [jpegQuality, setJpegQuality] = useState("auto");
     const [enableBetaUpdates, setEnableBetaUpdates] = useState<boolean>(false);
+    const [residentMode, setResidentMode] = useState<boolean>(true);
 
     // Frame Settings
     const [aspectRatioPreset, setAspectRatioPreset] = useState<string>("4300:3618");
@@ -48,6 +49,7 @@ function SettingsWindow() {
         setExportFolder(s.exportFolder || "");
         setJpegQuality(s.jpegQuality || "auto");
         setEnableBetaUpdates(s.enableBetaUpdates ?? false);
+        setResidentMode(s.residentMode ?? true);
 
         setAspectRatioPreset(s.aspectRatioPreset || "4300:3618");
         setCustomRatioW(s.customRatioW || 4300);
@@ -105,6 +107,7 @@ function SettingsWindow() {
         s.exportFolder = exportFolder;
         s.jpegQuality = jpegQuality;
         s.enableBetaUpdates = enableBetaUpdates;
+        s.residentMode = residentMode;
         s.aspectRatioPreset = aspectRatioPreset;
         s.customRatioW = customRatioW;
         s.customRatioH = customRatioH;
@@ -236,6 +239,18 @@ function SettingsWindow() {
                                     Receive Beta Updates
                                 </label>
                                 <small style={{ display: 'block', marginTop: '0.5rem', marginLeft: '1.5rem', color: 'var(--text-secondary)', textAlign: 'left' }}>Receive pre-release (beta) versions of ExifFrame automatically.</small>
+                            </div>
+                            <div className="input-group">
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'normal', margin: 0, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={residentMode} 
+                                        onChange={(e) => setResidentMode(e.target.checked)} 
+                                        style={{ margin: 0, width: 'auto', height: 'auto', cursor: 'pointer' }}
+                                    />
+                                    Keep running in system tray
+                                </label>
+                                <small style={{ display: 'block', marginTop: '0.5rem', marginLeft: '1.5rem', color: 'var(--text-secondary)', textAlign: 'left' }}>When enabled, closing the window keeps ExifFrame running in the menu bar. Changes take effect after restarting the app.</small>
                             </div>
                         </div>
                     )}

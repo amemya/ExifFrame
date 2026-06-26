@@ -55,6 +55,9 @@ type Settings struct {
 
 	// Updater settings
 	EnableBetaUpdates bool `json:"enableBetaUpdates"`
+
+	// System tray settings
+	ResidentMode bool `json:"residentMode"`
 }
 
 var (
@@ -101,6 +104,7 @@ func init() {
 		VisibilityTemperature:  true,
 		VisibilityTime:         true,
 		EnableBetaUpdates:      false,
+		ResidentMode:           true,
 	}
 	loadSettings()
 }
