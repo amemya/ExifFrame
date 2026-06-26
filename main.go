@@ -80,6 +80,11 @@ func main() {
 	handler := NewImageHandler(appStruct)
 	appStruct.handler = handler
 
+	// Read resident mode setting (read once at startup; changes require restart).
+	settingsMu.RLock()
+	residentMode := currentSettings.ResidentMode
+	settingsMu.RUnlock()
+
 	app := application.New(application.Options{
 		Name:        "ExifFrame",
 		Description: "ExifFrame",
@@ -91,18 +96,13 @@ func main() {
 			Middleware: handler.Middleware,
 		},
 		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: false,
+			ApplicationShouldTerminateAfterLastWindowClosed: !residentMode,
 		},
 	})
 	app.Menu.SetApplicationMenu(buildMenu(appStruct))
 
 	// Initialise the in-app updater (GitHub-backed, with periodic checks).
 	InitUpdater(app)
-
-	// Read resident mode setting (read once at startup; changes require restart).
-	settingsMu.RLock()
-	residentMode := currentSettings.ResidentMode
-	settingsMu.RUnlock()
 
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  "ExifFrame",
