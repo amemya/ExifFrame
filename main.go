@@ -4,6 +4,7 @@ import (
 	"embed"
 	"log"
 	"runtime"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -14,6 +15,8 @@ var trayIcon []byte
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+var isQuitting atomic.Bool
 
 func buildMenu(app *App) *application.Menu {
 	appMenu := application.NewMenu()
@@ -33,6 +36,7 @@ func buildMenu(app *App) *application.Menu {
 		appleMenu.AddRole(application.ShowAll)
 		appleMenu.AddSeparator()
 		appleMenu.Add("Quit ExifFrame").SetAccelerator("CmdOrCtrl+q").OnClick(func(ctx *application.Context) {
+			isQuitting.Store(true)
 			application.Get().Quit()
 		})
 
@@ -131,6 +135,9 @@ func main() {
 	if residentMode {
 		// Intercept window close: hide instead of destroy.
 		win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+			if isQuitting.Load() {
+				return
+			}
 			win.Hide()
 			e.Cancel()
 		})
@@ -146,6 +153,7 @@ func main() {
 		})
 		trayMenu.AddSeparator()
 		trayMenu.Add("Quit ExifFrame").OnClick(func(ctx *application.Context) {
+			isQuitting.Store(true)
 			application.Get().Quit()
 		})
 
