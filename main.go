@@ -9,6 +9,9 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
+//go:embed build/trayicon.png
+var trayIcon []byte
+
 //go:embed all:frontend/dist
 var assets embed.FS
 
@@ -88,13 +91,18 @@ func main() {
 			Middleware: handler.Middleware,
 		},
 		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
+			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 	})
 	app.Menu.SetApplicationMenu(buildMenu(appStruct))
 
 	// Initialise the in-app updater (GitHub-backed, with periodic checks).
 	InitUpdater(app)
+
+	// Read resident mode setting (read once at startup; changes require restart).
+	settingsMu.RLock()
+	residentMode := currentSettings.ResidentMode
+	settingsMu.RUnlock()
 
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  "ExifFrame",
@@ -118,6 +126,48 @@ func main() {
 			application.Get().Event.Emit("files-dropped", files)
 		}
 	})
+
+	// --- System Tray (Resident Mode) ---
+	if residentMode {
+		// Intercept window close: hide instead of destroy.
+		win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+			win.Hide()
+			e.Cancel()
+		})
+
+		// Build tray right-click menu.
+		trayMenu := application.NewMenu()
+		trayMenu.Add("Show ExifFrame").OnClick(func(ctx *application.Context) {
+			win.Show()
+			win.Focus()
+		})
+		trayMenu.Add("Preferences...").OnClick(func(ctx *application.Context) {
+			appStruct.OpenSettingsWindow()
+		})
+		trayMenu.AddSeparator()
+		trayMenu.Add("Quit ExifFrame").OnClick(func(ctx *application.Context) {
+			application.Get().Quit()
+		})
+
+		systray := app.SystemTray.New()
+		if runtime.GOOS == "darwin" {
+			systray.SetTemplateIcon(trayIcon) // Auto-adapts to dark/light mode on macOS
+		} else {
+			systray.SetIcon(trayIcon)
+		}
+		systray.SetMenu(trayMenu)
+		systray.SetTooltip("ExifFrame")
+
+		// Left-click toggles main window visibility.
+		systray.OnClick(func() {
+			if win.IsVisible() {
+				win.Hide()
+			} else {
+				win.Show()
+				win.Focus()
+			}
+		})
+	}
 
 	err := app.Run()
 	if err != nil {
