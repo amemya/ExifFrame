@@ -10,8 +10,6 @@ github.com/coder/websocket v1.8.14/go.mod h1:NX3SzP+inril6yawo5CQXx8+fk145lPDC6p
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/ebitengine/purego v0.9.1 h1:a/k2f2HQU3Pi399RPW1MOaZyhKJL9w/xFpKAg4q1s0A=
-github.com/ebitengine/purego v0.9.1/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
 github.com/fsnotify/fsnotify v1.10.1 h1:b0/UzAf9yR5rhf3RPm9gf3ehBPpf0oZKIjtpKrx59Ho=
 github.com/fsnotify/fsnotify v1.10.1/go.mod h1:TLheqan6HD6GBK6PrDWyDPBaEV8LspOxvPSjC+bVfgo=
 github.com/go-json-experiment/json v0.0.0-20251027170946-4849db3c2f7e h1:Lf/gRkoycfOBPa42vU2bbgPurFong6zXeFtPoxholzU=
@@ -38,10 +36,10 @@ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/wailsapp/wails/v3 v3.0.0-alpha2.105 h1:KV2zqL9fOnX7o8goTwBAwBSfyT6MoZCTWofe3jSbOHM=
-github.com/wailsapp/wails/v3 v3.0.0-alpha2.105/go.mod h1:GRW1qYl54Zi/w1mjCzDrMiy76g2BLfNlpqF640hgMf0=
-github.com/wailsapp/wails/webview2 v1.0.24 h1:uULnjCSaRfMlU84mS3kjLgPsRosEOIusVK1nFOHZHzs=
-github.com/wailsapp/wails/webview2 v1.0.24/go.mod h1:sdf+s0nAdxlzVWf9SCxC15XaxnQPJeY+uU1Ucn3jHQM=
+github.com/wailsapp/wails/v3 v3.0.0-alpha2.107 h1:brymu6YdNRVVtrUpnjq6wEwFzAHSoOCCUxeeXmE2tjc=
+github.com/wailsapp/wails/v3 v3.0.0-alpha2.107/go.mod h1:wrdvmyeCsB/K3YqJDoH8E3MwcN8NXAMnEFaDTW46w60=
+github.com/wailsapp/wails/webview2 v1.0.27 h1:wjgAi/I8BBZ7kUGU8um3XF3ILEfzr96Q2Q1G4GPjMns=
+github.com/wailsapp/wails/webview2 v1.0.27/go.mod h1:zdM4jcO1IaC61RiJL5F1BzgoqBHFIdacz8gPr5exr0o=
 golang.org/x/image v0.43.0 h1:FLxcP4ec2350nTfOC8ysKtqYSIFbk/QGjw1ZHNP4tsY=
 golang.org/x/image v0.43.0/go.mod h1:rrpelvGFt+kLPAjPM4HeWPgrl0FtafueU//e5N0qk/Q=
 golang.org/x/mod v0.36.0 h1:JJjpVx6myfUsUdAzZuOSTTmRE0PfZeNWzzvKrP7amb4=
