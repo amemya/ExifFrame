@@ -106,7 +106,9 @@ func InitUpdater(app *application.App) {
 			defer cancel()
 
 			rel, err := app.Updater.Check(ctx)
-			if err == nil && rel != nil {
+			if err != nil {
+				log.Printf("Background update check failed: %v", err)
+			} else if rel != nil {
 				// An update is available! Bring up the native dialog.
 				// Use a background context since CheckAndInstall blocks until the user closes the dialog.
 				go app.Updater.CheckAndInstall(context.Background())
