@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -56,7 +57,7 @@ func TestRegisterImageToken_LRUEviction(t *testing.T) {
 
 	// Fill up to the max (first entry is already registered, so start at 1).
 	for i := 1; i < maxImageTokens; i++ {
-		h.registerImageToken(filepath.Join("/tmp", "img"+string(rune('A'+i%26))+string(rune('0'+i/26))+".jpg"))
+		h.registerImageToken(fmt.Sprintf("/tmp/img_%04d.jpg", i))
 	}
 
 	if len(h.imageTokens) != maxImageTokens {

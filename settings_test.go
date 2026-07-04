@@ -152,11 +152,13 @@ func TestSaveSettings_FolderValidation(t *testing.T) {
 			settingsFile = tmpFile
 			defer func() { settingsFile = origFile }()
 
-			// Ensure currentSettings WatchFolder is blank so the watcher
-			// path in SaveSettings is never triggered (no handler needed).
+			// Set currentSettings.WatchFolder to tt.watch so that
+			// SaveSettings sees no WatchFolder change and does NOT call
+			// updateWatcher. This avoids starting a real fsnotify watcher
+			// (which would leak) when App.handler is nil.
 			settingsMu.Lock()
 			oldSettings := currentSettings
-			currentSettings.WatchFolder = ""
+			currentSettings.WatchFolder = tt.watch
 			settingsMu.Unlock()
 			defer func() {
 				settingsMu.Lock()

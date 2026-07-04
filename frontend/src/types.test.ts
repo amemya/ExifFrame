@@ -29,13 +29,15 @@ describe('settingsKey', () => {
         expect(settingsKey('time')).toBe('visibilityTime');
     });
 
-    it('covers all VISIBILITY_KEYS', () => {
-        // Ensure every key in VISIBILITY_KEYS produces a non-empty string
-        for (const k of VISIBILITY_KEYS) {
-            const result = settingsKey(k);
+    it('covers all VISIBILITY_KEYS without collisions', () => {
+        const mapped = VISIBILITY_KEYS.map(settingsKey);
+        // Ensure every key produces a non-empty visibility-prefixed string
+        for (const result of mapped) {
             expect(result).toBeTruthy();
             expect(result.startsWith('visibility')).toBe(true);
         }
+        // Ensure no two keys collide on the same settings key
+        expect(new Set(mapped).size).toBe(VISIBILITY_KEYS.length);
     });
 });
 
