@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -31,6 +32,10 @@ func (p *dynamicGithubProvider) Check(ctx context.Context, req updater.CheckRequ
 	settingsMu.RLock()
 	betaEnabled := currentSettings.EnableBetaUpdates
 	settingsMu.RUnlock()
+
+	if !strings.HasPrefix(req.CurrentVersion, "v") {
+		req.CurrentVersion = "v" + req.CurrentVersion
+	}
 
 	if betaEnabled {
 		return p.betaProvider.Check(ctx, req)
@@ -78,13 +83,15 @@ func InitUpdater(app *application.App) {
 		betaProvider: betaProvider,
 	}
 
-	// Pass the version exactly as it is (e.g. "v1.2.3") to match GitHub release tags,
-	// preventing semver mismatches that cause false update notifications.
+	// The Wails updater interface expects CurrentVersion to omit the "v" prefix.
+	// We restore it dynamically in dynamicGithubProvider for correct GitHub matching.
+	ver := strings.TrimPrefix(Version, "v")
+
 	// Disable Wails' built-in background ticker (CheckInterval: 0) because it pops up 
 	// a native dialog even when there is no update ("You're up to date").
 	// We implement our own silent background check below.
 	err = app.Updater.Init(updater.Config{
-		CurrentVersion: Version,
+		CurrentVersion: ver,
 		Providers:      []updater.Provider{dynProvider},
 		CheckInterval:  0,
 	})
@@ -111,7 +118,11 @@ func InitUpdater(app *application.App) {
 			} else if rel != nil {
 				// An update is available! Bring up the native dialog.
 				// Use a background context since CheckAndInstall blocks until the user closes the dialog.
-				go app.Updater.CheckAndInstall(context.Background())
+				go func() {
+					if installErr := app.Updater.CheckAndInstall(context.Background()); installErr != nil {
+						log.Printf("Background update install failed: %v", installErr)
+					}
+				}()
 				return true
 			}
 			return false
