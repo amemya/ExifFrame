@@ -33,6 +33,10 @@ func (p *dynamicGithubProvider) Check(ctx context.Context, req updater.CheckRequ
 	betaEnabled := currentSettings.EnableBetaUpdates
 	settingsMu.RUnlock()
 
+	if !strings.HasPrefix(req.CurrentVersion, "v") {
+		req.CurrentVersion = "v" + req.CurrentVersion
+	}
+
 	if betaEnabled {
 		return p.betaProvider.Check(ctx, req)
 	}
@@ -79,13 +83,17 @@ func InitUpdater(app *application.App) {
 		betaProvider: betaProvider,
 	}
 
-	// The Wails updater expects versions without the "v" prefix.
+	// The Wails updater interface expects CurrentVersion to omit the "v" prefix.
+	// We restore it dynamically in dynamicGithubProvider for correct GitHub matching.
 	ver := strings.TrimPrefix(Version, "v")
 
+	// Disable Wails' built-in background ticker (CheckInterval: 0) because it pops up 
+	// a native dialog even when there is no update ("You're up to date").
+	// We implement our own silent background check below.
 	err = app.Updater.Init(updater.Config{
 		CurrentVersion: ver,
 		Providers:      []updater.Provider{dynProvider},
-		CheckInterval:  updateCheckInterval,
+		CheckInterval:  0,
 	})
 	if err != nil {
 		// Init can fail if called twice or if validation fails.
@@ -93,6 +101,50 @@ func InitUpdater(app *application.App) {
 		log.Printf("Updater init failed: %v", err)
 		return
 	}
+
+	// Start our own silent background checker that only shows a native dialog
+	// when an update is actually available.
+	go func() {
+		// Wait a few seconds for the app to finish launching
+		time.Sleep(3 * time.Second)
+
+		checkAndPromptIfUpdate := func() bool {
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			rel, err := app.Updater.Check(ctx)
+			if err != nil {
+				log.Printf("Background update check failed: %v", err)
+			} else if rel != nil {
+				// An update is available! Bring up the native dialog.
+				// Use a background context since CheckAndInstall blocks until the user closes the dialog.
+				go func() {
+					if installErr := app.Updater.CheckAndInstall(context.Background()); installErr != nil {
+						log.Printf("Background update install failed: %v", installErr)
+					}
+				}()
+				return true
+			}
+			return false
+		}
+
+		// Check immediately on startup
+		if checkAndPromptIfUpdate() {
+			return
+		}
+
+		ticker := time.NewTicker(updateCheckInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			if checkAndPromptIfUpdate() {
+				// If we showed the dialog, we can stop the periodic checks
+				// to avoid bothering the user multiple times if they ignore it.
+				return
+			}
+		}
+	}()
+
 }
 
 // UpdateStatus represents the current state of the updater, exposed to the frontend.
