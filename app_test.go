@@ -170,7 +170,6 @@ func TestExtractXMPString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Fix: the function signature is extractXMPString(data, re)
 			got := extractXMPString(tt.data, tt.re)
 			if got != tt.want {
 				t.Errorf("extractXMPString() = %q, want %q", got, tt.want)
