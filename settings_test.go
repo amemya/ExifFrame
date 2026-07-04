@@ -59,8 +59,9 @@ func TestNormalizePathForCompare(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := normalizePathForCompare(tt.input)
-			if result != tt.expected {
-				t.Errorf("normalizePathForCompare(%q) = %q, want %q", tt.input, result, tt.expected)
+			expectedOS := filepath.FromSlash(tt.expected)
+			if result != expectedOS {
+				t.Errorf("normalizePathForCompare(%q) = %q, want %q", tt.input, result, expectedOS)
 			}
 		})
 	}

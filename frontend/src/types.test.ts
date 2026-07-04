@@ -8,6 +8,15 @@ import {
 } from './types';
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeVisibility(value: boolean, overrides: Partial<MetadataVisibility> = {}): MetadataVisibility {
+    const base = Object.fromEntries(VISIBILITY_KEYS.map((k) => [k, value])) as unknown as MetadataVisibility;
+    return { ...base, ...overrides };
+}
+
+// ---------------------------------------------------------------------------
 // settingsKey
 // ---------------------------------------------------------------------------
 
@@ -111,19 +120,13 @@ describe('toVisibility', () => {
 describe('applyVisibility', () => {
     it('writes visibility flags to settings object', () => {
         const settings: Record<string, unknown> = {};
-        const vis: MetadataVisibility = {
-            camera: true,
+        const vis = makeVisibility(true, {
             lens: false,
-            focalLength: true,
             aperture: false,
-            shutterSpeed: true,
             iso: false,
-            film: true,
             developer: false,
-            dilution: true,
             temperature: false,
-            time: true,
-        };
+        });
         applyVisibility(settings, vis);
 
         expect(settings['visibilityCamera']).toBe(true);
@@ -144,19 +147,7 @@ describe('applyVisibility', () => {
             visibilityCamera: false,
             visibilityLens: true,
         };
-        const vis: MetadataVisibility = {
-            camera: true,
-            lens: false,
-            focalLength: true,
-            aperture: true,
-            shutterSpeed: true,
-            iso: true,
-            film: true,
-            developer: true,
-            dilution: true,
-            temperature: true,
-            time: true,
-        };
+        const vis = makeVisibility(true, { lens: false });
         applyVisibility(settings, vis);
 
         expect(settings['visibilityCamera']).toBe(true);
@@ -170,19 +161,7 @@ describe('applyVisibility', () => {
             frameColor: '#ffffff',
             visibilityCamera: false,
         };
-        const vis: MetadataVisibility = {
-            camera: true,
-            lens: true,
-            focalLength: true,
-            aperture: true,
-            shutterSpeed: true,
-            iso: true,
-            film: true,
-            developer: true,
-            dilution: true,
-            temperature: true,
-            time: true,
-        };
+        const vis = makeVisibility(true);
         applyVisibility(settings, vis);
 
         // Visibility keys are updated
@@ -200,19 +179,13 @@ describe('applyVisibility', () => {
 
 describe('roundtrip applyVisibility -> toVisibility', () => {
     it('preserves all values through a round trip', () => {
-        const original: MetadataVisibility = {
-            camera: true,
+        const original = makeVisibility(true, {
             lens: false,
-            focalLength: true,
             aperture: false,
-            shutterSpeed: true,
             iso: false,
-            film: true,
             developer: false,
-            dilution: true,
             temperature: false,
-            time: true,
-        };
+        });
 
         const settings: Record<string, unknown> = {};
         applyVisibility(settings, original);
@@ -224,19 +197,7 @@ describe('roundtrip applyVisibility -> toVisibility', () => {
     });
 
     it('works with all-true values', () => {
-        const allTrue: MetadataVisibility = {
-            camera: true,
-            lens: true,
-            focalLength: true,
-            aperture: true,
-            shutterSpeed: true,
-            iso: true,
-            film: true,
-            developer: true,
-            dilution: true,
-            temperature: true,
-            time: true,
-        };
+        const allTrue = makeVisibility(true);
 
         const settings: Record<string, unknown> = {};
         applyVisibility(settings, allTrue);
@@ -248,19 +209,7 @@ describe('roundtrip applyVisibility -> toVisibility', () => {
     });
 
     it('works with all-false values', () => {
-        const allFalse: MetadataVisibility = {
-            camera: false,
-            lens: false,
-            focalLength: false,
-            aperture: false,
-            shutterSpeed: false,
-            iso: false,
-            film: false,
-            developer: false,
-            dilution: false,
-            temperature: false,
-            time: false,
-        };
+        const allFalse = makeVisibility(false);
 
         const settings: Record<string, unknown> = {};
         applyVisibility(settings, allFalse);

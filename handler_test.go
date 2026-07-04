@@ -55,8 +55,12 @@ func TestRegisterImageToken_LRUEviction(t *testing.T) {
 	firstPath := filepath.Join("/tmp", "first.jpg")
 	firstToken := h.registerImageToken(firstPath)
 
-	// Fill up to the max (first entry is already registered, so start at 1).
-	for i := 1; i < maxImageTokens; i++ {
+	// Register the second path and record its token.
+	secondPath := filepath.Join("/tmp", "second.jpg")
+	secondToken := h.registerImageToken(secondPath)
+
+	// Fill up to the max.
+	for i := 2; i < maxImageTokens; i++ {
 		h.registerImageToken(fmt.Sprintf("/tmp/img_%04d.jpg", i))
 	}
 
@@ -64,16 +68,24 @@ func TestRegisterImageToken_LRUEviction(t *testing.T) {
 		t.Fatalf("expected %d tokens, got %d", maxImageTokens, len(h.imageTokens))
 	}
 
-	// Register one more — should evict the oldest (firstPath).
+	// Touch the first path again so it's the MOST recently used.
+	// This means the second path is now the LEAST recently used.
+	h.registerImageToken(firstPath)
+
+	// Register one more — should evict the oldest (secondPath now).
 	h.registerImageToken("/tmp/overflow.jpg")
 	if len(h.imageTokens) != maxImageTokens {
 		t.Fatalf("after overflow expected %d tokens, got %d", maxImageTokens, len(h.imageTokens))
 	}
 
-	// The evicted path should now yield a fresh token, not the original.
-	newToken := h.registerImageToken(firstPath)
-	if newToken == firstToken {
-		t.Error("expected oldest entry to be evicted and re-registered with a new token")
+	// The first path should still resolve to the original token because it was protected by LRU.
+	if h.registerImageToken(firstPath) != firstToken {
+		t.Error("expected first entry to be protected by LRU and return original token")
+	}
+
+	// The evicted second path should now yield a fresh token, not the original.
+	if h.registerImageToken(secondPath) == secondToken {
+		t.Error("expected second entry to be evicted and re-registered with a new token")
 	}
 }
 
@@ -183,7 +195,9 @@ func TestHandleSave_ContentTypeMismatch(t *testing.T) {
 	// Send PNG content-type but session expects JPEG.
 	var body bytes.Buffer
 	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
-	png.Encode(&body, img)
+	if err := png.Encode(&body, img); err != nil {
+		t.Fatal(err)
+	}
 
 	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, &body)
 	req.Header.Set("Content-Type", "image/png")
