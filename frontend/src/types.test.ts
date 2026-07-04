@@ -160,6 +160,36 @@ describe('applyVisibility', () => {
         expect(settings['visibilityCamera']).toBe(true);
         expect(settings['visibilityLens']).toBe(false);
     });
+
+    it('preserves unrelated keys in the settings object', () => {
+        const settings: Record<string, unknown> = {
+            watchFolder: '/photos',
+            exportFolder: '/export',
+            frameColor: '#ffffff',
+            visibilityCamera: false,
+        };
+        const vis: MetadataVisibility = {
+            camera: true,
+            lens: true,
+            focalLength: true,
+            aperture: true,
+            shutterSpeed: true,
+            iso: true,
+            film: true,
+            developer: true,
+            dilution: true,
+            temperature: true,
+            time: true,
+        };
+        applyVisibility(settings, vis);
+
+        // Visibility keys are updated
+        expect(settings['visibilityCamera']).toBe(true);
+        // Unrelated keys are preserved
+        expect(settings['watchFolder']).toBe('/photos');
+        expect(settings['exportFolder']).toBe('/export');
+        expect(settings['frameColor']).toBe('#ffffff');
+    });
 });
 
 // ---------------------------------------------------------------------------

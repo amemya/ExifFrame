@@ -9,33 +9,58 @@ import (
 )
 
 func TestNormalizePathForCompare(t *testing.T) {
+	isCaseInsensitive := goruntime.GOOS == "darwin" || goruntime.GOOS == "windows"
+
 	tests := []struct {
 		name     string
 		input    string
-		expected string // Expected will depend on OS
+		expected string
 	}{
 		{
-			name:  "Clean path",
-			input: "/path/to/folder//subfolder/../",
-			// filepath.Clean("/path/to/folder//subfolder/../") -> "/path/to/folder"
+			name:     "Clean path",
+			input:    "/path/to/folder//subfolder/../",
+			expected: "/path/to/folder",
 		},
 		{
-			name:  "Case handling",
-			input: "/Path/To/Folder",
+			name:     "Already clean",
+			input:    "/usr/local/bin",
+			expected: "/usr/local/bin",
 		},
+		{
+			name:     "Trailing separator",
+			input:    "/path/to/folder/",
+			expected: "/path/to/folder",
+		},
+	}
+
+	// Case handling tests — expected differs by OS.
+	if isCaseInsensitive {
+		tests = append(tests, struct {
+			name     string
+			input    string
+			expected string
+		}{
+			name:     "Case insensitive OS lowercases",
+			input:    "/Path/To/Folder",
+			expected: "/path/to/folder",
+		})
+	} else {
+		tests = append(tests, struct {
+			name     string
+			input    string
+			expected string
+		}{
+			name:     "Case sensitive OS preserves case",
+			input:    "/Path/To/Folder",
+			expected: "/Path/To/Folder",
+		})
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := normalizePathForCompare(tt.input)
-
-			expectedBase := filepath.Clean(tt.input)
-			if goruntime.GOOS == "darwin" || goruntime.GOOS == "windows" {
-				expectedBase = strings.ToLower(expectedBase)
-			}
-
-			if result != expectedBase {
-				t.Errorf("normalizePathForCompare(%q) = %q, want %q", tt.input, result, expectedBase)
+			if result != tt.expected {
+				t.Errorf("normalizePathForCompare(%q) = %q, want %q", tt.input, result, tt.expected)
 			}
 		})
 	}
@@ -59,8 +84,12 @@ func TestSaveSettings_FolderValidation(t *testing.T) {
 	watchDir := filepath.Join(base, "watch")
 	exportDir := filepath.Join(base, "export")
 	childDir := filepath.Join(watchDir, "child")
-	os.MkdirAll(childDir, 0755)
-	os.MkdirAll(exportDir, 0755)
+	if err := os.MkdirAll(childDir, 0755); err != nil {
+		t.Fatalf("failed to create childDir: %v", err)
+	}
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		t.Fatalf("failed to create exportDir: %v", err)
+	}
 
 	tests := []struct {
 		name        string

@@ -50,8 +50,12 @@ func TestRegisterImageToken_Basic(t *testing.T) {
 func TestRegisterImageToken_LRUEviction(t *testing.T) {
 	h := newTestHandler()
 
-	// Fill up to the max.
-	for i := 0; i < maxImageTokens; i++ {
+	// Register the first path and record its token.
+	firstPath := filepath.Join("/tmp", "first.jpg")
+	firstToken := h.registerImageToken(firstPath)
+
+	// Fill up to the max (first entry is already registered, so start at 1).
+	for i := 1; i < maxImageTokens; i++ {
 		h.registerImageToken(filepath.Join("/tmp", "img"+string(rune('A'+i%26))+string(rune('0'+i/26))+".jpg"))
 	}
 
@@ -59,10 +63,16 @@ func TestRegisterImageToken_LRUEviction(t *testing.T) {
 		t.Fatalf("expected %d tokens, got %d", maxImageTokens, len(h.imageTokens))
 	}
 
-	// Register one more — should evict the oldest.
+	// Register one more — should evict the oldest (firstPath).
 	h.registerImageToken("/tmp/overflow.jpg")
 	if len(h.imageTokens) != maxImageTokens {
 		t.Fatalf("after overflow expected %d tokens, got %d", maxImageTokens, len(h.imageTokens))
+	}
+
+	// The evicted path should now yield a fresh token, not the original.
+	newToken := h.registerImageToken(firstPath)
+	if newToken == firstToken {
+		t.Error("expected oldest entry to be evicted and re-registered with a new token")
 	}
 }
 
@@ -70,17 +80,22 @@ func TestRegisterImageToken_LRUEviction(t *testing.T) {
 // prepareSave / handleSave round-trip
 // ---------------------------------------------------------------------------
 
+// encodeTestJPEGBytes returns a small valid JPEG as a byte slice.
+func encodeTestJPEGBytes(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	img.Set(0, 0, color.RGBA{255, 0, 0, 255})
+	if err := jpeg.Encode(&buf, img, nil); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
 // createTestJPEG writes a small valid JPEG to the given path.
 func createTestJPEG(t *testing.T, path string) {
 	t.Helper()
-	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
-	img.Set(0, 0, color.RGBA{255, 0, 0, 255})
-	f, err := os.Create(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-	if err := jpeg.Encode(f, img, nil); err != nil {
+	if err := os.WriteFile(path, encodeTestJPEGBytes(t), 0644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -93,15 +108,7 @@ func TestHandleSave_Success(t *testing.T) {
 
 	token := h.prepareSave(savePath, "image/jpeg")
 
-	// Create a valid JPEG body.
-	var body bytes.Buffer
-	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
-	img.Set(0, 0, color.RGBA{255, 0, 0, 255})
-	if err := jpeg.Encode(&body, img, nil); err != nil {
-		t.Fatal(err)
-	}
-
-	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, &body)
+	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, bytes.NewReader(encodeTestJPEGBytes(t)))
 	req.Header.Set("Content-Type", "image/jpeg")
 	w := httptest.NewRecorder()
 
@@ -154,11 +161,9 @@ func TestHandleSave_ExpiredToken(t *testing.T) {
 	}
 	h.saveMu.Unlock()
 
-	var body bytes.Buffer
-	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
-	jpeg.Encode(&body, img, nil)
+	jpegBody := encodeTestJPEGBytes(t)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, &body)
+	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, bytes.NewReader(jpegBody))
 	req.Header.Set("Content-Type", "image/jpeg")
 	w := httptest.NewRecorder()
 	h.handleSave(w, req)
@@ -405,10 +410,7 @@ func TestHandleSave_TokenConsumedOnce(t *testing.T) {
 	token := h.prepareSave(savePath, "image/jpeg")
 
 	makeBody := func() io.Reader {
-		var buf bytes.Buffer
-		img := image.NewRGBA(image.Rect(0, 0, 2, 2))
-		jpeg.Encode(&buf, img, nil)
-		return &buf
+		return bytes.NewReader(encodeTestJPEGBytes(t))
 	}
 
 	// First request succeeds.
