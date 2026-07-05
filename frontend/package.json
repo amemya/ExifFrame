@@ -12,7 +12,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@wailsio/runtime": "^3.0.0-alpha.94",
+    "@wailsio/runtime": "^3.0.0-alpha.95",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
