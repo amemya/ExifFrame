@@ -50,7 +50,23 @@ jobs:
         npm run build
         npm run test:coverage
 
+    - name: Upload Frontend Coverage to Codecov
+      if: matrix.os == 'ubuntu-latest'
+      uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
+      with:
+        directory: ./frontend/coverage
+        flags: frontend
+        name: frontend-coverage
+
     - name: Backend Build & Test (Go)
       run: |
-        go test -v ./...
+        go test -v -coverprofile=coverage.txt -covermode=atomic ./...
         go build -v ./...
+
+    - name: Upload Backend Coverage to Codecov
+      if: matrix.os == 'ubuntu-latest'
+      uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
+      with:
+        files: ./coverage.txt
+        flags: backend
+        name: backend-coverage
