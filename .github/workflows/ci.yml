@@ -51,7 +51,8 @@ jobs:
         npm run test:coverage
 
     - name: Upload Frontend Coverage to Codecov
-      uses: codecov/codecov-action@v4
+      if: matrix.os == 'ubuntu-latest'
+      uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         directory: ./frontend/coverage
@@ -64,7 +65,8 @@ jobs:
         go build -v ./...
 
     - name: Upload Backend Coverage to Codecov
-      uses: codecov/codecov-action@v4
+      if: matrix.os == 'ubuntu-latest'
+      uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.txt
