@@ -3,11 +3,11 @@ coverage:
     project:
       default:
         target: auto       # ベースコミットのカバレッジを目標にする
-        threshold: 2%      # 2%までの低下は許容する
+        threshold: 2       # 2%までの低下は許容する
     patch:
       default:
         target: auto
-        threshold: 2%
+        threshold: 2
 
 ignore:
   - "frontend/dist/**/*"
