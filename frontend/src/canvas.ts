@@ -20,10 +20,11 @@ export function renderImageToCanvas(
     exif: ExifData,
     settings: RenderSettings
 ) {
-    // 好みの左右・上の枠の最小太さ（例：幅の2.5%）
-    const minFramePadding = Math.floor(img.width * 0.025);
+    // 画像の長辺を基準に余白を計算
+    const baseSize = Math.max(img.width, img.height);
+    const minFramePadding = Math.floor(baseSize * 0.05); // 長辺の5%
     // 下部のテキスト領域に必要な最小スペース
-    const minBottomSpace = Math.floor(minFramePadding * 4.5);
+    const minTextSpace = Math.floor(minFramePadding * 2.5);
 
     let targetRatio = 4300 / 3618;
     if (settings.aspectRatioPreset === "custom") {
@@ -45,7 +46,11 @@ export function renderImageToCanvas(
     }
 
     const minCanvasWidth = img.width + (minFramePadding * 2);
-    const minCanvasHeight = img.height + minFramePadding + minBottomSpace;
+
+    // 配置設定（Top/Center）に関わらず、常に共通の最小キャンバス高さを要求する。
+    // これにより設定変更によるキャンバス全体の拡大縮小（画像の相対スケール変化）を防ぐ。
+    const requiredMarginY = minFramePadding + minTextSpace;
+    const minCanvasHeight = img.height + (requiredMarginY * 2);
 
     // まず幅を基準に高さを計算
     let finalCanvasWidth = minCanvasWidth;
@@ -61,12 +66,17 @@ export function renderImageToCanvas(
     canvas.width = finalCanvasWidth;
     canvas.height = finalCanvasHeight;
 
-    // 余分な高さを計算
-    const extraHeight = finalCanvasHeight - minCanvasHeight;
-
-    // 画像の配置位置を計算 (左右中央、上固定または上下中央)
+    // 画像の配置位置を計算
     const drawX = Math.floor((finalCanvasWidth - img.width) / 2);
-    const drawY = settings.alignment === "center" ? minFramePadding + Math.floor(extraHeight / 2) : minFramePadding;
+    let drawY = 0;
+    if (settings.alignment === "center") {
+        drawY = Math.floor((finalCanvasHeight - img.height) / 2);
+    } else {
+        // topの場合は、上と左右の余白を同じにする（コの字均等）と美しくなる。
+        // ただし、画像が下がりすぎてテキスト領域が潰れるのを防ぐ。
+        const maxDrawY = finalCanvasHeight - img.height - (minFramePadding + minTextSpace);
+        drawY = Math.max(minFramePadding, Math.min(drawX, maxDrawY));
+    }
 
     // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
     let ctx: CanvasRenderingContext2D | null = null;
@@ -95,8 +105,8 @@ export function renderImageToCanvas(
     // テキストの配置Y座標は、画像の下端とキャンバス下端の中央
     const textY = imgBottomY + (bottomSpaceHeight / 2);
 
-    // テキストのサイズを（marginではなく）画像自体のサイズを基準にする
-    const baseScale = Math.min(img.width, img.height);
+    // テキストのサイズを長辺基準にする
+    const baseScale = Math.max(img.width, img.height);
 
     // Settings for text
     ctx.fillStyle = settings.textColor;
@@ -130,7 +140,7 @@ export function renderImageToCanvas(
     };
 
     if (topText) {
-        const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
+        const titleFontSize = Math.floor(baseScale * 0.025); // 長辺の約2.5%に変更
         ctx.font = getFontString(titleFontSize, settings.fontFamily);
         ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
     }
@@ -152,7 +162,7 @@ export function renderImageToCanvas(
     const bottomText = bottomElements.join(separator);
 
     if (bottomText) {
-        const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
+        const descFontSize = Math.floor(baseScale * 0.015); // 長辺の約1.5%に変更
         ctx.font = getFontString(descFontSize, settings.fontFamily);
         ctx.globalAlpha = 0.6;
         ctx.fillStyle = settings.textColor;
