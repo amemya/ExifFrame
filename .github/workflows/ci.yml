@@ -54,6 +54,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         directory: ./frontend/coverage
         flags: frontend
         name: frontend-coverage
@@ -67,6 +68,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.txt
         flags: backend
         name: backend-coverage

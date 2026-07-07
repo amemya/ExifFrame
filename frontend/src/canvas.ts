@@ -170,13 +170,4 @@ export function renderImageToCanvas(
         ctx.globalAlpha = 1.0;
     }
 
-    // Draw a subtle line separator (just above the text)
-    ctx.beginPath();
-    ctx.moveTo(canvas.width * 0.2, imgBottomY);
-    ctx.lineTo(canvas.width * 0.8, imgBottomY);
-    ctx.globalAlpha = 0.2;
-    ctx.strokeStyle = settings.textColor;
-    ctx.lineWidth = Math.max(1, Math.floor(baseScale * 0.0015));
-    ctx.stroke();
-    ctx.globalAlpha = 1.0;
 }
