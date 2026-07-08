@@ -72,10 +72,8 @@ export function renderImageToCanvas(
     if (settings.alignment === "center") {
         drawY = Math.floor((finalCanvasHeight - img.height) / 2);
     } else {
-        // topの場合は、上と左右の余白を同じにする（コの字均等）と美しくなる。
-        // ただし、画像が下がりすぎてテキスト領域が潰れるのを防ぐ。
-        const maxDrawY = finalCanvasHeight - img.height - (minFramePadding + minTextSpace);
-        drawY = Math.max(minFramePadding, Math.min(drawX, maxDrawY));
+        // topの場合はシンプルに上部（最小余白）に寄せる
+        drawY = minFramePadding;
     }
 
     // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
