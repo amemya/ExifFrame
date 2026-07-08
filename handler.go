@@ -126,6 +126,40 @@ func (h *ImageHandler) handleImage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filePath)
 }
 
+// rotateImage applies rotation based on EXIF orientation (1-8).
+// Implements the most common camera rotations: 3 (180), 6 (90 CW), 8 (90 CCW).
+func rotateImage(img image.Image, orientation int) image.Image {
+	bounds := img.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	var dst *image.RGBA
+	switch orientation {
+	case 3: // 180 degrees
+		dst = image.NewRGBA(image.Rect(0, 0, w, h))
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				dst.Set(w-1-x, h-1-y, img.At(bounds.Min.X+x, bounds.Min.Y+y))
+			}
+		}
+	case 6: // 90 degrees CW
+		dst = image.NewRGBA(image.Rect(0, 0, h, w))
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				dst.Set(h-1-y, x, img.At(bounds.Min.X+x, bounds.Min.Y+y))
+			}
+		}
+	case 8: // 90 degrees CCW
+		dst = image.NewRGBA(image.Rect(0, 0, h, w))
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				dst.Set(y, w-1-x, img.At(bounds.Min.X+x, bounds.Min.Y+y))
+			}
+		}
+	default:
+		return img
+	}
+	return dst
+}
+
 // handleThumb serves a lightweight thumbnail for the requested image token.
 func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -153,14 +187,38 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	// 1. Try to get EXIF thumbnail
+	// 1. Try to get EXIF thumbnail and Orientation
+	orientation := 1
 	x, err := exif.Decode(f)
 	if err == nil {
+		if tag, err := x.Get(exif.Orientation); err == nil {
+			if v, err := tag.Int(0); err == nil {
+				orientation = v
+			}
+		}
+
 		pic, err := x.JpegThumbnail()
 		if err == nil && len(pic) > 0 {
-			w.Header().Set("Content-Type", "image/jpeg")
-			w.Write(pic)
-			return
+			if orientation == 1 {
+				w.Header().Set("Content-Type", "image/jpeg")
+				w.Write(pic)
+				return
+			} else {
+				// Needs rotation
+				if thumbImg, _, err := image.Decode(bytes.NewReader(pic)); err == nil {
+					rotatedThumb := rotateImage(thumbImg, orientation)
+					var buf bytes.Buffer
+					if err := jpeg.Encode(&buf, rotatedThumb, &jpeg.Options{Quality: 85}); err == nil {
+						w.Header().Set("Content-Type", "image/jpeg")
+						w.Write(buf.Bytes())
+						return
+					}
+				}
+				// Fallback to unrotated if rotation/encoding fails
+				w.Header().Set("Content-Type", "image/jpeg")
+				w.Write(pic)
+				return
+			}
 		}
 	}
 
@@ -208,8 +266,13 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 	// ApproxBiLinear is faster than CatmullRom and sufficient for a thumbnail
 	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
 
+	var finalImg image.Image = dst
+	if orientation != 1 {
+		finalImg = rotateImage(dst, orientation)
+	}
+
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: 70}); err != nil {
+	if err := jpeg.Encode(&buf, finalImg, &jpeg.Options{Quality: 70}); err != nil {
 		log.Printf("Failed to encode generated thumbnail: %v", err)
 		http.Error(w, "Failed to encode thumbnail", http.StatusInternalServerError)
 		return
