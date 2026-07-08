@@ -204,16 +204,27 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 				w.Write(pic)
 				return
 			} else {
-				// Needs rotation
-				if thumbImg, _, err := image.Decode(bytes.NewReader(pic)); err == nil {
-					rotatedThumb := rotateImage(thumbImg, orientation)
-					var buf bytes.Buffer
-					if err := jpeg.Encode(&buf, rotatedThumb, &jpeg.Options{Quality: 85}); err == nil {
-						w.Header().Set("Content-Type", "image/jpeg")
-						w.Write(buf.Bytes())
-						return
+				// Needs rotation, protect with semaphore to prevent CPU exhaustion
+				rotatedBytes := func() []byte {
+					thumbProcessSem <- struct{}{}
+					defer func() { <-thumbProcessSem }()
+					
+					if thumbImg, _, err := image.Decode(bytes.NewReader(pic)); err == nil {
+						rotatedThumb := rotateImage(thumbImg, orientation)
+						var buf bytes.Buffer
+						if err := jpeg.Encode(&buf, rotatedThumb, &jpeg.Options{Quality: 85}); err == nil {
+							return buf.Bytes()
+						}
 					}
+					return nil
+				}()
+
+				if rotatedBytes != nil {
+					w.Header().Set("Content-Type", "image/jpeg")
+					w.Write(rotatedBytes)
+					return
 				}
+
 				// Fallback to unrotated if rotation/encoding fails
 				w.Header().Set("Content-Type", "image/jpeg")
 				w.Write(pic)
