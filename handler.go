@@ -184,8 +184,7 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 
 		f, err := os.Open(filePath)
 		if err != nil {
-			http.Error(w, "File not found", http.StatusNotFound)
-			return 1, nil, true // Return true so we don't proceed to generation
+			return 1, nil, true // handled outside the fileOpenSem critical section
 		}
 		defer f.Close()
 
