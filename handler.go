@@ -126,8 +126,8 @@ func (h *ImageHandler) handleImage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filePath)
 }
 
-// rotateImage applies rotation based on EXIF orientation (1-8).
-// Implements the most common camera rotations: 3 (180), 6 (90 CW), 8 (90 CCW).
+// rotateImage rotates an image based on EXIF orientation.
+// Supported rotations: 3 (180), 6 (90 CW), 8 (90 CCW). Other values return img unchanged.
 func rotateImage(img image.Image, orientation int) image.Image {
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
