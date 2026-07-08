@@ -20,11 +20,11 @@ export function renderImageToCanvas(
     exif: ExifData,
     settings: RenderSettings
 ) {
-    // 画像の長辺を基準に余白を計算
+    // 画像の長辺を基準に余白を計算（縦構図の窮屈さを防ぐため）
     const baseSize = Math.max(img.width, img.height);
-    const minFramePadding = Math.floor(baseSize * 0.05); // 長辺の5%
+    const minFramePadding = Math.floor(baseSize * 0.025); // 当初のサイズ感（2.5%）に戻す
     // 下部のテキスト領域に必要な最小スペース
-    const minTextSpace = Math.floor(minFramePadding * 2.5);
+    const minTextSpace = Math.floor(minFramePadding * 4.5);
 
     let targetRatio = 4300 / 3618;
     if (settings.aspectRatioPreset === "custom") {
@@ -69,11 +69,15 @@ export function renderImageToCanvas(
     // 画像の配置位置を計算
     const drawX = Math.floor((finalCanvasWidth - img.width) / 2);
     let drawY = 0;
+    const totalMarginY = finalCanvasHeight - img.height;
+    
     if (settings.alignment === "center") {
-        drawY = Math.floor((finalCanvasHeight - img.height) / 2);
+        drawY = Math.floor(totalMarginY / 2);
     } else {
-        // topの場合はシンプルに上部（最小余白）に寄せる
-        drawY = minFramePadding;
+        // Top（ボトムヘビー）の場合：
+        // 固定の最小余白だと、キャンバスが横に広がった際に上が極端に細く見えてしまうため、
+        // 縦の総余白に対して「上1：下2」の比率（総余白の1/3）になるように配置する。
+        drawY = Math.max(minFramePadding, Math.floor(totalMarginY / 3));
     }
 
     // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
@@ -103,8 +107,8 @@ export function renderImageToCanvas(
     // テキストの配置Y座標は、画像の下端とキャンバス下端の中央
     const textY = imgBottomY + (bottomSpaceHeight / 2);
 
-    // テキストのサイズを長辺基準にする
-    const baseScale = Math.max(img.width, img.height);
+    // テキストのサイズは当初の通り短辺基準に戻す
+    const baseScale = Math.min(img.width, img.height);
 
     // Settings for text
     ctx.fillStyle = settings.textColor;
@@ -138,7 +142,7 @@ export function renderImageToCanvas(
     };
 
     if (topText) {
-        const titleFontSize = Math.floor(baseScale * 0.025); // 長辺の約2.5%に変更
+        const titleFontSize = Math.floor(baseScale * 0.035); // 当初の比率に戻す
         ctx.font = getFontString(titleFontSize, settings.fontFamily);
         ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
     }
@@ -160,7 +164,7 @@ export function renderImageToCanvas(
     const bottomText = bottomElements.join(separator);
 
     if (bottomText) {
-        const descFontSize = Math.floor(baseScale * 0.015); // 長辺の約1.5%に変更
+        const descFontSize = Math.floor(baseScale * 0.025); // 当初の比率に戻す
         ctx.font = getFontString(descFontSize, settings.fontFamily);
         ctx.globalAlpha = 0.6;
         ctx.fillStyle = settings.textColor;
