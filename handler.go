@@ -177,120 +177,127 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileOpenSem <- struct{}{}
-	defer func() { <-fileOpenSem }()
+	// 1. Try to get EXIF thumbnail and Orientation first
+	orientation, pic, serveExif := func() (int, []byte, bool) {
+		fileOpenSem <- struct{}{}
+		defer func() { <-fileOpenSem }()
 
-	f, err := os.Open(filePath)
-	if err != nil {
-		http.Error(w, "File not found", http.StatusNotFound)
-		return
-	}
-	defer f.Close()
+		f, err := os.Open(filePath)
+		if err != nil {
+			http.Error(w, "File not found", http.StatusNotFound)
+			return 1, nil, true // Return true so we don't proceed to generation
+		}
+		defer f.Close()
 
-	// 1. Try to get EXIF thumbnail and Orientation
-	orientation := 1
-	x, err := exif.Decode(f)
-	if err == nil {
-		if tag, err := x.Get(exif.Orientation); err == nil {
-			if v, err := tag.Int(0); err == nil {
-				orientation = v
+		orientation := 1
+		x, err := exif.Decode(f)
+		if err == nil {
+			if tag, err := x.Get(exif.Orientation); err == nil {
+				if v, err := tag.Int(0); err == nil {
+					orientation = v
+				}
+			}
+
+			pic, err := x.JpegThumbnail()
+			if err == nil && len(pic) > 0 {
+				if orientation != 3 && orientation != 6 && orientation != 8 {
+					w.Header().Set("Content-Type", "image/jpeg")
+					w.Write(pic)
+					return orientation, nil, true
+				} else {
+					// We have an EXIF thumb that needs rotation.
+					return orientation, pic, true
+				}
 			}
 		}
+		return orientation, nil, false
+	}()
 
-		pic, err := x.JpegThumbnail()
-		if err == nil && len(pic) > 0 {
-			if orientation != 3 && orientation != 6 && orientation != 8 {
-				w.Header().Set("Content-Type", "image/jpeg")
-				w.Write(pic)
-				return
-			} else {
-				// Needs rotation, protect with semaphore to prevent CPU exhaustion
-				rotatedBytes := func() []byte {
-					thumbProcessSem <- struct{}{}
-					defer func() { <-thumbProcessSem }()
-
-					if thumbImg, _, err := image.Decode(bytes.NewReader(pic)); err == nil {
-						rotatedThumb := rotateImage(thumbImg, orientation)
-						var buf bytes.Buffer
-						if err := jpeg.Encode(&buf, rotatedThumb, &jpeg.Options{Quality: 85}); err == nil {
-							return buf.Bytes()
-						}
-					}
-					return nil
-				}()
-
-				if rotatedBytes != nil {
+	if serveExif {
+		if len(pic) > 0 {
+			// EXIF rotation path. Safe to process without thumbProcessSem as it's a very small image.
+			if thumbImg, _, err := image.Decode(bytes.NewReader(pic)); err == nil {
+				rotatedThumb := rotateImage(thumbImg, orientation)
+				var buf bytes.Buffer
+				if err := jpeg.Encode(&buf, rotatedThumb, &jpeg.Options{Quality: 85}); err == nil {
 					w.Header().Set("Content-Type", "image/jpeg")
-					w.Write(rotatedBytes)
+					w.Write(buf.Bytes())
 					return
 				}
-
-				// Fallback to unrotated if rotation/encoding fails
-				w.Header().Set("Content-Type", "image/jpeg")
-				w.Write(pic)
-				return
 			}
+
+			// Fallback to unrotated if rotation/encoding fails
+			w.Header().Set("Content-Type", "image/jpeg")
+			w.Write(pic)
 		}
+		return
 	}
 
 	// 2. No EXIF thumbnail, generate one on the fly safely
+	// Acquire thumbProcessSem BEFORE fileOpenSem to prevent starvation of /api/image requests
 	thumbProcessSem <- struct{}{}
 	defer func() { <-thumbProcessSem }()
 
-	// Reset file pointer
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		http.Error(w, "Failed to seek file", http.StatusInternalServerError)
-		return
-	}
+	func() {
+		fileOpenSem <- struct{}{}
+		defer func() { <-fileOpenSem }()
 
-	// Decode high-res image
-	img, _, err := image.Decode(f)
-	if err != nil {
-		http.Error(w, "Failed to decode image", http.StatusInternalServerError)
-		return
-	}
+		f, err := os.Open(filePath)
+		if err != nil {
+			http.Error(w, "File not found", http.StatusNotFound)
+			return
+		}
+		defer f.Close()
 
-	// Calculate thumbnail size (max 256x256)
-	bounds := img.Bounds()
-	w0, h0 := bounds.Dx(), bounds.Dy()
-	if w0 <= 0 || h0 <= 0 {
-		http.Error(w, "Invalid image dimensions", http.StatusInternalServerError)
-		return
-	}
+		// Decode high-res image
+		img, _, err := image.Decode(f)
+		if err != nil {
+			http.Error(w, "Failed to decode image", http.StatusInternalServerError)
+			return
+		}
 
-	var w1, h1 int
-	if w0 > h0 {
-		w1 = 256
-		h1 = h0 * 256 / w0
-	} else {
-		h1 = 256
-		w1 = w0 * 256 / h0
-	}
-	if w1 == 0 {
-		w1 = 1
-	}
-	if h1 == 0 {
-		h1 = 1
-	}
+		// Calculate thumbnail size (max 256x256)
+		bounds := img.Bounds()
+		w0, h0 := bounds.Dx(), bounds.Dy()
+		if w0 <= 0 || h0 <= 0 {
+			http.Error(w, "Invalid image dimensions", http.StatusInternalServerError)
+			return
+		}
 
-	dst := image.NewRGBA(image.Rect(0, 0, w1, h1))
-	// ApproxBiLinear is faster than CatmullRom and sufficient for a thumbnail
-	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
+		var w1, h1 int
+		if w0 > h0 {
+			w1 = 256
+			h1 = h0 * 256 / w0
+		} else {
+			h1 = 256
+			w1 = w0 * 256 / h0
+		}
+		if w1 == 0 {
+			w1 = 1
+		}
+		if h1 == 0 {
+			h1 = 1
+		}
 
-	var finalImg image.Image = dst
-	if orientation == 3 || orientation == 6 || orientation == 8 {
-		finalImg = rotateImage(dst, orientation)
-	}
+		dst := image.NewRGBA(image.Rect(0, 0, w1, h1))
+		// ApproxBiLinear is faster than CatmullRom and sufficient for a thumbnail
+		draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
 
-	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, finalImg, &jpeg.Options{Quality: 70}); err != nil {
-		log.Printf("Failed to encode generated thumbnail: %v", err)
-		http.Error(w, "Failed to encode thumbnail", http.StatusInternalServerError)
-		return
-	}
+		var finalImg image.Image = dst
+		if orientation == 3 || orientation == 6 || orientation == 8 {
+			finalImg = rotateImage(dst, orientation)
+		}
 
-	w.Header().Set("Content-Type", "image/jpeg")
-	w.Write(buf.Bytes())
+		var buf bytes.Buffer
+		if err := jpeg.Encode(&buf, finalImg, &jpeg.Options{Quality: 70}); err != nil {
+			log.Printf("Failed to encode generated thumbnail: %v", err)
+			http.Error(w, "Failed to encode thumbnail", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Write(buf.Bytes())
+	}()
 }
 
 // prepareSave is called from the IPC side (App.SaveImage) after the native save
