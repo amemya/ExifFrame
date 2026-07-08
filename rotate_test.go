@@ -56,6 +56,14 @@ func TestRotateImage(t *testing.T) {
 			// top-right becomes top-left -> Blue
 			wantTopLeft: color.RGBA{0, 0, 255, 255},
 		},
+		{
+			name:        "orientation 2 (unhandled fallback)",
+			orientation: 2,
+			wantW:       3,
+			wantH:       2,
+			// unchanged -> Red
+			wantTopLeft: color.RGBA{255, 0, 0, 255},
+		},
 	}
 
 	for _, tt := range tests {
