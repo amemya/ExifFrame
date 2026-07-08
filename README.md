@@ -5,7 +5,7 @@
 [![Release](https://img.shields.io/github/v/release/amemya/ExifFrame)](https://github.com/amemya/ExifFrame/releases)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/amemya/ExifFrame)](https://github.com/amemya/ExifFrame)
 [![Wails](https://img.shields.io/badge/Wails-v3-red.svg)](https://v3alpha.wails.io/)
-[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)]()
+![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)
 
 *[日本語の README はこちら](README_ja.md)*
 
