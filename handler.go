@@ -207,6 +207,10 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 		return orientation, nil, false
 	}()
 
+	if serveExif && pic == nil {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
 	if serveExif {
 		if len(pic) > 0 {
 			// Check if EXIF thumbnail needs rotation
