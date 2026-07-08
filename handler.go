@@ -200,14 +200,9 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 
 			pic, err := x.JpegThumbnail()
 			if err == nil && len(pic) > 0 {
-				if orientation != 3 && orientation != 6 && orientation != 8 {
-					w.Header().Set("Content-Type", "image/jpeg")
-					w.Write(pic)
-					return orientation, nil, true
-				} else {
-					// We have an EXIF thumb that needs rotation.
-					return orientation, pic, true
-				}
+				// Return the EXIF thumbnail bytes regardless of whether rotation is needed.
+				// Writing happens outside the critical section to avoid holding fileOpenSem during I/O.
+				return orientation, pic, true
 			}
 		}
 		return orientation, nil, false
@@ -215,18 +210,22 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 
 	if serveExif {
 		if len(pic) > 0 {
-			// EXIF rotation path. Safe to process without thumbProcessSem as it's a very small image.
-			if thumbImg, _, err := image.Decode(bytes.NewReader(pic)); err == nil {
-				rotatedThumb := rotateImage(thumbImg, orientation)
-				var buf bytes.Buffer
-				if err := jpeg.Encode(&buf, rotatedThumb, &jpeg.Options{Quality: 85}); err == nil {
-					w.Header().Set("Content-Type", "image/jpeg")
-					w.Write(buf.Bytes())
-					return
+			// Check if EXIF thumbnail needs rotation
+			if orientation == 3 || orientation == 6 || orientation == 8 {
+				// EXIF rotation path. Safe to process without thumbProcessSem as it's a very small image.
+				if thumbImg, _, err := image.Decode(bytes.NewReader(pic)); err == nil {
+					rotatedThumb := rotateImage(thumbImg, orientation)
+					var buf bytes.Buffer
+					if err := jpeg.Encode(&buf, rotatedThumb, &jpeg.Options{Quality: 85}); err == nil {
+						w.Header().Set("Content-Type", "image/jpeg")
+						w.Write(buf.Bytes())
+						return
+					}
 				}
 			}
 
-			// Fallback to unrotated if rotation/encoding fails
+			// Passthrough: write the EXIF thumbnail directly without rotation.
+			// This happens after fileOpenSem has been released.
 			w.Header().Set("Content-Type", "image/jpeg")
 			w.Write(pic)
 		}
