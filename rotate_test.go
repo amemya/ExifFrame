@@ -73,7 +73,7 @@ func TestRotateImage(t *testing.T) {
 			if bounds.Dx() != tt.wantW || bounds.Dy() != tt.wantH {
 				t.Errorf("rotateImage() bounds = %dx%d, want %dx%d", bounds.Dx(), bounds.Dy(), tt.wantW, tt.wantH)
 			}
-			
+
 			r, g, b, a := rotated.At(0, 0).RGBA()
 			wr, wg, wb, wa := tt.wantTopLeft.RGBA()
 			if r != wr || g != wg || b != wb || a != wa {

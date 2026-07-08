@@ -103,7 +103,7 @@ func (h *ImageHandler) handleImage(w http.ResponseWriter, r *http.Request) {
 
 	var filePath string
 	token := r.URL.Query().Get("token")
-	
+
 	if token != "" {
 		h.imgMu.RLock()
 		filePath = h.imageTokens[token]
@@ -199,7 +199,7 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 
 		pic, err := x.JpegThumbnail()
 		if err == nil && len(pic) > 0 {
-			if orientation == 1 {
+			if orientation != 3 && orientation != 6 && orientation != 8 {
 				w.Header().Set("Content-Type", "image/jpeg")
 				w.Write(pic)
 				return
@@ -208,7 +208,7 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 				rotatedBytes := func() []byte {
 					thumbProcessSem <- struct{}{}
 					defer func() { <-thumbProcessSem }()
-					
+
 					if thumbImg, _, err := image.Decode(bytes.NewReader(pic)); err == nil {
 						rotatedThumb := rotateImage(thumbImg, orientation)
 						var buf bytes.Buffer
@@ -278,7 +278,7 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
 
 	var finalImg image.Image = dst
-	if orientation != 1 {
+	if orientation == 3 || orientation == 6 || orientation == 8 {
 		finalImg = rotateImage(dst, orientation)
 	}
 
@@ -339,7 +339,7 @@ func (h *ImageHandler) registerImageToken(filePath string) string {
 		}
 		return t
 	}
-	
+
 	token := generateToken()
 
 	// Limit size to prevent memory leaks if many images are opened
@@ -497,7 +497,7 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to copy to final destination: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
+
 		// Ensure it's fully written
 		if err := out.Sync(); err != nil {
 			out.Close()
