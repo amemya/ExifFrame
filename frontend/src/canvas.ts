@@ -14,6 +14,35 @@ export interface RenderSettings {
     fontFamily: string;
 }
 
+/**
+ * Calculates the Y coordinate for the image based on alignment settings.
+ */
+function calculateDrawY(
+    alignment: "top" | "center",
+    drawX: number,
+    totalMarginY: number,
+    minFramePadding: number,
+    minTextSpace: number
+): number {
+    if (alignment === "center") {
+        return Math.floor(totalMarginY / 2);
+    }
+
+    // 理想は上余白と横余白を同一にする（コの字均等）
+    const idealDrawY = drawX;
+    
+    // Top配置なので、絶対に Center よりは上に配置する（差をつける）。
+    // CenterのY座標の85%を上限とすることで、横幅が極端に広い場合でも
+    // Centerと同じ位置になってしまう現象を防ぐ。
+    const centerDrawY = Math.floor(totalMarginY / 2);
+    const maxDrawYForText = totalMarginY - minTextSpace;
+    const maxDrawY = Math.min(
+        maxDrawYForText,
+        Math.floor(centerDrawY * 0.85) 
+    );
+    
+    return Math.max(minFramePadding, Math.min(idealDrawY, maxDrawY));
+}
 export function renderImageToCanvas(
     canvas: HTMLCanvasElement,
     img: HTMLImageElement,
@@ -22,7 +51,7 @@ export function renderImageToCanvas(
 ) {
     // 画像の長辺を基準に余白を計算（縦構図の窮屈さを防ぐため）
     const baseSize = Math.max(img.width, img.height);
-    const minFramePadding = Math.floor(baseSize * 0.02); // 当初のサイズ感（2.5%）に戻す
+    const minFramePadding = Math.floor(baseSize * 0.02); // 余白サイズ調整
     // 下部のテキスト領域に必要な最小スペース
     const minTextSpace = Math.floor(minFramePadding * 4.5);
 
@@ -68,27 +97,15 @@ export function renderImageToCanvas(
 
     // 画像の配置位置を計算
     const drawX = Math.floor((finalCanvasWidth - img.width) / 2);
-    let drawY = 0;
     const totalMarginY = finalCanvasHeight - img.height;
-
-    if (settings.alignment === "center") {
-        drawY = Math.floor(totalMarginY / 2);
-    } else {
-        // 理想は上余白と横余白を同一にする（コの字均等）
-        let idealDrawY = drawX;
-
-        // Top配置なので、絶対に Center よりは上に配置する（差をつける）。
-        // CenterのY座標の85%を上限とすることで、横幅が極端に広い場合でも
-        // Centerと同じ位置になってしまう現象を防ぐ。
-        const centerDrawY = Math.floor(totalMarginY / 2);
-        const maxDrawYForText = totalMarginY - minTextSpace;
-        const maxDrawY = Math.min(
-            maxDrawYForText,
-            Math.floor(centerDrawY * 0.85)
-        );
-
-        drawY = Math.max(minFramePadding, Math.min(idealDrawY, maxDrawY));
-    }
+    
+    const drawY = calculateDrawY(
+        settings.alignment, 
+        drawX, 
+        totalMarginY, 
+        minFramePadding, 
+        minTextSpace
+    );
 
     // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
     let ctx: CanvasRenderingContext2D | null = null;
