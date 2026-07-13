@@ -91,7 +91,7 @@ export function renderImageToCanvas(
         finalCanvasWidth = Math.floor(finalCanvasHeight * targetRatio);
     }
 
-    // ⚠️ CRITICAL: Must be set BEFORE getContext, otherwise context properties (colorSpace) are reset!
+    // CRITICAL: Must be set BEFORE getContext, otherwise context properties (colorSpace) are reset!
     canvas.width = finalCanvasWidth;
     canvas.height = finalCanvasHeight;
 
@@ -175,7 +175,7 @@ export function renderImageToCanvas(
     };
 
     if (topText) {
-        const titleFontSize = Math.floor(baseScale * 0.035); // 当初の比率に戻す
+        const titleFontSize = Math.floor(baseScale * 0.035);
         ctx.font = getFontString(titleFontSize, settings.fontFamily);
         ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
     }
@@ -197,7 +197,7 @@ export function renderImageToCanvas(
     const bottomText = bottomElements.join(separator);
 
     if (bottomText) {
-        const descFontSize = Math.floor(baseScale * 0.025); // 当初の比率に戻す
+        const descFontSize = Math.floor(baseScale * 0.025);
         ctx.font = getFontString(descFontSize, settings.fontFamily);
         ctx.globalAlpha = 0.6;
         ctx.fillStyle = settings.textColor;
