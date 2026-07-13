@@ -30,7 +30,7 @@ function calculateDrawY(
 
     // 理想は上余白と横余白を同一にする（コの字均等）
     const idealDrawY = drawX;
-    
+
     // Top配置なので、絶対に Center よりは上に配置する（差をつける）。
     // CenterのY座標の85%を上限とすることで、横幅が極端に広い場合でも
     // Centerと同じ位置になってしまう現象を防ぐ。
@@ -38,9 +38,9 @@ function calculateDrawY(
     const maxDrawYForText = totalMarginY - minTextSpace;
     const maxDrawY = Math.min(
         maxDrawYForText,
-        Math.floor(centerDrawY * 0.85) 
+        Math.floor(centerDrawY * 0.85)
     );
-    
+
     return Math.max(minFramePadding, Math.min(idealDrawY, maxDrawY));
 }
 export function renderImageToCanvas(
@@ -51,7 +51,7 @@ export function renderImageToCanvas(
 ) {
     // 画像の長辺を基準に余白を計算（縦構図の窮屈さを防ぐため）
     const baseSize = Math.max(img.width, img.height);
-    const minFramePadding = Math.floor(baseSize * 0.02); // 余白サイズ調整
+    const minFramePadding = Math.max(20, Math.floor(baseSize * 0.02)); //余白サイズ
     // 下部のテキスト領域に必要な最小スペース
     const minTextSpace = Math.floor(minFramePadding * 4.5);
 
@@ -98,12 +98,12 @@ export function renderImageToCanvas(
     // 画像の配置位置を計算
     const drawX = Math.floor((finalCanvasWidth - img.width) / 2);
     const totalMarginY = finalCanvasHeight - img.height;
-    
+
     const drawY = calculateDrawY(
-        settings.alignment, 
-        drawX, 
-        totalMarginY, 
-        minFramePadding, 
+        settings.alignment,
+        drawX,
+        totalMarginY,
+        minFramePadding,
         minTextSpace
     );
 
@@ -157,14 +157,20 @@ export function renderImageToCanvas(
 
         const genericFamilies = new Set(CSS_GENERIC_FONTS);
 
-        const trimmedFamily = family.trim();
-        const isGeneric = genericFamilies.has(trimmedFamily.toLowerCase());
-        const hasDoubleQuotes = trimmedFamily.startsWith('"') && trimmedFamily.endsWith('"');
-        const hasSingleQuotes = trimmedFamily.startsWith("'") && trimmedFamily.endsWith("'");
-        const hasQuotes = hasDoubleQuotes || hasSingleQuotes;
+        let trimmedFamily = family.trim();
 
-        const escapedFamily = trimmedFamily.replace(/"/g, '\\"');
-        const safeFamily = (isGeneric || hasQuotes) ? trimmedFamily : `"${escapedFamily}"`;
+        // 外側の引用符を正規化
+        if ((trimmedFamily.startsWith('"') && trimmedFamily.endsWith('"')) ||
+            (trimmedFamily.startsWith("'") && trimmedFamily.endsWith("'"))) {
+            trimmedFamily = trimmedFamily.slice(1, -1);
+        }
+
+        const isGeneric = genericFamilies.has(trimmedFamily.toLowerCase());
+
+        // バックスラッシュとダブルクォートをエスケープ
+        const escapedFamily = trimmedFamily.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const safeFamily = isGeneric ? trimmedFamily : `"${escapedFamily}"`;
+
         return `normal ${size}px ${safeFamily}, sans-serif`;
     };
 
