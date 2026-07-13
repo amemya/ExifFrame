@@ -14,16 +14,46 @@ export interface RenderSettings {
     fontFamily: string;
 }
 
+/**
+ * Calculates the Y coordinate for the image based on alignment settings.
+ */
+function calculateDrawY(
+    alignment: "top" | "center",
+    drawX: number,
+    totalMarginY: number,
+    minFramePadding: number,
+    minTextSpace: number
+): number {
+    if (alignment === "center") {
+        return Math.floor(totalMarginY / 2);
+    }
+
+    // 理想は上余白と横余白を同一にする（コの字均等）
+    const idealDrawY = drawX;
+
+    // Top配置なので、絶対に Center よりは上に配置する（差をつける）。
+    // CenterのY座標の85%を上限とすることで、横幅が極端に広い場合でも
+    // Centerと同じ位置になってしまう現象を防ぐ。
+    const centerDrawY = Math.floor(totalMarginY / 2);
+    const maxDrawYForText = totalMarginY - minTextSpace;
+    const maxDrawY = Math.min(
+        maxDrawYForText,
+        Math.floor(centerDrawY * 0.85)
+    );
+
+    return Math.max(minFramePadding, Math.min(idealDrawY, maxDrawY));
+}
 export function renderImageToCanvas(
     canvas: HTMLCanvasElement,
     img: HTMLImageElement,
     exif: ExifData,
     settings: RenderSettings
 ) {
-    // 好みの左右・上の枠の最小太さ（例：幅の2.5%）
-    const minFramePadding = Math.floor(img.width * 0.025);
+    // 画像の長辺を基準に余白を計算（縦構図の窮屈さを防ぐため）
+    const baseSize = Math.max(img.width, img.height);
+    const minFramePadding = Math.max(20, Math.floor(baseSize * 0.02)); //余白サイズ
     // 下部のテキスト領域に必要な最小スペース
-    const minBottomSpace = Math.floor(minFramePadding * 4.5);
+    const minTextSpace = Math.floor(minFramePadding * 4.5);
 
     let targetRatio = 4300 / 3618;
     if (settings.aspectRatioPreset === "custom") {
@@ -45,7 +75,11 @@ export function renderImageToCanvas(
     }
 
     const minCanvasWidth = img.width + (minFramePadding * 2);
-    const minCanvasHeight = img.height + minFramePadding + minBottomSpace;
+
+    // 配置設定（Top/Center）に関わらず、常に共通の最小キャンバス高さを要求する。
+    // これにより設定変更によるキャンバス全体の拡大縮小（画像の相対スケール変化）を防ぐ。
+    const requiredMarginY = minFramePadding + minTextSpace;
+    const minCanvasHeight = img.height + (requiredMarginY * 2);
 
     // まず幅を基準に高さを計算
     let finalCanvasWidth = minCanvasWidth;
@@ -57,16 +91,21 @@ export function renderImageToCanvas(
         finalCanvasWidth = Math.floor(finalCanvasHeight * targetRatio);
     }
 
-    // ⚠️ CRITICAL: Must be set BEFORE getContext, otherwise context properties (colorSpace) are reset!
+    // CRITICAL: Must be set BEFORE getContext, otherwise context properties (colorSpace) are reset!
     canvas.width = finalCanvasWidth;
     canvas.height = finalCanvasHeight;
 
-    // 余分な高さを計算
-    const extraHeight = finalCanvasHeight - minCanvasHeight;
-
-    // 画像の配置位置を計算 (左右中央、上固定または上下中央)
+    // 画像の配置位置を計算
     const drawX = Math.floor((finalCanvasWidth - img.width) / 2);
-    const drawY = settings.alignment === "center" ? minFramePadding + Math.floor(extraHeight / 2) : minFramePadding;
+    const totalMarginY = finalCanvasHeight - img.height;
+
+    const drawY = calculateDrawY(
+        settings.alignment,
+        drawX,
+        totalMarginY,
+        minFramePadding,
+        minTextSpace
+    );
 
     // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
     let ctx: CanvasRenderingContext2D | null = null;
@@ -95,7 +134,7 @@ export function renderImageToCanvas(
     // テキストの配置Y座標は、画像の下端とキャンバス下端の中央
     const textY = imgBottomY + (bottomSpaceHeight / 2);
 
-    // テキストのサイズを（marginではなく）画像自体のサイズを基準にする
+    // テキストのサイズは当初の通り短辺基準に戻す
     const baseScale = Math.min(img.width, img.height);
 
     // Settings for text
@@ -115,22 +154,28 @@ export function renderImageToCanvas(
         if (!family || family.trim() === "") {
             return `normal ${size}px sans-serif`;
         }
-        
+
         const genericFamilies = new Set(CSS_GENERIC_FONTS);
 
-        const trimmedFamily = family.trim();
+        let trimmedFamily = family.trim();
+
+        // 外側の引用符を正規化
+        if ((trimmedFamily.startsWith('"') && trimmedFamily.endsWith('"')) ||
+            (trimmedFamily.startsWith("'") && trimmedFamily.endsWith("'"))) {
+            trimmedFamily = trimmedFamily.slice(1, -1);
+        }
+
         const isGeneric = genericFamilies.has(trimmedFamily.toLowerCase());
-        const hasDoubleQuotes = trimmedFamily.startsWith('"') && trimmedFamily.endsWith('"');
-        const hasSingleQuotes = trimmedFamily.startsWith("'") && trimmedFamily.endsWith("'");
-        const hasQuotes = hasDoubleQuotes || hasSingleQuotes;
-        
-        const escapedFamily = trimmedFamily.replace(/"/g, '\\"');
-        const safeFamily = (isGeneric || hasQuotes) ? trimmedFamily : `"${escapedFamily}"`;
+
+        // バックスラッシュとダブルクォートをエスケープ
+        const escapedFamily = trimmedFamily.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const safeFamily = isGeneric ? trimmedFamily : `"${escapedFamily}"`;
+
         return `normal ${size}px ${safeFamily}, sans-serif`;
     };
 
     if (topText) {
-        const titleFontSize = Math.floor(baseScale * 0.035); // 画像サイズの約3.5%
+        const titleFontSize = Math.floor(baseScale * 0.035);
         ctx.font = getFontString(titleFontSize, settings.fontFamily);
         ctx.fillText(topText, canvas.width / 2, textY - (titleFontSize * 0.8));
     }
@@ -152,7 +197,7 @@ export function renderImageToCanvas(
     const bottomText = bottomElements.join(separator);
 
     if (bottomText) {
-        const descFontSize = Math.floor(baseScale * 0.025); // 画像サイズの約2.5%
+        const descFontSize = Math.floor(baseScale * 0.025);
         ctx.font = getFontString(descFontSize, settings.fontFamily);
         ctx.globalAlpha = 0.6;
         ctx.fillStyle = settings.textColor;
