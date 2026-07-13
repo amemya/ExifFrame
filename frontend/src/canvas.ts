@@ -22,7 +22,7 @@ export function renderImageToCanvas(
 ) {
     // 画像の長辺を基準に余白を計算（縦構図の窮屈さを防ぐため）
     const baseSize = Math.max(img.width, img.height);
-    const minFramePadding = Math.floor(baseSize * 0.025); // 当初のサイズ感（2.5%）に戻す
+    const minFramePadding = Math.floor(baseSize * 0.02); // 当初のサイズ感（2.5%）に戻す
     // 下部のテキスト領域に必要な最小スペース
     const minTextSpace = Math.floor(minFramePadding * 4.5);
 
@@ -70,14 +70,24 @@ export function renderImageToCanvas(
     const drawX = Math.floor((finalCanvasWidth - img.width) / 2);
     let drawY = 0;
     const totalMarginY = finalCanvasHeight - img.height;
-    
+
     if (settings.alignment === "center") {
         drawY = Math.floor(totalMarginY / 2);
     } else {
-        // Top（ボトムヘビー）の場合：
-        // 固定の最小余白だと、キャンバスが横に広がった際に上が極端に細く見えてしまうため、
-        // 縦の総余白に対して「上1：下2」の比率（総余白の1/3）になるように配置する。
-        drawY = Math.max(minFramePadding, Math.floor(totalMarginY / 3));
+        // 理想は上余白と横余白を同一にする（コの字均等）
+        let idealDrawY = drawX;
+
+        // Top配置なので、絶対に Center よりは上に配置する（差をつける）。
+        // CenterのY座標の85%を上限とすることで、横幅が極端に広い場合でも
+        // Centerと同じ位置になってしまう現象を防ぐ。
+        const centerDrawY = Math.floor(totalMarginY / 2);
+        const maxDrawYForText = totalMarginY - minTextSpace;
+        const maxDrawY = Math.min(
+            maxDrawYForText,
+            Math.floor(centerDrawY * 0.85)
+        );
+
+        drawY = Math.max(minFramePadding, Math.min(idealDrawY, maxDrawY));
     }
 
     // Enable P3 wide-gamut mode to prevent high-saturation color loss, with a fallback
@@ -127,7 +137,7 @@ export function renderImageToCanvas(
         if (!family || family.trim() === "") {
             return `normal ${size}px sans-serif`;
         }
-        
+
         const genericFamilies = new Set(CSS_GENERIC_FONTS);
 
         const trimmedFamily = family.trim();
@@ -135,7 +145,7 @@ export function renderImageToCanvas(
         const hasDoubleQuotes = trimmedFamily.startsWith('"') && trimmedFamily.endsWith('"');
         const hasSingleQuotes = trimmedFamily.startsWith("'") && trimmedFamily.endsWith("'");
         const hasQuotes = hasDoubleQuotes || hasSingleQuotes;
-        
+
         const escapedFamily = trimmedFamily.replace(/"/g, '\\"');
         const safeFamily = (isGeneric || hasQuotes) ? trimmedFamily : `"${escapedFamily}"`;
         return `normal ${size}px ${safeFamily}, sans-serif`;
