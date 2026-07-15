@@ -29,3 +29,5 @@ build/android/app/
 # reference files
 reference/
 
+#flake
+.direnv
