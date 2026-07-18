@@ -44,9 +44,16 @@ jobs:
         cache-dependency-path: './frontend/package-lock.json'
 
     - name: Install Wails v3 CLI
-      run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          go install -tags gtk3 github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
+        else
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
+        fi
 
     - name: Generate Bindings
+      shell: bash
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
           wails3 generate bindings -f "-tags gtk3"
@@ -71,6 +78,7 @@ jobs:
         name: frontend-coverage
 
     - name: Backend Build & Test (Go)
+      shell: bash
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
           go test -tags gtk3 -v -coverprofile=coverage.txt -covermode=atomic ./...

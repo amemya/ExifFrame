@@ -52,7 +52,11 @@ jobs:
       - name: Install Wails v3 CLI and Task
         shell: bash
         run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            go install -tags gtk3 github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
+          else
+            go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
+          fi
           go install github.com/go-task/task/v3/cmd/task@v3.38.0
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
