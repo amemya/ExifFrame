@@ -49,9 +49,10 @@ jobs:
     - name: Generate Bindings
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
-          export GOFLAGS="-tags gtk3"
+          wails3 generate bindings -f "-tags gtk3"
+        else
+          wails3 generate bindings
         fi
-        wails3 generate bindings
 
     - name: Frontend Build & Test
       working-directory: ./frontend
@@ -72,10 +73,12 @@ jobs:
     - name: Backend Build & Test (Go)
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
-          export GOFLAGS="-tags gtk3"
+          go test -tags gtk3 -v -coverprofile=coverage.txt -covermode=atomic ./...
+          go build -tags gtk3 -v ./...
+        else
+          go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+          go build -v ./...
         fi
-        go test -v -coverprofile=coverage.txt -covermode=atomic ./...
-        go build -v ./...
 
     - name: Upload Backend Coverage to Codecov
       if: matrix.os == 'ubuntu-latest'
