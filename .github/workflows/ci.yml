@@ -47,7 +47,11 @@ jobs:
       run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.96
 
     - name: Generate Bindings
-      run: wails3 generate bindings
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          export GOFLAGS="-tags gtk3"
+        fi
+        wails3 generate bindings
 
     - name: Frontend Build & Test
       working-directory: ./frontend
@@ -67,6 +71,9 @@ jobs:
 
     - name: Backend Build & Test (Go)
       run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          export GOFLAGS="-tags gtk3"
+        fi
         go test -v -coverprofile=coverage.txt -covermode=atomic ./...
         go build -v ./...
 

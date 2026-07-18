@@ -58,7 +58,11 @@ jobs:
 
       - name: Generate Bindings
         shell: bash
-        run: wails3 generate bindings
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            export GOFLAGS="-tags gtk3"
+          fi
+          wails3 generate bindings
 
       - name: Build Frontend
         shell: bash
@@ -69,7 +73,13 @@ jobs:
       - name: Build Application (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
-        run: go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -X 'main.Version=${GITHUB_REF_NAME}'" -o bin/ExifFrame
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            export GOFLAGS="-tags production,gtk3"
+          else
+            export GOFLAGS="-tags production"
+          fi
+          go build -trimpath -buildvcs=false -ldflags="-w -s -X 'main.Version=${GITHUB_REF_NAME}'" -o bin/ExifFrame
 
       - name: Build Application (Windows)
         if: runner.os == 'Windows'
