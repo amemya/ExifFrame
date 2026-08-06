@@ -46,6 +46,11 @@ type App struct {
 
 	// handler is set after initialization so SaveImage can call prepareSave.
 	handler *ImageHandler
+
+	// GUI state for dynamic system tray
+	mainWindow *application.WebviewWindow
+	sysTray    *application.SystemTray
+	trayIcon   []byte
 }
 
 // NewApp creates a new App application struct
@@ -81,6 +86,58 @@ func (a *App) ServiceStartup(ctx context.Context, options application.ServiceOpt
 func (a *App) ServiceShutdown() error {
 	a.OnShutdown()
 	return nil
+}
+
+// SetupSystemTray creates the system tray icon and menu.
+func (a *App) SetupSystemTray() {
+	if a.sysTray != nil {
+		return // Already setup
+	}
+	app := application.Get()
+	
+	trayMenu := application.NewMenu()
+	trayMenu.Add("Show ExifFrame").OnClick(func(ctx *application.Context) {
+		if a.mainWindow != nil {
+			a.mainWindow.Show()
+			a.mainWindow.Focus()
+		}
+	})
+	trayMenu.Add("Preferences...").OnClick(func(ctx *application.Context) {
+		a.OpenSettingsWindow()
+	})
+	trayMenu.AddSeparator()
+	trayMenu.Add("Quit ExifFrame").OnClick(func(ctx *application.Context) {
+		app.Quit()
+	})
+
+	systray := app.SystemTray.New()
+	if goruntime.GOOS == "darwin" {
+		systray.SetTemplateIcon(a.trayIcon)
+	} else {
+		systray.SetIcon(a.trayIcon)
+	}
+	systray.SetMenu(trayMenu)
+	systray.SetTooltip("ExifFrame")
+
+	systray.OnClick(func() {
+		if a.mainWindow != nil {
+			if a.mainWindow.IsVisible() {
+				a.mainWindow.Hide()
+			} else {
+				a.mainWindow.Show()
+				a.mainWindow.Focus()
+			}
+		}
+	})
+	a.sysTray = systray
+}
+
+// RemoveSystemTray destroys the system tray icon if it exists.
+func (a *App) RemoveSystemTray() {
+	if a.sysTray != nil {
+		a.sysTray.Destroy()
+		a.sysTray = nil
+	}
 }
 
 // getCurrentImagePath returns the path of the currently loaded image in a thread-safe manner.

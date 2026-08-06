@@ -99,7 +99,7 @@ func main() {
 			Middleware: handler.Middleware,
 		},
 		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: !residentMode,
+			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 		ShouldQuit: func() bool {
 			isQuitting.Store(true)
@@ -134,49 +134,30 @@ func main() {
 		}
 	})
 
+	appStruct.mainWindow = win
+	appStruct.trayIcon = trayIcon
+
 	// --- System Tray (Resident Mode) ---
-	if residentMode {
-		// Intercept window close: hide instead of destroy.
-		win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-			if isQuitting.Load() {
-				return
-			}
+	// Intercept window close: hide instead of destroy, unless setting changed dynamically.
+	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		if isQuitting.Load() {
+			return
+		}
+
+		settingsMu.RLock()
+		isResident := currentSettings.ResidentMode
+		settingsMu.RUnlock()
+
+		if isResident {
 			win.Hide()
 			e.Cancel()
-		})
-
-		// Build tray right-click menu.
-		trayMenu := application.NewMenu()
-		trayMenu.Add("Show ExifFrame").OnClick(func(ctx *application.Context) {
-			win.Show()
-			win.Focus()
-		})
-		trayMenu.Add("Preferences...").OnClick(func(ctx *application.Context) {
-			appStruct.OpenSettingsWindow()
-		})
-		trayMenu.AddSeparator()
-		trayMenu.Add("Quit ExifFrame").OnClick(func(ctx *application.Context) {
-			application.Get().Quit()
-		})
-
-		systray := app.SystemTray.New()
-		if runtime.GOOS == "darwin" {
-			systray.SetTemplateIcon(trayIcon) // Auto-adapts to dark/light mode on macOS
 		} else {
-			systray.SetIcon(trayIcon)
+			application.Get().Quit()
 		}
-		systray.SetMenu(trayMenu)
-		systray.SetTooltip("ExifFrame")
+	})
 
-		// Left-click toggles main window visibility.
-		systray.OnClick(func() {
-			if win.IsVisible() {
-				win.Hide()
-			} else {
-				win.Show()
-				win.Focus()
-			}
-		})
+	if residentMode {
+		appStruct.SetupSystemTray()
 	}
 
 	err := app.Run()

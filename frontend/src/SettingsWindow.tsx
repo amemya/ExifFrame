@@ -250,7 +250,7 @@ function SettingsWindow() {
                                     />
                                     Keep running in system tray
                                 </label>
-                                <small style={{ display: 'block', marginTop: '0.5rem', marginLeft: '1.5rem', color: 'var(--text-secondary)', textAlign: 'left' }}>When enabled, closing the window keeps ExifFrame running in the menu bar. Changes take effect after restarting the app.</small>
+                                <small style={{ display: 'block', marginTop: '0.5rem', marginLeft: '1.5rem', color: 'var(--text-secondary)', textAlign: 'left' }}>When enabled, closing the window keeps ExifFrame running in the menu bar.</small>
                             </div>
                         </div>
                     )}
