@@ -227,15 +227,7 @@ func (a *App) SaveSettings(s Settings) string {
 	}
 	
 	if oldSettings.ResidentMode != s.ResidentMode {
-		if s.ResidentMode {
-			a.SetupSystemTray()
-		} else {
-			if a.mainWindow != nil && !a.mainWindow.IsVisible() {
-				a.mainWindow.Show()
-				a.mainWindow.Focus()
-			}
-			a.RemoveSystemTray()
-		}
+		a.SyncSystemTrayState()
 	}
 
 	return "" // Success

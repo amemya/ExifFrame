@@ -48,6 +48,7 @@ type App struct {
 	handler *ImageHandler
 
 	// GUI state for dynamic system tray
+	trayMu     sync.Mutex
 	mainWindow *application.WebviewWindow
 	sysTray    *application.SystemTray
 	trayIcon   []byte
@@ -88,55 +89,65 @@ func (a *App) ServiceShutdown() error {
 	return nil
 }
 
-// SetupSystemTray creates the system tray icon and menu.
-func (a *App) SetupSystemTray() {
-	if a.sysTray != nil {
-		return // Already setup
-	}
-	app := application.Get()
-	
-	trayMenu := application.NewMenu()
-	trayMenu.Add("Show ExifFrame").OnClick(func(ctx *application.Context) {
-		if a.mainWindow != nil {
-			a.mainWindow.Show()
-			a.mainWindow.Focus()
+// SyncSystemTrayState synchronizes the system tray state with the current ResidentMode setting.
+func (a *App) SyncSystemTrayState() {
+	a.trayMu.Lock()
+	defer a.trayMu.Unlock()
+
+	settingsMu.RLock()
+	isResident := currentSettings.ResidentMode
+	settingsMu.RUnlock()
+
+	if isResident {
+		if a.sysTray != nil {
+			return // Already setup
 		}
-	})
-	trayMenu.Add("Preferences...").OnClick(func(ctx *application.Context) {
-		a.OpenSettingsWindow()
-	})
-	trayMenu.AddSeparator()
-	trayMenu.Add("Quit ExifFrame").OnClick(func(ctx *application.Context) {
-		app.Quit()
-	})
-
-	systray := app.SystemTray.New()
-	if goruntime.GOOS == "darwin" {
-		systray.SetTemplateIcon(a.trayIcon)
-	} else {
-		systray.SetIcon(a.trayIcon)
-	}
-	systray.SetMenu(trayMenu)
-	systray.SetTooltip("ExifFrame")
-
-	systray.OnClick(func() {
-		if a.mainWindow != nil {
-			if a.mainWindow.IsVisible() {
-				a.mainWindow.Hide()
-			} else {
+		app := application.Get()
+		
+		trayMenu := application.NewMenu()
+		trayMenu.Add("Show ExifFrame").OnClick(func(ctx *application.Context) {
+			if a.mainWindow != nil {
 				a.mainWindow.Show()
 				a.mainWindow.Focus()
 			}
-		}
-	})
-	a.sysTray = systray
-}
+		})
+		trayMenu.Add("Preferences...").OnClick(func(ctx *application.Context) {
+			a.OpenSettingsWindow()
+		})
+		trayMenu.AddSeparator()
+		trayMenu.Add("Quit ExifFrame").OnClick(func(ctx *application.Context) {
+			app.Quit()
+		})
 
-// RemoveSystemTray destroys the system tray icon if it exists.
-func (a *App) RemoveSystemTray() {
-	if a.sysTray != nil {
-		a.sysTray.Destroy()
-		a.sysTray = nil
+		systray := app.SystemTray.New()
+		if goruntime.GOOS == "darwin" {
+			systray.SetTemplateIcon(a.trayIcon)
+		} else {
+			systray.SetIcon(a.trayIcon)
+		}
+		systray.SetMenu(trayMenu)
+		systray.SetTooltip("ExifFrame")
+
+		systray.OnClick(func() {
+			if a.mainWindow != nil {
+				if a.mainWindow.IsVisible() {
+					a.mainWindow.Hide()
+				} else {
+					a.mainWindow.Show()
+					a.mainWindow.Focus()
+				}
+			}
+		})
+		a.sysTray = systray
+	} else {
+		if a.sysTray != nil {
+			if a.mainWindow != nil && !a.mainWindow.IsVisible() {
+				a.mainWindow.Show()
+				a.mainWindow.Focus()
+			}
+			a.sysTray.Destroy()
+			a.sysTray = nil
+		}
 	}
 }
 

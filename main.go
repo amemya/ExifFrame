@@ -83,10 +83,10 @@ func main() {
 	handler := NewImageHandler(appStruct)
 	appStruct.handler = handler
 
-	// Read resident mode setting (read once at startup; changes require restart).
-	settingsMu.RLock()
-	residentMode := currentSettings.ResidentMode
-	settingsMu.RUnlock()
+	// Read settings (if needed later)
+	// settingsMu.RLock()
+	// residentMode := currentSettings.ResidentMode
+	// settingsMu.RUnlock()
 
 	app := application.New(application.Options{
 		Name:        "ExifFrame",
@@ -156,9 +156,7 @@ func main() {
 		}
 	})
 
-	if residentMode {
-		appStruct.SetupSystemTray()
-	}
+	appStruct.SyncSystemTrayState()
 
 	err := app.Run()
 	if err != nil {
