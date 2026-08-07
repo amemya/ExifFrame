@@ -6,7 +6,7 @@ require (
 	github.com/adrg/sysfont v0.1.2
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
-	github.com/wailsapp/wails/v3 v3.0.0-alpha2.117
+	github.com/wailsapp/wails/v3 v3.0.0-alpha2.119
 	golang.org/x/image v0.44.0
 )
 
