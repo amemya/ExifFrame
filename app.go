@@ -129,6 +129,12 @@ func (a *App) SyncSystemTrayState() {
 		systray.SetTooltip("ExifFrame")
 
 		systray.OnClick(func() {
+			a.trayMu.Lock()
+			defer a.trayMu.Unlock()
+			// Skip if tray was destroyed concurrently
+			if a.sysTray == nil {
+				return
+			}
 			if a.mainWindow != nil {
 				if a.mainWindow.IsVisible() {
 					a.mainWindow.Hide()
@@ -148,6 +154,25 @@ func (a *App) SyncSystemTrayState() {
 			a.sysTray.Destroy()
 			a.sysTray = nil
 		}
+	}
+}
+
+// HandleWindowClosing intercepts the window close event and manages the application lifecycle
+// in coordination with the resident mode setting.
+func (a *App) HandleWindowClosing(win *application.WebviewWindow, e *application.WindowEvent) {
+	a.trayMu.Lock()
+
+	settingsMu.RLock()
+	isResident := currentSettings.ResidentMode
+	settingsMu.RUnlock()
+
+	if isResident {
+		win.Hide()
+		e.Cancel()
+		a.trayMu.Unlock()
+	} else {
+		a.trayMu.Unlock()
+		application.Get().Quit()
 	}
 }
 

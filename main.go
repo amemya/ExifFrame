@@ -140,20 +140,7 @@ func main() {
 	// --- System Tray (Resident Mode) ---
 	// Intercept window close: hide instead of destroy, unless setting changed dynamically.
 	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		if isQuitting.Load() {
-			return
-		}
-
-		settingsMu.RLock()
-		isResident := currentSettings.ResidentMode
-		settingsMu.RUnlock()
-
-		if isResident {
-			win.Hide()
-			e.Cancel()
-		} else {
-			application.Get().Quit()
-		}
+		appStruct.HandleWindowClosing(win, e)
 	})
 
 	appStruct.SyncSystemTrayState()
