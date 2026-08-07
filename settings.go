@@ -225,5 +225,10 @@ func (a *App) SaveSettings(s Settings) string {
 			return "Error: Failed to start watcher: " + err.Error()
 		}
 	}
+	
+	if oldSettings.ResidentMode != s.ResidentMode {
+		a.SyncSystemTrayState()
+	}
+
 	return "" // Success
 }
