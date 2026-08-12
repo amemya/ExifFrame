@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"runtime"
+	"testing"
+)
 
 // ensureValidExtension
 // ---------------------------------------------------------------------------
@@ -60,12 +63,14 @@ func TestSaveBatchImage_Validation(t *testing.T) {
 		handler: newTestHandler(),
 	}
 
-	tests := []struct {
+	type testCase struct {
 		name       string
 		exportName string
 		isPng      bool
 		wantError  string
-	}{
+	}
+
+	tests := []testCase{
 		{"valid name", "image.jpg", false, ""},
 		{"valid name png", "photo.png", true, ""},
 		{"empty string", "", false, "Invalid export name"},
@@ -75,10 +80,24 @@ func TestSaveBatchImage_Validation(t *testing.T) {
 		{"path traversal forward slash", "dir/image.jpg", false, "Invalid export name"},
 		{"path traversal backslash", "dir\\image.jpg", false, "Invalid export name"},
 		{"absolute path unix", "/etc/passwd", false, "Invalid export name"},
-		// C:\Windows\system.ini fails due to backslash on Unix, so it works cross-platform for testing.
 		{"absolute path windows", "C:\\Windows\\system.ini", false, "Invalid export name"},
-		// test invalid extensions while we are at it
 		{"valid name but wrong ext png", "image.jpg", true, "Invalid extension. Please save as .png"},
+	}
+
+	if runtime.GOOS == "windows" {
+		tests = append(tests,
+			testCase{"windows reserved COM1", "COM1.jpg", false, "Invalid export name"},
+			testCase{"windows reserved LPT1", "LPT1.jpg", false, "Invalid export name"},
+			testCase{"windows drive relative", "C:foo.jpg", false, "Invalid export name"},
+			testCase{"windows alternate data stream", "foo:bar.jpg", false, "Invalid export name"},
+		)
+	} else {
+		tests = append(tests,
+			testCase{"windows reserved COM1 on unix", "COM1.jpg", false, ""},
+			testCase{"windows reserved LPT1 on unix", "LPT1.jpg", false, ""},
+			testCase{"windows drive relative on unix", "C:foo.jpg", false, ""},
+			testCase{"windows alternate data stream on unix", "foo:bar.jpg", false, ""},
+		)
 	}
 
 	for _, tt := range tests {
