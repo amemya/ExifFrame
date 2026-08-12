@@ -56,37 +56,41 @@ func TestEnsureValidExtension(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSaveBatchImage_Validation(t *testing.T) {
-	app := &App{}
+	app := &App{
+		handler: newTestHandler(),
+	}
 
 	tests := []struct {
 		name       string
 		exportName string
-		wantError  bool
+		isPng      bool
+		wantError  string
 	}{
-		{"valid name", "image.jpg", false},
-		{"valid name png", "photo.png", false},
-		{"empty string", "", true},
-		{"dot", ".", true},
-		{"dot dot", "..", true},
-		{"path traversal", "../outside.jpg", true},
-		{"path traversal forward slash", "dir/image.jpg", true},
-		{"path traversal backslash", "dir\\image.jpg", true},
-		{"absolute path unix", "/etc/passwd", true},
-		{"absolute path windows", "C:\\Windows\\system.ini", true},
+		{"valid name", "image.jpg", false, ""},
+		{"valid name png", "photo.png", true, ""},
+		{"empty string", "", false, "Invalid export name"},
+		{"dot", ".", false, "Invalid export name"},
+		{"dot dot", "..", false, "Invalid export name"},
+		{"path traversal", "../outside.jpg", false, "Invalid export name"},
+		{"path traversal forward slash", "dir/image.jpg", false, "Invalid export name"},
+		{"path traversal backslash", "dir\\image.jpg", false, "Invalid export name"},
+		{"absolute path unix", "/etc/passwd", false, "Invalid export name"},
+		// C:\Windows\system.ini fails due to backslash on Unix, so it works cross-platform for testing.
+		{"absolute path windows", "C:\\Windows\\system.ini", false, "Invalid export name"},
+		// test invalid extensions while we are at it
+		{"valid name but wrong ext png", "image.jpg", true, "Invalid extension. Please save as .png"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := app.SaveBatchImage(false, "/tmp", tt.exportName)
+			res := app.SaveBatchImage(tt.isPng, "/tmp", tt.exportName)
 			
-			if tt.wantError {
-				if res.Error != "Invalid export name" {
-					t.Errorf("expected error 'Invalid export name', got: %q", res.Error)
-				}
-			} else {
-				if res.Error == "Invalid export name" {
-					t.Errorf("did not expect 'Invalid export name' error, got it")
-				}
+			if res.Error != tt.wantError {
+				t.Errorf("expected error %q, got: %q", tt.wantError, res.Error)
+			}
+
+			if tt.wantError == "" && res.SaveToken == "" {
+				t.Errorf("expected valid SaveToken, got empty string")
 			}
 		})
 	}
