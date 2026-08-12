@@ -51,3 +51,43 @@ func TestEnsureValidExtension(t *testing.T) {
 		})
 	}
 }
+
+// SaveBatchImage Validation
+// ---------------------------------------------------------------------------
+
+func TestSaveBatchImage_Validation(t *testing.T) {
+	app := &App{}
+
+	tests := []struct {
+		name       string
+		exportName string
+		wantError  bool
+	}{
+		{"valid name", "image.jpg", false},
+		{"valid name png", "photo.png", false},
+		{"empty string", "", true},
+		{"dot", ".", true},
+		{"dot dot", "..", true},
+		{"path traversal", "../outside.jpg", true},
+		{"path traversal forward slash", "dir/image.jpg", true},
+		{"path traversal backslash", "dir\\image.jpg", true},
+		{"absolute path unix", "/etc/passwd", true},
+		{"absolute path windows", "C:\\Windows\\system.ini", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := app.SaveBatchImage(false, "/tmp", tt.exportName)
+			
+			if tt.wantError {
+				if res.Error != "Invalid export name" {
+					t.Errorf("expected error 'Invalid export name', got: %q", res.Error)
+				}
+			} else {
+				if res.Error == "Invalid export name" {
+					t.Errorf("did not expect 'Invalid export name' error, got it")
+				}
+			}
+		})
+	}
+}
