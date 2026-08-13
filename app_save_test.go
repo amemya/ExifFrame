@@ -86,17 +86,18 @@ func TestSaveBatchImage_Validation(t *testing.T) {
 
 	if runtime.GOOS == "windows" {
 		tests = append(tests,
-			testCase{"windows reserved COM1", "COM1.jpg", false, "Invalid export name"},
-			testCase{"windows reserved LPT1", "LPT1.jpg", false, "Invalid export name"},
+			testCase{"windows reserved COM1", "COM1", false, "Invalid export name"},
+			testCase{"windows reserved LPT1", "LPT1", false, "Invalid export name"},
 			testCase{"windows drive relative", "C:foo.jpg", false, "Invalid export name"},
 			testCase{"windows alternate data stream", "foo:bar.jpg", false, "Invalid export name"},
 		)
 	} else {
 		tests = append(tests,
-			testCase{"windows reserved COM1 on unix", "COM1.jpg", false, ""},
-			testCase{"windows reserved LPT1 on unix", "LPT1.jpg", false, ""},
-			testCase{"windows drive relative on unix", "C:foo.jpg", false, ""},
-			testCase{"windows alternate data stream on unix", "foo:bar.jpg", false, ""},
+			testCase{"windows reserved COM1 on unix", "COM1", false, ""},
+			testCase{"windows reserved LPT1 on unix", "LPT1", false, ""},
+			// コロンを全OSで明示的にブロックしたため、Unixでもエラーを期待する
+			testCase{"windows drive relative on unix (now blocked universally)", "C:foo.jpg", false, "Invalid export name"},
+			testCase{"windows alternate data stream on unix (now blocked universally)", "foo:bar.jpg", false, "Invalid export name"},
 		)
 	}
 
