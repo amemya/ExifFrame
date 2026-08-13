@@ -81,6 +81,7 @@ func TestSaveBatchImage_Validation(t *testing.T) {
 		{"path traversal backslash", "dir\\image.jpg", false, "Invalid export name"},
 		{"absolute path unix", "/etc/passwd", false, "Invalid export name"},
 		{"absolute path windows", "C:\\Windows\\system.ini", false, "Invalid export name"},
+		{"nul byte", "image\x00.jpg", false, "Invalid export name"},
 		{"valid name but wrong ext png", "image.jpg", true, "Invalid extension. Please save as .png"},
 	}
 
@@ -95,7 +96,6 @@ func TestSaveBatchImage_Validation(t *testing.T) {
 		tests = append(tests,
 			testCase{"windows reserved COM1 on unix", "COM1", false, ""},
 			testCase{"windows reserved LPT1 on unix", "LPT1", false, ""},
-			// コロンを全OSで明示的にブロックしたため、Unixでもエラーを期待する
 			testCase{"windows drive relative on unix (now blocked universally)", "C:foo.jpg", false, "Invalid export name"},
 			testCase{"windows alternate data stream on unix (now blocked universally)", "foo:bar.jpg", false, "Invalid export name"},
 		)
