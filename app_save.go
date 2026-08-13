@@ -121,6 +121,10 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 
 // SaveBatchImage bypasses ExportFolder validation for explicit batch exports.
 func (a *App) SaveBatchImage(isPng bool, exportDir string, exportName string) SaveResult {
+	if exportName == "." || !filepath.IsLocal(exportName) || strings.ContainsAny(exportName, "/\\:\x00") {
+		return SaveResult{Error: "Invalid export name"}
+	}
+
 	savePath := filepath.Join(exportDir, exportName)
 	savePath, err := ensureValidExtension(savePath, isPng)
 	if err != nil {
