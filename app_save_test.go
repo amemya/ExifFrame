@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"runtime"
 	"testing"
 )
@@ -104,6 +105,57 @@ func TestSaveBatchImage_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			res := app.SaveBatchImage(tt.isPng, "/tmp", tt.exportName)
+			
+			if res.Error != tt.wantError {
+				t.Errorf("expected error %q, got: %q", tt.wantError, res.Error)
+			}
+
+			if tt.wantError == "" && res.SaveToken == "" {
+				t.Errorf("expected valid SaveToken, got empty string")
+			}
+		})
+	}
+}
+
+// SaveAutoImage Validation
+// ---------------------------------------------------------------------------
+
+func TestSaveAutoImage_Validation(t *testing.T) {
+	app := &App{
+		handler: newTestHandler(),
+	}
+
+	exportDir := t.TempDir()
+
+	settingsMu.Lock()
+	oldSettings := currentSettings
+	currentSettings.ExportFolder = exportDir
+	settingsMu.Unlock()
+	defer func() {
+		settingsMu.Lock()
+		currentSettings = oldSettings
+		settingsMu.Unlock()
+	}()
+
+	type testCase struct {
+		name      string
+		savePath  string
+		isPng     bool
+		wantError string
+	}
+
+	tests := []testCase{
+		{"valid path", filepath.Join(exportDir, "image.jpg"), false, ""},
+		{"valid path png", filepath.Join(exportDir, "photo.png"), true, ""},
+		{"no extension jpeg", filepath.Join(exportDir, "image"), false, ""},
+		{"no extension png", filepath.Join(exportDir, "photo"), true, ""},
+		{"valid path but wrong ext png", filepath.Join(exportDir, "image.jpg"), true, "Invalid extension. Please save as .png"},
+		{"valid path but wrong ext jpeg", filepath.Join(exportDir, "photo.png"), false, "Invalid extension. Please save as .jpg or .jpeg"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := app.SaveAutoImage(tt.isPng, tt.savePath)
 			
 			if res.Error != tt.wantError {
 				t.Errorf("expected error %q, got: %q", tt.wantError, res.Error)

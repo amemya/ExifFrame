@@ -112,6 +112,12 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 	if isPng {
 		expectedMime = "image/png"
 	}
+
+	savePath, err = ensureValidExtension(savePath, isPng)
+	if err != nil {
+		return SaveResult{Error: err.Error()}
+	}
+
 	if a.handler == nil {
 		return SaveResult{Error: "Internal error: image handler not initialized"}
 	}
