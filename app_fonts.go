@@ -14,24 +14,45 @@ var (
 	fontsOnce   sync.Once
 )
 
-// getFontFamilyName parses a font file (TTF/OTF) to extract its family name.
-func getFontFamilyName(filename string) string {
+// getFontFamilyNames parses a font file (TTF/OTF/TTC) to extract its family names.
+func getFontFamilyNames(filename string) []string {
 	f, err := os.Open(filename)
 	if err != nil {
-		return ""
+		return nil
 	}
 	defer f.Close()
 
-	font, err := sfnt.ParseReaderAt(f)
-	if err != nil {
-		return ""
+	var families []string
+	isTTC := strings.HasSuffix(strings.ToLower(filename), ".ttc")
+
+	if isTTC {
+		collection, err := sfnt.ParseCollectionReaderAt(f)
+		if err != nil {
+			return nil
+		}
+		numFonts := collection.NumFonts()
+		for i := 0; i < numFonts; i++ {
+			font, err := collection.Font(i)
+			if err != nil {
+				continue
+			}
+			name, err := font.Name(nil, sfnt.NameIDFamily)
+			if err == nil && name != "" {
+				families = append(families, name)
+			}
+		}
+	} else {
+		font, err := sfnt.ParseReaderAt(f)
+		if err != nil {
+			return nil
+		}
+		name, err := font.Name(nil, sfnt.NameIDFamily)
+		if err == nil && name != "" {
+			families = append(families, name)
+		}
 	}
 
-	name, err := font.Name(nil, sfnt.NameIDFamily)
-	if err != nil {
-		return ""
-	}
-	return name
+	return families
 }
 
 // GetSystemFonts returns a list of installed system fonts (Family names).
@@ -44,16 +65,21 @@ func (a *App) GetSystemFonts() []string {
 		var uniqueFonts []string
 
 		for _, f := range fonts {
-			family := f.Family
-			if family == "" && f.Filename != "" {
-				family = getFontFamilyName(f.Filename)
+			var families []string
+			
+			if f.Family != "" {
+				families = append(families, f.Family)
+			} else if f.Filename != "" {
+				families = getFontFamilyNames(f.Filename)
 			}
 			
-			if family != "" {
-				lowerFamily := strings.ToLower(family)
-				if !fontMap[lowerFamily] {
-					fontMap[lowerFamily] = true
-					uniqueFonts = append(uniqueFonts, family)
+			for _, family := range families {
+				if family != "" {
+					lowerFamily := strings.ToLower(family)
+					if !fontMap[lowerFamily] {
+						fontMap[lowerFamily] = true
+						uniqueFonts = append(uniqueFonts, family)
+					}
 				}
 			}
 		}
