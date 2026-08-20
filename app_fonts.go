@@ -61,7 +61,6 @@ func (a *App) GetSystemFonts() []string {
 		finder := sysfont.NewFinder(nil)
 		fonts := finder.List()
 
-		fontMap := make(map[string]bool)
 		var uniqueFonts []string
 
 		for _, f := range fonts {
@@ -75,9 +74,14 @@ func (a *App) GetSystemFonts() []string {
 			
 			for _, family := range families {
 				if family != "" {
-					lowerFamily := strings.ToLower(family)
-					if !fontMap[lowerFamily] {
-						fontMap[lowerFamily] = true
+					isDuplicate := false
+					for _, existing := range uniqueFonts {
+						if strings.EqualFold(family, existing) {
+							isDuplicate = true
+							break
+						}
+					}
+					if !isDuplicate {
 						uniqueFonts = append(uniqueFonts, family)
 					}
 				}
