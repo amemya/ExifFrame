@@ -150,6 +150,8 @@ func TestSaveAutoImage_Validation(t *testing.T) {
 		{"no extension png", filepath.Join(exportDir, "photo"), true, "", ".png", "image/png"},
 		{"valid path but wrong ext png", filepath.Join(exportDir, "image.jpg"), true, "Invalid extension. Please save as .png", "", ""},
 		{"valid path but wrong ext jpeg", filepath.Join(exportDir, "photo.png"), false, "Invalid extension. Please save as .jpg or .jpeg", "", ""},
+		{"non-existent sub directory", filepath.Join(exportDir, "2026-05", "photo"), false, "", ".jpg", "image/jpeg"},
+		{"path traversal escape", filepath.Join(exportDir, "..", "outside.jpg"), false, "Save path is outside of the allowed export folder", "", ""},
 	}
 
 	for _, tt := range tests {
