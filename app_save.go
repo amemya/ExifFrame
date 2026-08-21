@@ -82,11 +82,16 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 		return SaveResult{Error: "Failed to resolve export folder path: " + err.Error()}
 	}
 
+	savePath = filepath.Clean(savePath)
+	savePath, err = ensureValidExtension(savePath, isPng)
+	if err != nil {
+		return SaveResult{Error: err.Error()}
+	}
+
 	// Walk up from the save directory to find the nearest existing ancestor.
 	// This allows saving into not-yet-created subdirectories under ExportFolder
 	// (e.g. ExportFolder/2026-05/photo.jpg where 2026-05/ doesn't exist yet).
-	cleanSave := filepath.Clean(savePath)
-	ancestor := filepath.Dir(cleanSave)
+	ancestor := filepath.Dir(savePath)
 	for {
 		if _, statErr := os.Stat(ancestor); statErr == nil {
 			break
@@ -111,11 +116,6 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 	expectedMime := "image/jpeg"
 	if isPng {
 		expectedMime = "image/png"
-	}
-
-	savePath, err = ensureValidExtension(savePath, isPng)
-	if err != nil {
-		return SaveResult{Error: err.Error()}
 	}
 
 	if a.handler == nil {

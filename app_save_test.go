@@ -121,9 +121,6 @@ func TestSaveBatchImage_Validation(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSaveAutoImage_Validation(t *testing.T) {
-	app := &App{
-		handler: newTestHandler(),
-	}
 
 	exportDir := t.TempDir()
 
@@ -138,31 +135,65 @@ func TestSaveAutoImage_Validation(t *testing.T) {
 	}()
 
 	type testCase struct {
-		name      string
-		savePath  string
-		isPng     bool
-		wantError string
+		name         string
+		savePath     string
+		isPng        bool
+		wantError    string
+		wantFinalExt string
+		wantMime     string
 	}
 
 	tests := []testCase{
-		{"valid path", filepath.Join(exportDir, "image.jpg"), false, ""},
-		{"valid path png", filepath.Join(exportDir, "photo.png"), true, ""},
-		{"no extension jpeg", filepath.Join(exportDir, "image"), false, ""},
-		{"no extension png", filepath.Join(exportDir, "photo"), true, ""},
-		{"valid path but wrong ext png", filepath.Join(exportDir, "image.jpg"), true, "Invalid extension. Please save as .png"},
-		{"valid path but wrong ext jpeg", filepath.Join(exportDir, "photo.png"), false, "Invalid extension. Please save as .jpg or .jpeg"},
+		{"valid path", filepath.Join(exportDir, "image.jpg"), false, "", ".jpg", "image/jpeg"},
+		{"valid path png", filepath.Join(exportDir, "photo.png"), true, "", ".png", "image/png"},
+		{"no extension jpeg", filepath.Join(exportDir, "image"), false, "", ".jpg", "image/jpeg"},
+		{"no extension png", filepath.Join(exportDir, "photo"), true, "", ".png", "image/png"},
+		{"valid path but wrong ext png", filepath.Join(exportDir, "image.jpg"), true, "Invalid extension. Please save as .png", "", ""},
+		{"valid path but wrong ext jpeg", filepath.Join(exportDir, "photo.png"), false, "Invalid extension. Please save as .jpg or .jpeg", "", ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			app := &App{
+				handler: newTestHandler(),
+			}
+
 			res := app.SaveAutoImage(tt.isPng, tt.savePath)
 			
 			if res.Error != tt.wantError {
 				t.Errorf("expected error %q, got: %q", tt.wantError, res.Error)
 			}
 
-			if tt.wantError == "" && res.SaveToken == "" {
-				t.Errorf("expected valid SaveToken, got empty string")
+			if tt.wantError == "" {
+				if res.SaveToken == "" {
+					t.Fatalf("expected valid SaveToken, got empty string")
+				}
+				
+				app.handler.saveMu.Lock()
+				session, ok := app.handler.saveSessions[res.SaveToken]
+				app.handler.saveMu.Unlock()
+				
+				if !ok {
+					t.Fatalf("session for token %q not found", res.SaveToken)
+				}
+				if filepath.Ext(session.path) != tt.wantFinalExt {
+					t.Errorf("expected final extension %q, got %q (path: %s)", tt.wantFinalExt, filepath.Ext(session.path), session.path)
+				}
+				if session.mime != tt.wantMime {
+					t.Errorf("expected mime %q, got %q", tt.wantMime, session.mime)
+				}
+			} else {
+				if res.SaveToken != "" {
+					t.Errorf("expected empty token on error, got %q", res.SaveToken)
+				}
+				
+				app.handler.saveMu.Lock()
+				count := len(app.handler.saveSessions)
+				app.handler.saveMu.Unlock()
+				
+				if count != 0 {
+					t.Errorf("expected prepareSave not to be called, but saveSessions has %d entries", count)
+				}
 			}
 		})
 	}
