@@ -58,6 +58,12 @@ func (p *dynamicGithubProvider) Download(ctx context.Context, r *updater.Release
 // instance. It configures a GitHub provider pointed at the ExifFrame
 // repository and enables periodic background checks.
 func InitUpdater(app *application.App) {
+	// Disable auto-updater for development builds to prevent update prompts during wails3 dev
+	if Version == "v0.0.0" {
+		log.Println("Dev build detected (v0.0.0), skipping auto-updater initialization")
+		return
+	}
+
 	stableProvider, err := github.New(github.Config{
 		Repository:    updateOwner + "/" + updateRepo,
 		ChecksumAsset: "SHA256SUMS",
