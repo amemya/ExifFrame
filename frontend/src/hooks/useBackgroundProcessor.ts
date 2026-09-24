@@ -86,7 +86,8 @@ export function useBackgroundProcessor() {
                             visibility: toVisibility(currentSet),
                             frameColor: currentSet.frameColor || "#ffffff",
                             textColor: currentSet.textColor || "#000000",
-                            fontFamily: currentSet.fontFamily || DEFAULT_FONT_FAMILY
+                            fontFamily: currentSet.fontFamily || DEFAULT_FONT_FAMILY,
+                            onlyFrame: currentSet.onlyFrame ?? false
                         });
                     } catch (e) {
                         console.error("Failed to render background canvas:", e);

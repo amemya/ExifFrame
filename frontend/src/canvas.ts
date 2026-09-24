@@ -12,7 +12,7 @@ export interface RenderSettings {
     frameColor: string;
     textColor: string;
     fontFamily: string;
-    onlyFrame?: boolean;
+    onlyFrame: boolean;
 }
 
 /**

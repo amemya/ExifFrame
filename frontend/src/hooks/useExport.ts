@@ -167,7 +167,8 @@ export function useExport({
                         visibility,
                         fontFamily: imgState.fontFamily || DEFAULT_FONT_FAMILY,
                         frameColor: imgState.frameColor || '#ffffff',
-                        textColor: imgState.textColor || '#000000'
+                        textColor: imgState.textColor || '#000000',
+                        onlyFrame: imgState.onlyFrame ?? false
                     });
 
                     const { isPng, targetMime, baseName } = getExportInfo(imgState.filePath || `exif-frame-${i}`, imgState.sourceMimeType);
