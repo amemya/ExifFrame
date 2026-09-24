@@ -73,6 +73,7 @@ export interface MetadataSettingsPanelProps {
     overrideExif?: boolean;
     setOverrideExif?: (val: boolean) => void;
     onApplyToAll?: () => void;
+    disabled?: boolean;
 }
 
 export const MetadataSettingsPanel = ({
@@ -82,7 +83,8 @@ export const MetadataSettingsPanel = ({
     isDefaultMode = false,
     overrideExif = false,
     setOverrideExif,
-    onApplyToAll
+    onApplyToAll,
+    disabled = false
 }: MetadataSettingsPanelProps) => {
     const hideExifInputs = isDefaultMode && profile === 'digital' && !overrideExif;
     
@@ -149,7 +151,12 @@ export const MetadataSettingsPanel = ({
     }, [recipes, exif.film, exif.developer, exif.dilution, exif.temperature]);
 
     return (
-    <div className="sidebar-section metadata-settings-section">
+    <div 
+        className="sidebar-section metadata-settings-section" 
+        style={disabled ? { opacity: 0.5 } : undefined}
+        aria-disabled={disabled}
+    >
+        <fieldset disabled={disabled} style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
         <div className="metadata-settings-header">
             <h3>Metadata Settings</h3>
             <div className="segmented-control profile-selector">
@@ -327,6 +334,7 @@ export const MetadataSettingsPanel = ({
                 </button>
             </div>
         )}
+        </fieldset>
     </div>
     );
 };

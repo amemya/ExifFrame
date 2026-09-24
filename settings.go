@@ -24,6 +24,7 @@ type Settings struct {
 	TextColor         string `json:"textColor"`
 	JpegQuality       string `json:"jpegQuality"`
 	FontFamily        string `json:"fontFamily"`
+	OnlyFrame         bool   `json:"onlyFrame"`
 
 	// New fields for Profiles and Film metadata
 	Profile      string `json:"profile"`

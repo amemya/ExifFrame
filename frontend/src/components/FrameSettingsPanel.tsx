@@ -22,6 +22,8 @@ export interface FrameSettingsPanelProps {
     setTextColor: (val: string) => void;
     fontFamily: string;
     setFontFamily: (val: string) => void;
+    onlyFrame: boolean;
+    setOnlyFrame: (val: boolean) => void;
     onApplyToAll?: (scope: 'all' | 'colors' | 'ratios' | 'text') => void;
 }
 
@@ -35,6 +37,7 @@ export const FrameSettingsPanel = ({
     frameColor, setFrameColor,
     textColor, setTextColor,
     fontFamily, setFontFamily,
+    onlyFrame, setOnlyFrame,
     onApplyToAll
 }: FrameSettingsPanelProps) => {
     const [systemFonts, setSystemFonts] = useState<string[]>([]);
@@ -228,6 +231,7 @@ export const FrameSettingsPanel = ({
                 id="font-family"
                 value={fontFamily}
                 onChange={(e) => setFontFamily(e.target.value)}
+                disabled={onlyFrame}
             >
                 {fontFamily && fontFamily !== DEFAULT_FONT_FAMILY && !CSS_GENERIC_FONTS.includes(fontFamily) && !systemFonts.includes(fontFamily) && (
                     <option value={fontFamily}>{fontFamily} {!isLoadingFonts ? "(Missing)" : ""}</option>
@@ -248,6 +252,18 @@ export const FrameSettingsPanel = ({
                     })}
                 </optgroup>}
             </select>
+        </div>
+
+        <div className="input-group" style={{ marginTop: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'normal', margin: 0, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                <input 
+                    type="checkbox" 
+                    checked={onlyFrame} 
+                    onChange={(e) => setOnlyFrame(e.target.checked)} 
+                    style={{ margin: 0, width: 'auto', height: 'auto', cursor: 'pointer' }}
+                />
+                Only Frame (No text)
+            </label>
         </div>
 
         {onApplyToAll && (
@@ -284,7 +300,7 @@ export const FrameSettingsPanel = ({
                             <div className="dropdown-menu" style={{ right: 0, left: 'auto', bottom: '100%', top: 'auto', marginBottom: '0.25rem' }}>
                                 <button className="dropdown-item" onClick={() => { setApplyMenuVisible(false); handleApplyWithConfirm('colors'); }}>Apply Colors to All</button>
                                 <button className="dropdown-item" onClick={() => { setApplyMenuVisible(false); handleApplyWithConfirm('ratios'); }}>Apply Ratios & Orientation to All</button>
-                                <button className="dropdown-item" onClick={() => { setApplyMenuVisible(false); handleApplyWithConfirm('text'); }}>Apply Text Settings to All</button>
+                                <button className="dropdown-item" onClick={() => { setApplyMenuVisible(false); handleApplyWithConfirm('text'); }}>Apply Text & Frame Settings to All</button>
                             </div>
                         )}
                     </div>
@@ -299,7 +315,7 @@ export const FrameSettingsPanel = ({
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
                         {confirmScope === 'colors' ? "Apply frame and text colors to all images?" :
                          confirmScope === 'ratios' ? "Apply aspect ratio and orientation to all images?\n\nNote: This will force all images to match the current landscape/portrait orientation." :
-                         confirmScope === 'text' ? "Apply text layout and fonts to all images?" :
+                         confirmScope === 'text' ? "Apply text layout, fonts, and 'Only Frame' mode to all images?" :
                          "Apply all frame settings to all images?\n\nNote: Individual settings will be overwritten."}
                     </p>
                     <div className="modal-actions" style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>

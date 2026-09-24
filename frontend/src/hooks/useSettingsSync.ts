@@ -15,6 +15,7 @@ export interface AutoExportSettingsPayload {
     alignment: "top" | "center";
     showPipeSeparator: boolean;
     fontFamily: string;
+    onlyFrame: boolean;
 }
 
 export interface UseSettingsSyncProps {
@@ -46,6 +47,7 @@ export function useSettingsSync({
     const [globalTextColor, setGlobalTextColor] = useState<string>("#000000");
     const [globalJpegQuality, setGlobalJpegQuality] = useState<string>("auto");
     const [fontFamily, setFontFamily] = useState<string>(DEFAULT_FONT_FAMILY);
+    const [globalOnlyFrame, setGlobalOnlyFrame] = useState<boolean>(false);
 
     const isInitialLoad = useRef(true);
     // setExif depends on `selectedIndex` in useImageManager, meaning it is recreated on every selection change.
@@ -73,6 +75,7 @@ export function useSettingsSync({
             if (s.frameColor) setGlobalFrameColor(s.frameColor);
             if (s.textColor) setGlobalTextColor(s.textColor);
             setFontFamily(s.fontFamily || DEFAULT_FONT_FAMILY);
+            if (s.onlyFrame !== undefined) setGlobalOnlyFrame(s.onlyFrame);
             if (s.jpegQuality) setGlobalJpegQuality(s.jpegQuality);
             else setGlobalJpegQuality("auto");
             if (s.profile) {
@@ -130,6 +133,7 @@ export function useSettingsSync({
         s.frameColor = currentSettingsObj.frameColor;
         s.textColor = currentSettingsObj.textColor;
         s.fontFamily = currentSettingsObj.fontFamily;
+        s.onlyFrame = currentSettingsObj.onlyFrame;
 
         try {
             const currentSettings = await AppAPI.GetSettings();
@@ -186,6 +190,7 @@ export function useSettingsSync({
         globalTextColor, setGlobalTextColor,
         globalJpegQuality, setGlobalJpegQuality,
         fontFamily, setFontFamily,
+        globalOnlyFrame, setGlobalOnlyFrame,
         handleSaveAutoExportDefault,
         isInitialLoad
     };

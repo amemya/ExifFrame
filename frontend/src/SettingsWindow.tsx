@@ -31,6 +31,7 @@ function SettingsWindow() {
     const [frameColor, setFrameColor] = useState<string>("#ffffff");
     const [textColor, setTextColor] = useState<string>("#000000");
     const [fontFamily, setFontFamily] = useState<string>(DEFAULT_FONT_FAMILY);
+    const [onlyFrame, setOnlyFrame] = useState<boolean>(false);
 
     // Metadata Settings
     const [profile, setProfile] = useState<string>("digital");
@@ -60,6 +61,7 @@ function SettingsWindow() {
         setFrameColor(s.frameColor || "#ffffff");
         setTextColor(s.textColor || "#000000");
         setFontFamily(s.fontFamily || DEFAULT_FONT_FAMILY);
+        setOnlyFrame(s.onlyFrame ?? false);
 
         setProfile(s.profile || "digital");
         setOverrideExif(s.overrideExif ?? false);
@@ -117,6 +119,7 @@ function SettingsWindow() {
         s.frameColor = frameColor;
         s.textColor = textColor;
         s.fontFamily = fontFamily;
+        s.onlyFrame = onlyFrame;
 
         s.profile = profile;
         s.overrideExif = overrideExif;
@@ -267,6 +270,7 @@ function SettingsWindow() {
                                 frameColor={frameColor} setFrameColor={setFrameColor}
                                 textColor={textColor} setTextColor={setTextColor}
                                 fontFamily={fontFamily} setFontFamily={setFontFamily}
+                                onlyFrame={onlyFrame} setOnlyFrame={setOnlyFrame}
                             />
                         </div>
                     )}
@@ -280,6 +284,7 @@ function SettingsWindow() {
                                 isDefaultMode={true}
                                 overrideExif={overrideExif}
                                 setOverrideExif={setOverrideExif}
+                                disabled={onlyFrame}
                             />
                         </div>
                     )}
