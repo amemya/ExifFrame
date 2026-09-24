@@ -54,11 +54,12 @@ function App() {
         customRatioH: settings.customRatioH,
         alignment: settings.alignment,
         showPipeSeparator: settings.showPipeSeparator,
-        fontFamily: settings.fontFamily || DEFAULT_FONT_FAMILY
+        fontFamily: settings.fontFamily || DEFAULT_FONT_FAMILY,
+        onlyFrame: settings.globalOnlyFrame
     }), [
         settings.globalFrameColor, settings.globalTextColor, settings.aspectRatioPreset,
         settings.customRatioW, settings.customRatioH, settings.alignment,
-        settings.showPipeSeparator, settings.fontFamily
+        settings.showPipeSeparator, settings.fontFamily, settings.globalOnlyFrame
     ]);
 
     const imageManager = useImageManager(
@@ -200,10 +201,11 @@ function App() {
             visibility: settings.visibility,
             frameColor: imageManager.frameColor,
             textColor: imageManager.textColor,
-            fontFamily: imageManager.currentFontFamily
+            fontFamily: imageManager.currentFontFamily,
+            onlyFrame: imageManager.currentOnlyFrame
         });
         imageManager.setIsCanvasReady(true);
-    }, [imageManager.exif, imageManager.currentAspectRatioPreset, imageManager.currentCustomRatioW, imageManager.currentCustomRatioH, imageManager.currentOrientation, imageManager.currentAlignment, imageManager.currentShowPipeSeparator, settings.profile, settings.visibility, imageManager.frameColor, imageManager.textColor, imageManager.currentFontFamily, imageManager.setIsCanvasReady]);
+    }, [imageManager.exif, imageManager.currentAspectRatioPreset, imageManager.currentCustomRatioW, imageManager.currentCustomRatioH, imageManager.currentOrientation, imageManager.currentAlignment, imageManager.currentShowPipeSeparator, settings.profile, settings.visibility, imageManager.frameColor, imageManager.textColor, imageManager.currentFontFamily, imageManager.currentOnlyFrame, imageManager.setIsCanvasReady]);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -484,6 +486,7 @@ function App() {
                             frameColor={imageManager.frameColor} setFrameColor={imageManager.setFrameColor}
                             textColor={imageManager.textColor} setTextColor={imageManager.setTextColor}
                             fontFamily={imageManager.currentFontFamily} setFontFamily={imageManager.setPerImageFontFamily}
+                            onlyFrame={imageManager.currentOnlyFrame} setOnlyFrame={imageManager.setPerImageOnlyFrame}
                             onApplyToAll={imageManager.importedImages.length > 1 ? imageManager.handleApplySettingsToAll : undefined}
                         />
 
@@ -492,6 +495,7 @@ function App() {
                             exif={imageManager.exif} setExif={imageManager.setExif}
                             visibility={settings.visibility} setVisibility={settings.setVisibility}
                             onApplyToAll={imageManager.importedImages.length > 1 ? imageManager.handleApplyToAll : undefined}
+                            disabled={imageManager.currentOnlyFrame}
                         />
 
                         <div className="sidebar-section default-settings-section" style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
@@ -508,7 +512,8 @@ function App() {
                                     customRatioH: imageManager.currentCustomRatioH,
                                     alignment: imageManager.currentAlignment,
                                     showPipeSeparator: imageManager.currentShowPipeSeparator,
-                                    fontFamily: imageManager.currentFontFamily
+                                    fontFamily: imageManager.currentFontFamily,
+                                    onlyFrame: imageManager.currentOnlyFrame
                                 })}
                                 title="Save current settings as default for auto-processing"
                             >

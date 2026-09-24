@@ -12,6 +12,7 @@ export interface RenderSettings {
     frameColor: string;
     textColor: string;
     fontFamily: string;
+    onlyFrame: boolean;
 }
 
 /**
@@ -125,6 +126,11 @@ export function renderImageToCanvas(
 
     // Draw image
     ctx.drawImage(img, drawX, drawY);
+
+    // If "Only Frame" mode is enabled, we don't draw any text.
+    if (settings.onlyFrame) {
+        return;
+    }
 
     // 画像の下端座標
     const imgBottomY = drawY + img.height;

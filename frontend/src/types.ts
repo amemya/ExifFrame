@@ -70,6 +70,7 @@ export interface ImportedImage {
     alignment?: "top" | "center";
     showPipeSeparator?: boolean;
     fontFamily?: string;
+    onlyFrame?: boolean;
     originalBPP?: number;
     
     /** The decoded image object loaded into memory. Lazily initialized on demand. */

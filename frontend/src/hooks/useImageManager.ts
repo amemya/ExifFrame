@@ -10,6 +10,7 @@ export interface DefaultFrameSettings {
     alignment: "top" | "center";
     showPipeSeparator: boolean;
     fontFamily: string;
+    onlyFrame: boolean;
 }
 
 /**
@@ -46,6 +47,7 @@ export function useImageManager(
     const currentAlignment = currentImage?.alignment ?? defaultSettings.alignment;
     const currentShowPipeSeparator = currentImage?.showPipeSeparator ?? defaultSettings.showPipeSeparator;
     const currentFontFamily = currentImage?.fontFamily ?? defaultSettings.fontFamily;
+    const currentOnlyFrame = currentImage?.onlyFrame ?? defaultSettings.onlyFrame;
 
     const setPerImageSetting = useCallback(<K extends keyof ImportedImage>(key: K, value: ImportedImage[K]) => {
         setImportedImages(prev => {
@@ -67,6 +69,7 @@ export function useImageManager(
     const setPerImageAlignment = useCallback((alignment: "top" | "center") => setPerImageSetting('alignment', alignment), [setPerImageSetting]);
     const setPerImageShowPipeSeparator = useCallback((show: boolean) => setPerImageSetting('showPipeSeparator', show), [setPerImageSetting]);
     const setPerImageFontFamily = useCallback((fontFamily: string) => setPerImageSetting('fontFamily', fontFamily), [setPerImageSetting]);
+    const setPerImageOnlyFrame = useCallback((onlyFrame: boolean) => setPerImageSetting('onlyFrame', onlyFrame), [setPerImageSetting]);
 
     const setExif: React.Dispatch<React.SetStateAction<ExifData>> = useCallback((action) => {
         setImportedImages(prev => {
@@ -154,6 +157,7 @@ export function useImageManager(
             alignment: defaultSettings.alignment,
             showPipeSeparator: defaultSettings.showPipeSeparator,
             fontFamily: defaultSettings.fontFamily,
+            onlyFrame: defaultSettings.onlyFrame,
             exif: {
                 camera: r.camera || "",
                 lens: r.lens || "",
@@ -199,17 +203,18 @@ export function useImageManager(
                 newImg.alignment = currentAlignment;
                 newImg.showPipeSeparator = currentShowPipeSeparator;
                 newImg.fontFamily = currentFontFamily;
+                newImg.onlyFrame = currentOnlyFrame;
             }
             return newImg;
         }));
         
-        let scopeName = "All frame settings";
+        let scopeName = "All settings";
         if (scope === 'colors') scopeName = "Colors";
         else if (scope === 'ratios') scopeName = "Ratios & Orientation";
-        else if (scope === 'text') scopeName = "Text formatting";
+        else if (scope === 'text') scopeName = "Text & Frame Settings";
         
         showToast(`Applied ${scopeName.toLowerCase()} to all images`);
-    }, [frameColor, textColor, currentAspectRatioPreset, currentCustomRatioW, currentCustomRatioH, currentOrientation, currentAlignment, currentShowPipeSeparator, currentFontFamily, importedImages.length, showToast]);
+    }, [frameColor, textColor, currentAspectRatioPreset, currentCustomRatioW, currentCustomRatioH, currentOrientation, currentAlignment, currentShowPipeSeparator, currentFontFamily, currentOnlyFrame, importedImages.length, showToast]);
 
     return {
         importedImages, setImportedImages,
@@ -223,6 +228,7 @@ export function useImageManager(
         currentAlignment, setPerImageAlignment,
         currentShowPipeSeparator, setPerImageShowPipeSeparator,
         currentFontFamily, setPerImageFontFamily,
+        currentOnlyFrame, setPerImageOnlyFrame,
         handleExifResults, handleApplyToAll, handleApplySettingsToAll,
         isCanvasReady, setIsCanvasReady
     };
