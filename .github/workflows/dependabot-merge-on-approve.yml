@@ -1,0 +1,20 @@
+name: Dependabot Merge on Approve
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    if: github.event.review.state == 'approved' && github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: Auto-merge approved Dependabot PR
+        run: gh pr merge --merge --auto "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
