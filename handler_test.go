@@ -137,6 +137,58 @@ func TestHandleSave_Success(t *testing.T) {
 	}
 }
 
+func TestHandleSave_InheritDate(t *testing.T) {
+	h := newTestHandler()
+
+	dir := t.TempDir()
+	sourcePath := filepath.Join(dir, "dummy_source.txt")
+	savePath := filepath.Join(dir, "output.jpg")
+
+	// Create a dummy source file
+	if err := os.WriteFile(sourcePath, []byte("dummy"), 0644); err != nil {
+		t.Fatalf("failed to create source file: %v", err)
+	}
+
+	// Set a known past date
+	pastDate := time.Date(2020, 1, 1, 12, 0, 0, 0, time.UTC)
+	if err := os.Chtimes(sourcePath, pastDate, pastDate); err != nil {
+		t.Fatalf("failed to chtimes source file: %v", err)
+	}
+
+	// Temporarily enable InheritDate
+	settingsMu.Lock()
+	oldSettings := currentSettings
+	currentSettings.InheritDate = true
+	settingsMu.Unlock()
+	defer func() {
+		settingsMu.Lock()
+		currentSettings = oldSettings
+		settingsMu.Unlock()
+	}()
+
+	token := h.prepareSave(savePath, "image/jpeg", sourcePath)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, bytes.NewReader(encodeTestJPEGBytes(t)))
+	req.Header.Set("Content-Type", "image/jpeg")
+	w := httptest.NewRecorder()
+
+	h.handleSave(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Verify the file was written and modification time inherited.
+	stat, err := os.Stat(savePath)
+	if err != nil {
+		t.Fatalf("saved file should exist: %v", err)
+	}
+
+	if !stat.ModTime().Equal(pastDate) {
+		t.Errorf("expected ModTime %v, got %v", pastDate, stat.ModTime())
+	}
+}
+
 func TestHandleSave_MissingToken(t *testing.T) {
 	h := newTestHandler()
 
