@@ -119,7 +119,7 @@ func TestHandleSave_Success(t *testing.T) {
 	dir := t.TempDir()
 	savePath := filepath.Join(dir, "output.jpg")
 
-	token := h.prepareSave(savePath, "image/jpeg")
+	token := h.prepareSave(savePath, "image/jpeg", "")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, bytes.NewReader(encodeTestJPEGBytes(t)))
 	req.Header.Set("Content-Type", "image/jpeg")
@@ -165,7 +165,7 @@ func TestHandleSave_ExpiredToken(t *testing.T) {
 	h := newTestHandler()
 
 	dir := t.TempDir()
-	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg")
+	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg", "")
 
 	// Manually expire the session.
 	h.saveMu.Lock()
@@ -190,7 +190,7 @@ func TestHandleSave_ContentTypeMismatch(t *testing.T) {
 	h := newTestHandler()
 
 	dir := t.TempDir()
-	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg")
+	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg", "")
 
 	// Send PNG content-type but session expects JPEG.
 	var body bytes.Buffer
@@ -213,7 +213,7 @@ func TestHandleSave_EmptyPayload(t *testing.T) {
 	h := newTestHandler()
 
 	dir := t.TempDir()
-	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg")
+	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg", "")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, bytes.NewReader(nil))
 	req.Header.Set("Content-Type", "image/jpeg")
@@ -422,7 +422,7 @@ func TestHandleSave_TokenConsumedOnce(t *testing.T) {
 
 	dir := t.TempDir()
 	savePath := filepath.Join(dir, "output.jpg")
-	token := h.prepareSave(savePath, "image/jpeg")
+	token := h.prepareSave(savePath, "image/jpeg", "")
 
 	makeBody := func() io.Reader {
 		return bytes.NewReader(encodeTestJPEGBytes(t))

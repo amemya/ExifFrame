@@ -19,7 +19,7 @@ type SaveResult struct {
 // avoiding the memory-intensive Base64 IPC transfer.
 // The isPng parameter indicates whether the export format is PNG (true) or JPEG (false).
 // defaultName is the pre-filled base filename for the export.
-func (a *App) SaveImage(isPng bool, defaultName string) SaveResult {
+func (a *App) SaveImage(isPng bool, defaultName string, sourcePath string) SaveResult {
 	filterName := "JPEG Image"
 	filterPattern := "*.jpg;*.jpeg"
 	if defaultName == "" {
@@ -60,13 +60,13 @@ func (a *App) SaveImage(isPng bool, defaultName string) SaveResult {
 	if a.handler == nil {
 		return SaveResult{Error: "Internal error: image handler not initialized"}
 	}
-	token := a.handler.prepareSave(savePath, expectedMime)
+	token := a.handler.prepareSave(savePath, expectedMime, sourcePath)
 
 	return SaveResult{SaveToken: token}
 }
 
 // SaveAutoImage bypasses the native dialog and prepares a save token for automated background saving.
-func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
+func (a *App) SaveAutoImage(isPng bool, savePath string, sourcePath string) SaveResult {
 	// Validate path is within export folder
 	settingsMu.RLock()
 	exportFolder := currentSettings.ExportFolder
@@ -121,12 +121,12 @@ func (a *App) SaveAutoImage(isPng bool, savePath string) SaveResult {
 	if a.handler == nil {
 		return SaveResult{Error: "Internal error: image handler not initialized"}
 	}
-	token := a.handler.prepareSave(savePath, expectedMime)
+	token := a.handler.prepareSave(savePath, expectedMime, sourcePath)
 	return SaveResult{SaveToken: token}
 }
 
 // SaveBatchImage bypasses ExportFolder validation for explicit batch exports.
-func (a *App) SaveBatchImage(isPng bool, exportDir string, exportName string) SaveResult {
+func (a *App) SaveBatchImage(isPng bool, exportDir string, exportName string, sourcePath string) SaveResult {
 	if exportName == "." || !filepath.IsLocal(exportName) || strings.ContainsAny(exportName, "/\\:\x00") {
 		return SaveResult{Error: "Invalid export name"}
 	}
@@ -144,7 +144,7 @@ func (a *App) SaveBatchImage(isPng bool, exportDir string, exportName string) Sa
 	if a.handler == nil {
 		return SaveResult{Error: "Internal error: image handler not initialized"}
 	}
-	token := a.handler.prepareSave(savePath, expectedMime)
+	token := a.handler.prepareSave(savePath, expectedMime, sourcePath)
 	return SaveResult{SaveToken: token}
 }
 

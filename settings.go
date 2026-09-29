@@ -59,6 +59,9 @@ type Settings struct {
 
 	// System tray settings
 	ResidentMode bool `json:"residentMode"`
+
+	// Export settings
+	InheritDate bool `json:"inheritDate"`
 }
 
 var (
@@ -106,6 +109,7 @@ func init() {
 		VisibilityTime:         true,
 		EnableBetaUpdates:      false,
 		ResidentMode:           true,
+		InheritDate:            false,
 	}
 	loadSettings()
 }

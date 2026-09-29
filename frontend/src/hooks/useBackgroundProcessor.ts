@@ -110,7 +110,7 @@ export function useBackgroundProcessor() {
                             return;
                         }
                         try {
-                            const resultSave = await AppAPI.SaveAutoImage(isPng, savePath);
+                            const resultSave = await AppAPI.SaveAutoImage(isPng, savePath, result.filePath || "");
                             if (!isMounted) return;
 
                             if (resultSave.error) {

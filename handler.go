@@ -53,9 +53,10 @@ type ImageHandler struct {
 // saveSession holds metadata for a single pending save operation.
 // Each session is bound to a unique token and expires after a short TTL.
 type saveSession struct {
-	path      string
-	mime      string
-	expiresAt time.Time
+	path       string
+	mime       string
+	sourcePath string
+	expiresAt  time.Time
 }
 
 // saveTTL is the maximum time a save session remains valid.
@@ -307,7 +308,7 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 // returns the token. The frontend must include this token in the POST to /api/save.
 // This 1:1 binding prevents race conditions from concurrent saves and ensures
 // stale state cannot be consumed by an unrelated request.
-func (h *ImageHandler) prepareSave(savePath string, mimeType string) string {
+func (h *ImageHandler) prepareSave(savePath string, mimeType string, sourcePath string) string {
 	token := generateToken()
 
 	h.saveMu.Lock()
@@ -322,9 +323,10 @@ func (h *ImageHandler) prepareSave(savePath string, mimeType string) string {
 	}
 
 	h.saveSessions[token] = &saveSession{
-		path:      savePath,
-		mime:      mimeType,
-		expiresAt: now.Add(saveTTL),
+		path:       savePath,
+		mime:       mimeType,
+		sourcePath: sourcePath,
+		expiresAt:  now.Add(saveTTL),
 	}
 
 	return token
@@ -414,6 +416,7 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	savePath := session.path
 	expectedMime := session.mime
+	sourcePath := session.sourcePath
 
 	// Validate Content-Type matches what was expected from the save dialog.
 	// Use mime.ParseMediaType to ignore parameters like charset.
@@ -513,6 +516,21 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 			os.Remove(savePath)
 			http.Error(w, "Failed to sync final destination: "+err.Error(), http.StatusInternalServerError)
 			return
+		}
+	}
+
+	// Set modification time to match source if provided and settings allow
+	settingsMu.RLock()
+	inherit := currentSettings.InheritDate
+	settingsMu.RUnlock()
+
+	if inherit && sourcePath != "" {
+		if stat, err := os.Stat(sourcePath); err == nil {
+			if err := os.Chtimes(savePath, stat.ModTime(), stat.ModTime()); err != nil {
+				log.Printf("Failed to set modification time for %s: %v", savePath, err)
+			}
+		} else {
+			log.Printf("Failed to stat source file %s: %v", sourcePath, err)
 		}
 	}
 
