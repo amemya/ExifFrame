@@ -484,6 +484,23 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Capture the original modification time before potentially overwriting the file.
+	var originalModTime time.Time
+	var shouldInheritDate bool
+
+	settingsMu.RLock()
+	inherit := currentSettings.InheritDate
+	settingsMu.RUnlock()
+
+	if inherit && sourcePath != "" {
+		if stat, err := os.Stat(sourcePath); err == nil {
+			originalModTime = stat.ModTime()
+			shouldInheritDate = true
+		} else {
+			log.Printf("Failed to stat source file %s: %v", sourcePath, err)
+		}
+	}
+
 	// Everything succeeded and is validated. Move the temp file to the final destination.
 	// We attempt an atomic os.Rename first. If it fails (e.g., EXDEV cross-device link),
 	// we fallback to io.Copy.
@@ -520,17 +537,9 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set modification time to match source if provided and settings allow
-	settingsMu.RLock()
-	inherit := currentSettings.InheritDate
-	settingsMu.RUnlock()
-
-	if inherit && sourcePath != "" {
-		if stat, err := os.Stat(sourcePath); err == nil {
-			if err := os.Chtimes(savePath, stat.ModTime(), stat.ModTime()); err != nil {
-				log.Printf("Failed to set modification time for %s: %v", savePath, err)
-			}
-		} else {
-			log.Printf("Failed to stat source file %s: %v", sourcePath, err)
+	if shouldInheritDate {
+		if err := os.Chtimes(savePath, originalModTime, originalModTime); err != nil {
+			log.Printf("Failed to set modification time for %s: %v", savePath, err)
 		}
 	}
 
