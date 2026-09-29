@@ -53,10 +53,11 @@ type ImageHandler struct {
 // saveSession holds metadata for a single pending save operation.
 // Each session is bound to a unique token and expires after a short TTL.
 type saveSession struct {
-	path       string
-	mime       string
-	sourcePath string
-	expiresAt  time.Time
+	path            string
+	mime            string
+	inheritDate     bool
+	originalModTime time.Time
+	expiresAt       time.Time
 }
 
 // saveTTL is the maximum time a save session remains valid.
@@ -311,6 +312,28 @@ func (h *ImageHandler) handleThumb(w http.ResponseWriter, r *http.Request) {
 func (h *ImageHandler) prepareSave(savePath string, mimeType string, sourcePath string) string {
 	token := generateToken()
 
+	var inheritDate bool
+	var originalModTime time.Time
+
+	settingsMu.RLock()
+	inherit := currentSettings.InheritDate
+	settingsMu.RUnlock()
+
+	if inherit && sourcePath != "" && filepath.IsAbs(sourcePath) {
+		if stat, err := os.Stat(sourcePath); err == nil {
+			if stat.Mode().IsRegular() {
+				originalModTime = stat.ModTime()
+				inheritDate = true
+			} else {
+				log.Printf("sourcePath is not a regular file: %s", sourcePath)
+			}
+		} else {
+			log.Printf("Failed to stat source file %s: %v", sourcePath, err)
+		}
+	} else if inherit && sourcePath != "" && !filepath.IsAbs(sourcePath) {
+		log.Printf("sourcePath is not absolute: %s", sourcePath)
+	}
+
 	h.saveMu.Lock()
 	defer h.saveMu.Unlock()
 
@@ -323,10 +346,11 @@ func (h *ImageHandler) prepareSave(savePath string, mimeType string, sourcePath 
 	}
 
 	h.saveSessions[token] = &saveSession{
-		path:       savePath,
-		mime:       mimeType,
-		sourcePath: sourcePath,
-		expiresAt:  now.Add(saveTTL),
+		path:            savePath,
+		mime:            mimeType,
+		inheritDate:     inheritDate,
+		originalModTime: originalModTime,
+		expiresAt:       now.Add(saveTTL),
 	}
 
 	return token
@@ -416,7 +440,8 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	savePath := session.path
 	expectedMime := session.mime
-	sourcePath := session.sourcePath
+	inheritDate := session.inheritDate
+	originalModTime := session.originalModTime
 
 	// Validate Content-Type matches what was expected from the save dialog.
 	// Use mime.ParseMediaType to ignore parameters like charset.
@@ -484,23 +509,6 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Capture the original modification time before potentially overwriting the file.
-	var originalModTime time.Time
-	var shouldInheritDate bool
-
-	settingsMu.RLock()
-	inherit := currentSettings.InheritDate
-	settingsMu.RUnlock()
-
-	if inherit && sourcePath != "" {
-		if stat, err := os.Stat(sourcePath); err == nil {
-			originalModTime = stat.ModTime()
-			shouldInheritDate = true
-		} else {
-			log.Printf("Failed to stat source file %s: %v", sourcePath, err)
-		}
-	}
-
 	// Everything succeeded and is validated. Move the temp file to the final destination.
 	// We attempt an atomic os.Rename first. If it fails (e.g., EXDEV cross-device link),
 	// we fallback to io.Copy.
@@ -537,7 +545,7 @@ func (h *ImageHandler) handleSave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set modification time to match source if provided and settings allow
-	if shouldInheritDate {
+	if inheritDate {
 		if err := os.Chtimes(savePath, originalModTime, originalModTime); err != nil {
 			log.Printf("Failed to set modification time for %s: %v", savePath, err)
 		}
