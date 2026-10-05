@@ -20,6 +20,7 @@ function SettingsWindow() {
     const [jpegQuality, setJpegQuality] = useState("auto");
     const [enableBetaUpdates, setEnableBetaUpdates] = useState<boolean>(false);
     const [residentMode, setResidentMode] = useState<boolean>(true);
+    const [inheritDate, setInheritDate] = useState<boolean>(false);
 
     // Frame Settings
     const [aspectRatioPreset, setAspectRatioPreset] = useState<string>("4300:3618");
@@ -51,6 +52,7 @@ function SettingsWindow() {
         setJpegQuality(s.jpegQuality || "auto");
         setEnableBetaUpdates(s.enableBetaUpdates ?? false);
         setResidentMode(s.residentMode ?? true);
+        setInheritDate(s.inheritDate ?? false);
 
         setAspectRatioPreset(s.aspectRatioPreset || "4300:3618");
         setCustomRatioW(s.customRatioW || 4300);
@@ -110,6 +112,7 @@ function SettingsWindow() {
         s.jpegQuality = jpegQuality;
         s.enableBetaUpdates = enableBetaUpdates;
         s.residentMode = residentMode;
+        s.inheritDate = inheritDate;
         s.aspectRatioPreset = aspectRatioPreset;
         s.customRatioW = customRatioW;
         s.customRatioH = customRatioH;
@@ -254,6 +257,18 @@ function SettingsWindow() {
                                     Keep running in system tray
                                 </label>
                                 <small style={{ display: 'block', marginTop: '0.5rem', marginLeft: '1.5rem', color: 'var(--text-secondary)', textAlign: 'left' }}>When enabled, closing the window keeps ExifFrame running in the menu bar.</small>
+                            </div>
+                            <div className="input-group">
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'normal', margin: 0, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={inheritDate} 
+                                        onChange={(e) => setInheritDate(e.target.checked)} 
+                                        style={{ margin: 0, width: 'auto', height: 'auto', cursor: 'pointer' }}
+                                    />
+                                    Inherit Original Date
+                                </label>
+                                <small style={{ display: 'block', marginTop: '0.5rem', marginLeft: '1.5rem', color: 'var(--text-secondary)', textAlign: 'left' }}>When enabled, exported images will inherit the modification date from the original image.</small>
                             </div>
                         </div>
                     )}

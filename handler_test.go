@@ -119,7 +119,7 @@ func TestHandleSave_Success(t *testing.T) {
 	dir := t.TempDir()
 	savePath := filepath.Join(dir, "output.jpg")
 
-	token := h.prepareSave(savePath, "image/jpeg")
+	token := h.prepareSave(savePath, "image/jpeg", "")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, bytes.NewReader(encodeTestJPEGBytes(t)))
 	req.Header.Set("Content-Type", "image/jpeg")
@@ -134,6 +134,58 @@ func TestHandleSave_Success(t *testing.T) {
 	// Verify the file was written.
 	if _, err := os.Stat(savePath); err != nil {
 		t.Errorf("saved file should exist: %v", err)
+	}
+}
+
+func TestHandleSave_InheritDate(t *testing.T) {
+	h := newTestHandler()
+
+	dir := t.TempDir()
+	sourcePath := filepath.Join(dir, "dummy_source.txt")
+	savePath := filepath.Join(dir, "output.jpg")
+
+	// Create a dummy source file
+	if err := os.WriteFile(sourcePath, []byte("dummy"), 0644); err != nil {
+		t.Fatalf("failed to create source file: %v", err)
+	}
+
+	// Set a known past date
+	pastDate := time.Date(2020, 1, 1, 12, 0, 0, 0, time.UTC)
+	if err := os.Chtimes(sourcePath, pastDate, pastDate); err != nil {
+		t.Fatalf("failed to chtimes source file: %v", err)
+	}
+
+	// Temporarily enable InheritDate
+	settingsMu.Lock()
+	oldSettings := currentSettings
+	currentSettings.InheritDate = true
+	settingsMu.Unlock()
+	defer func() {
+		settingsMu.Lock()
+		currentSettings = oldSettings
+		settingsMu.Unlock()
+	}()
+
+	token := h.prepareSave(savePath, "image/jpeg", sourcePath)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, bytes.NewReader(encodeTestJPEGBytes(t)))
+	req.Header.Set("Content-Type", "image/jpeg")
+	w := httptest.NewRecorder()
+
+	h.handleSave(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Verify the file was written and modification time inherited.
+	stat, err := os.Stat(savePath)
+	if err != nil {
+		t.Fatalf("saved file should exist: %v", err)
+	}
+
+	if !stat.ModTime().Equal(pastDate) {
+		t.Errorf("expected ModTime %v, got %v", pastDate, stat.ModTime())
 	}
 }
 
@@ -165,7 +217,7 @@ func TestHandleSave_ExpiredToken(t *testing.T) {
 	h := newTestHandler()
 
 	dir := t.TempDir()
-	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg")
+	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg", "")
 
 	// Manually expire the session.
 	h.saveMu.Lock()
@@ -190,7 +242,7 @@ func TestHandleSave_ContentTypeMismatch(t *testing.T) {
 	h := newTestHandler()
 
 	dir := t.TempDir()
-	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg")
+	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg", "")
 
 	// Send PNG content-type but session expects JPEG.
 	var body bytes.Buffer
@@ -213,7 +265,7 @@ func TestHandleSave_EmptyPayload(t *testing.T) {
 	h := newTestHandler()
 
 	dir := t.TempDir()
-	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg")
+	token := h.prepareSave(filepath.Join(dir, "out.jpg"), "image/jpeg", "")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/save?token="+token, bytes.NewReader(nil))
 	req.Header.Set("Content-Type", "image/jpeg")
@@ -422,7 +474,7 @@ func TestHandleSave_TokenConsumedOnce(t *testing.T) {
 
 	dir := t.TempDir()
 	savePath := filepath.Join(dir, "output.jpg")
-	token := h.prepareSave(savePath, "image/jpeg")
+	token := h.prepareSave(savePath, "image/jpeg", "")
 
 	makeBody := func() io.Reader {
 		return bytes.NewReader(encodeTestJPEGBytes(t))

@@ -104,7 +104,7 @@ func TestSaveBatchImage_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := app.SaveBatchImage(tt.isPng, "/tmp", tt.exportName)
+			res := app.SaveBatchImage(tt.isPng, "/tmp", tt.exportName, "")
 			
 			if res.Error != tt.wantError {
 				t.Errorf("expected error %q, got: %q", tt.wantError, res.Error)
@@ -160,7 +160,7 @@ func TestSaveAutoImage_Validation(t *testing.T) {
 				handler: newTestHandler(),
 			}
 
-			res := app.SaveAutoImage(tt.isPng, tt.savePath)
+			res := app.SaveAutoImage(tt.isPng, tt.savePath, "")
 			
 			if res.Error != tt.wantError {
 				t.Errorf("expected error %q, got: %q", tt.wantError, res.Error)

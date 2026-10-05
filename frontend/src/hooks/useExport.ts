@@ -71,7 +71,7 @@ export function useExport({
             const { isPng, targetMime, baseName } = getExportInfo(currentImage.filePath || "exif-frame-export", currentImage.sourceMimeType);
             const exportName = `${baseName}_ExifFrame`;
 
-            const result = await AppAPI.SaveImage(isPng, exportName);
+            const result = await AppAPI.SaveImage(isPng, exportName, currentImage.filePath || "");
 
             if (result.cancelled) {
                 return;
@@ -174,7 +174,7 @@ export function useExport({
                     const { isPng, targetMime, baseName } = getExportInfo(imgState.filePath || `exif-frame-${i}`, imgState.sourceMimeType);
                     const exportName = `${baseName}_ExifFrame`;
                     
-                    const result = await AppAPI.SaveBatchImage(isPng, exportDir, exportName);
+                    const result = await AppAPI.SaveBatchImage(isPng, exportDir, exportName, imgState.filePath || "");
                     if (result.error) {
                         console.error("Export failed for", exportName, result.error);
                         failCount++;
