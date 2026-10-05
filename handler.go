@@ -319,19 +319,23 @@ func (h *ImageHandler) prepareSave(savePath string, mimeType string, sourcePath 
 	inherit := currentSettings.InheritDate
 	settingsMu.RUnlock()
 
-	if inherit && sourcePath != "" && filepath.IsAbs(sourcePath) {
-		if stat, err := os.Stat(sourcePath); err == nil {
-			if stat.Mode().IsRegular() {
-				originalModTime = stat.ModTime()
-				inheritDate = true
+	if inherit {
+		if sourcePath == "" {
+			log.Printf("sourcePath is empty, skipping date inheritance")
+		} else if filepath.IsAbs(sourcePath) {
+			if stat, err := os.Stat(sourcePath); err == nil {
+				if stat.Mode().IsRegular() {
+					originalModTime = stat.ModTime()
+					inheritDate = true
+				} else {
+					log.Printf("sourcePath is not a regular file: %s", sourcePath)
+				}
 			} else {
-				log.Printf("sourcePath is not a regular file: %s", sourcePath)
+				log.Printf("Failed to stat source file %s: %v", sourcePath, err)
 			}
 		} else {
-			log.Printf("Failed to stat source file %s: %v", sourcePath, err)
+			log.Printf("sourcePath is not absolute: %s", sourcePath)
 		}
-	} else if inherit && sourcePath != "" && !filepath.IsAbs(sourcePath) {
-		log.Printf("sourcePath is not absolute: %s", sourcePath)
 	}
 
 	h.saveMu.Lock()
