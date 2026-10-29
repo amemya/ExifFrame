@@ -215,31 +215,10 @@ func (a *App) doOpenImage(filePath string, f *os.File, mimeType string) ExifResu
 	}
 
 	// Adobe PNG/XMP Fallback (Extract metadata directly from raw XMP block)
-	// We read a maximum of the first 50MB to search for the XMP block.
+	// We scan up to the first 50MB in chunks to search for the XMP block.
 	var xmpData []byte
-	const xmpStartTag = "<x:xmpmeta"
-	const xmpEndTag = "</x:xmpmeta>"
-	const maxXmpSearchSize = 50 * 1024 * 1024 // 50 MB
-
 	if _, err := f.Seek(0, io.SeekStart); err == nil {
-		if fileInfo, statErr := f.Stat(); statErr == nil {
-			readSize := fileInfo.Size()
-			if readSize > maxXmpSearchSize {
-				readSize = maxXmpSearchSize
-			}
-			if readSize > 0 {
-				searchBuf := make([]byte, readSize)
-				n, readErr := io.ReadFull(f, searchBuf)
-				if n > 0 && (readErr == nil || readErr == io.EOF || readErr == io.ErrUnexpectedEOF) {
-					searchBuf = searchBuf[:n]
-					if start := bytes.Index(searchBuf, []byte(xmpStartTag)); start != -1 {
-						if end := bytes.Index(searchBuf[start:], []byte(xmpEndTag)); end != -1 {
-							xmpData = searchBuf[start : start+end+len(xmpEndTag)]
-						}
-					}
-				}
-			}
-		}
+		xmpData = extractXMP(f)
 	}
 
 	if result.Camera == "" {
@@ -284,6 +263,95 @@ func (a *App) doOpenImage(filePath string, f *os.File, mimeType string) ExifResu
 	}
 
 	return result
+}
+
+const (
+	xmpStartTag      = "<x:xmpmeta"
+	xmpEndTag        = "</x:xmpmeta>"
+	maxXmpSearchSize = 50 * 1024 * 1024 // 50 MB
+	xmpScanChunkSize = 64 * 1024        // 64 KB
+	maxXmpBlockSize  = 10 * 1024 * 1024 // 10 MB
+)
+
+// extractXMP scans r in chunks up to maxXmpSearchSize and returns the first
+// complete <x:xmpmeta ... </x:xmpmeta> block found, or nil if not found.
+func extractXMP(r io.Reader) []byte {
+	return extractXMPWithLimits(r, maxXmpSearchSize, xmpScanChunkSize, maxXmpBlockSize)
+}
+
+func extractXMPWithLimits(r io.Reader, maxSearchSize int64, chunkSize int, maxBlockSize int) []byte {
+	if maxSearchSize <= 0 || chunkSize <= 0 || maxBlockSize <= 0 {
+		return nil
+	}
+
+	startTagBytes := []byte(xmpStartTag)
+	endTagBytes := []byte(xmpEndTag)
+	overlap := len(startTagBytes) - 1
+
+	lr := io.LimitReader(r, maxSearchSize)
+	buf := make([]byte, overlap+chunkSize)
+	validLen := 0
+
+	var xmpBuf bytes.Buffer
+	findingEnd := false
+
+	for {
+		if !findingEnd {
+			n, err := lr.Read(buf[validLen : validLen+chunkSize])
+			if n > 0 {
+				window := buf[:validLen+n]
+				if startIdx := bytes.Index(window, startTagBytes); startIdx != -1 {
+					remainder := window[startIdx:]
+					if endIdx := bytes.Index(remainder, endTagBytes); endIdx != -1 {
+						xmp := remainder[:endIdx+len(endTagBytes)]
+						if len(xmp) > maxBlockSize {
+							return nil
+						}
+						return bytes.Clone(xmp)
+					}
+					if len(remainder) >= maxBlockSize {
+						return nil
+					}
+					xmpBuf.Write(remainder)
+					findingEnd = true
+				} else {
+					if len(window) > overlap {
+						copy(buf, window[len(window)-overlap:])
+						validLen = overlap
+					} else {
+						validLen = len(window)
+					}
+				}
+			}
+			if err != nil {
+				return nil
+			}
+		} else {
+			n, err := lr.Read(buf[:chunkSize])
+			if n > 0 {
+				prevLen := xmpBuf.Len()
+				writeLen := n
+				if prevLen+writeLen > maxBlockSize {
+					writeLen = maxBlockSize - prevLen
+				}
+				xmpBuf.Write(buf[:writeLen])
+
+				searchFrom := prevLen - (len(endTagBytes) - 1)
+				if searchFrom < 0 {
+					searchFrom = 0
+				}
+				if endIdx := bytes.Index(xmpBuf.Bytes()[searchFrom:], endTagBytes); endIdx != -1 {
+					return bytes.Clone(xmpBuf.Bytes()[:searchFrom+endIdx+len(endTagBytes)])
+				}
+				if xmpBuf.Len() >= maxBlockSize {
+					return nil
+				}
+			}
+			if err != nil {
+				return nil
+			}
+		}
+	}
 }
 
 func extractXMPString(data []byte, re *regexp.Regexp) string {
